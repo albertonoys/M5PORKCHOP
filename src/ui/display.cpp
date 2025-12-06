@@ -463,7 +463,14 @@ void Display::drawFileTransferScreen(M5Canvas& canvas) {
     canvas.setTextSize(1);
     canvas.setTextColor(COLOR_FG);
     
-    if (FileServer::isRunning() && FileServer::isConnected()) {
+    if (FileServer::isConnecting()) {
+        // Show connection progress
+        canvas.drawString("Connecting to WiFi...", DISPLAY_W / 2, 30);
+        canvas.setTextColor(COLOR_ACCENT);
+        canvas.drawString(Config::wifi().otaSSID, DISPLAY_W / 2, 45);
+        canvas.setTextColor(COLOR_FG);
+        canvas.drawString(FileServer::getStatus(), DISPLAY_W / 2, 60);
+    } else if (FileServer::isRunning() && FileServer::isConnected()) {
         // Show IP address
         canvas.drawString("Connected! Browse to:", DISPLAY_W / 2, 30);
         

@@ -12,7 +12,7 @@ struct GPSConfig {
     bool enabled = true;
     uint8_t rxPin = 1;
     uint8_t txPin = 2;
-    uint32_t baudRate = 9600;
+    uint32_t baudRate = 115200;
     uint16_t updateInterval = 5;        // Seconds between GPS updates
     uint16_t sleepTimeMs = 5000;        // Sleep duration when stationary
     bool powerSave = true;

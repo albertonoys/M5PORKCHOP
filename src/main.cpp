@@ -50,7 +50,7 @@ void setup() {
     // Initialize piglet personality
     Avatar::init();
     Mood::init();
-    Display::showProgress("Loading personality...", 30);
+    Display::showProgress("Loading...", 30);
     
     // Initialize GPS (if enabled)
     if (Config::gps().enabled) {

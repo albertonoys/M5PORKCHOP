@@ -96,6 +96,22 @@ void SettingsMenu::loadFromConfig() {
         0, 1, 1, "", ""
     });
     
+    // GPS Baud Rate (common values: 9600, 38400, 57600, 115200)
+    // Use index 0-3 to represent these values
+    int baudIndex = 3;  // Default to 115200
+    uint32_t baud = Config::gps().baudRate;
+    if (baud == 9600) baudIndex = 0;
+    else if (baud == 38400) baudIndex = 1;
+    else if (baud == 57600) baudIndex = 2;
+    else baudIndex = 3;  // 115200
+    
+    items.push_back({
+        "GPS Baud",
+        SettingType::VALUE,
+        baudIndex,
+        0, 3, 1, "", ""  // Will display as baud rate in render
+    });
+    
     // Timezone offset (UTC-12 to UTC+14)
     items.push_back({
         "Timezone",
@@ -135,7 +151,12 @@ void SettingsMenu::saveToConfig() {
     auto& g = Config::gps();
     g.enabled = items[7].value == 1;
     g.powerSave = items[8].value == 1;
-    g.timezoneOffset = items[9].value;
+    
+    // Convert baud index to actual baud rate
+    static const uint32_t baudRates[] = {9600, 38400, 57600, 115200};
+    g.baudRate = baudRates[items[9].value];
+    
+    g.timezoneOffset = items[10].value;
     Config::setGPS(g);
     
     // Save to file
@@ -353,7 +374,15 @@ void SettingsMenu::draw(M5Canvas& canvas) {
         if (item.type == SettingType::TOGGLE) {
             valStr = item.value ? "ON" : "OFF";
         } else if (item.type == SettingType::VALUE) {
-            if (isSelected && editing) {
+            // Special handling for GPS Baud rate (display actual baud instead of index)
+            if (item.label == "GPS Baud") {
+                static const char* baudLabels[] = {"9600", "38400", "57600", "115200"};
+                if (isSelected && editing) {
+                    valStr = "[" + String(baudLabels[item.value]) + "]";
+                } else {
+                    valStr = String(baudLabels[item.value]);
+                }
+            } else if (isSelected && editing) {
                 valStr = "[" + String(item.value) + item.suffix + "]";
             } else {
                 valStr = String(item.value) + item.suffix;

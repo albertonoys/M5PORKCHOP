@@ -43,9 +43,28 @@ void GPS::update() {
 }
 
 void GPS::processSerial() {
+    static uint32_t lastDebugTime = 0;
+    static uint32_t bytesReceived = 0;
+    
     while (serial->available() > 0) {
         char c = serial->read();
         gps.encode(c);
+        bytesReceived++;
+    }
+    
+    // Debug: Log GPS stats every 5 seconds
+    uint32_t now = millis();
+    if (now - lastDebugTime >= 5000) {
+        Serial.printf("[GPS] Bytes: %lu, Sats: %d, Valid: %s, Age: %lu, CharsProc: %lu, Sentences: %lu, Checksum: %lu/%lu\n",
+            bytesReceived,
+            gps.satellites.value(),
+            gps.location.isValid() ? "Y" : "N",
+            gps.location.age(),
+            gps.charsProcessed(),
+            gps.sentencesWithFix(),
+            gps.passedChecksum(),
+            gps.failedChecksum());
+        lastDebugTime = now;
     }
 }
 

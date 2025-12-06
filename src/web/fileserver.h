@@ -5,6 +5,13 @@
 #include <WebServer.h>
 #include <WiFi.h>
 
+enum class FileServerState {
+    IDLE,
+    CONNECTING,
+    RUNNING,
+    RECONNECTING
+};
+
 class FileServer {
 public:
     static void init();
@@ -12,15 +19,27 @@ public:
     static void stop();
     static void update();
     
-    static bool isRunning() { return running; }
+    static bool isRunning() { return state == FileServerState::RUNNING; }
+    static bool isConnecting() { return state == FileServerState::CONNECTING || state == FileServerState::RECONNECTING; }
     static bool isConnected() { return WiFi.status() == WL_CONNECTED; }
     static String getIP() { return WiFi.localIP().toString(); }
     static const char* getStatus() { return statusMessage; }
+    static uint64_t getSDFreeSpace();
+    static uint64_t getSDTotalSpace();
     
 private:
     static WebServer* server;
-    static bool running;
+    static FileServerState state;
     static char statusMessage[64];
+    static char targetSSID[64];
+    static char targetPassword[64];
+    static uint32_t connectStartTime;
+    static uint32_t lastReconnectCheck;
+    
+    // State machine
+    static void updateConnecting();
+    static void updateRunning();
+    static void startServer();
     
     // HTTP handlers
     static void handleRoot();
@@ -29,6 +48,8 @@ private:
     static void handleUpload();
     static void handleUploadProcess();
     static void handleDelete();
+    static void handleMkdir();
+    static void handleSDInfo();
     static void handleNotFound();
     
     // HTML template

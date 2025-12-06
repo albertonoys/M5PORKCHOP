@@ -81,7 +81,7 @@ bool Config::load() {
         gpsConfig.enabled = doc["gps"]["enabled"] | true;
         gpsConfig.rxPin = doc["gps"]["rxPin"] | 1;
         gpsConfig.txPin = doc["gps"]["txPin"] | 2;
-        gpsConfig.baudRate = doc["gps"]["baudRate"] | 9600;
+        gpsConfig.baudRate = doc["gps"]["baudRate"] | 115200;
         gpsConfig.updateInterval = doc["gps"]["updateInterval"] | 5;
         gpsConfig.sleepTimeMs = doc["gps"]["sleepTimeMs"] | 5000;
         gpsConfig.powerSave = doc["gps"]["powerSave"] | true;
