@@ -28,6 +28,9 @@ void setup() {
     M5Cardputer.begin(cfg, true);
     M5Cardputer.Keyboard.begin();
     
+    // Configure G0 button (GPIO0) as input with pullup
+    pinMode(0, INPUT_PULLUP);
+    
     // Load configuration from SD
     if (!Config::init()) {
         Serial.println("[MAIN] Config init failed, using defaults");

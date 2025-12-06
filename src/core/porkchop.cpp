@@ -159,6 +159,24 @@ void Porkchop::processEvents() {
 }
 
 void Porkchop::handleInput() {
+    // G0 button (GPIO0 on top side) - always returns to IDLE from any mode
+    // Try multiple detection methods for compatibility
+    static bool g0WasPressed = false;
+    bool g0Pressed = (digitalRead(0) == LOW);  // G0 is active LOW
+    
+    if (g0Pressed && !g0WasPressed) {
+        Serial.printf("[PORKCHOP] G0 pressed! Current mode: %d\n", (int)currentMode);
+        if (currentMode != PorkchopMode::IDLE) {
+            Serial.println("[PORKCHOP] Returning to IDLE");
+            setMode(PorkchopMode::IDLE);
+            g0WasPressed = true;
+            return;
+        }
+    }
+    if (!g0Pressed) {
+        g0WasPressed = false;
+    }
+    
     if (!M5Cardputer.Keyboard.isChange()) return;
     
     auto keys = M5Cardputer.Keyboard.keysState();
