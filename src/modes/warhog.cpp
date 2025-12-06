@@ -4,6 +4,8 @@
 #include "../core/config.h"
 #include "../ui/display.h"
 #include "../piglet/mood.h"
+#include "../ml/features.h"
+#include "../ml/inference.h"
 #include <WiFi.h>
 #include <SPI.h>
 #include <SD.h>
@@ -155,6 +157,18 @@ void WarhogMode::processScanResults() {
             entry.authmode = WiFi.encryptionType(i);
             entry.timestamp = millis();
             entry.saved = false;
+            entry.label = 0;  // Unknown - user can label later
+            
+            // Extract ML features from scan result
+            wifi_ap_record_t apRecord;
+            apRecord.rssi = entry.rssi;
+            apRecord.primary = entry.channel;
+            apRecord.second = WIFI_SECOND_CHAN_NONE;
+            apRecord.authmode = entry.authmode;
+            memcpy(apRecord.bssid, bssid, 6);
+            memcpy(apRecord.ssid, entry.ssid, 33);
+            apRecord.phy_11n = true;  // Assume 11n capable
+            entry.features = FeatureExtractor::extractFromScan(&apRecord);
             
             if (hasGPS) {
                 entry.latitude = gps.latitude;
@@ -349,4 +363,54 @@ String WarhogMode::generateFilename(const char* ext) {
     }
     
     return String(buf);
+}
+
+bool WarhogMode::exportMLTraining(const char* path) {
+    File f = SD.open(path, FILE_WRITE);
+    if (!f) {
+        Serial.printf("[WARHOG] Failed to open ML export: %s\n", path);
+        return false;
+    }
+    
+    // CSV header - all 32 feature vector values + label + metadata
+    f.print("bssid,ssid,");
+    f.print("rssi,noise,snr,channel,secondary_ch,beacon_interval,");
+    f.print("capability_lo,capability_hi,has_wps,has_wpa,has_wpa2,has_wpa3,");
+    f.print("is_hidden,response_time,beacon_count,beacon_jitter,");
+    f.print("responds_probe,probe_response_time,vendor_ie_count,");
+    f.print("supported_rates,ht_cap,vht_cap,anomaly_score,");
+    f.print("f23,f24,f25,f26,f27,f28,f29,f30,f31,");  // Reserved features
+    f.println("label,latitude,longitude");
+    
+    float featureVec[FEATURE_VECTOR_SIZE];
+    
+    for (const auto& e : entries) {
+        // BSSID
+        f.printf("%02X:%02X:%02X:%02X:%02X:%02X,",
+                e.bssid[0], e.bssid[1], e.bssid[2],
+                e.bssid[3], e.bssid[4], e.bssid[5]);
+        
+        // SSID (escaped)
+        f.print("\"");
+        for (int i = 0; i < 32 && e.ssid[i]; i++) {
+            if (e.ssid[i] == '"') f.print("\"\"");
+            else f.print(e.ssid[i]);
+        }
+        f.print("\",");
+        
+        // Convert features to vector
+        FeatureExtractor::toFeatureVector(e.features, featureVec);
+        
+        // Write all 32 feature values
+        for (int i = 0; i < FEATURE_VECTOR_SIZE; i++) {
+            f.printf("%.4f,", featureVec[i]);
+        }
+        
+        // Label and GPS
+        f.printf("%d,%.6f,%.6f\n", e.label, e.latitude, e.longitude);
+    }
+    
+    f.close();
+    Serial.printf("[WARHOG] ML training export: %d entries to %s\n", entries.size(), path);
+    return true;
 }

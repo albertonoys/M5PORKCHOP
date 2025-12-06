@@ -3,6 +3,7 @@
 // must be generated from studio.edgeimpulse.com for your model.
 
 #include "inference.h"
+#include "edge_impulse.h"
 #include "../core/config.h"
 #include "../ui/display.h"
 #include "../piglet/mood.h"
@@ -29,11 +30,17 @@ void MLInference::init() {
         return;
     }
     
-    // Try to load existing model
-    if (SPIFFS.exists(MODEL_PATH)) {
+    // Try to initialize Edge Impulse SDK
+    if (EdgeImpulse::init()) {
+        modelLoaded = true;
+        strncpy(modelVersion, "EI-SDK", 15);
+        EdgeImpulse::printInfo();
+    }
+    // Try to load existing model file
+    else if (SPIFFS.exists(MODEL_PATH)) {
         loadModel(MODEL_PATH);
     } else {
-        Serial.println("[ML] No model found, using stub classifier");
+        Serial.println("[ML] No model found, using heuristic classifier");
     }
     
     Serial.println("[ML] Inference engine initialized");
@@ -54,13 +61,25 @@ MLResult MLInference::classify(const float* features, size_t featureCount) {
         .valid = false
     };
     
-    if (!modelLoaded) {
-        // Stub classifier - heuristic-based fallback
-        result = runInference(features, featureCount);
+    // Try Edge Impulse SDK first if enabled
+    if (EdgeImpulse::isEnabled()) {
+        uint32_t startTime = micros();
+        EIResult eiResult = EdgeImpulse::classify(features, featureCount);
+        
+        if (eiResult.success) {
+            result.label = (MLLabel)eiResult.predictedClass;
+            result.confidence = eiResult.confidence;
+            for (int i = 0; i < 5; i++) {
+                result.scores[i] = eiResult.predictions[i];
+            }
+            result.inferenceTimeUs = micros() - startTime;
+            result.valid = true;
+        } else {
+            // Fallback to heuristic classifier
+            result = runInference(features, featureCount);
+        }
     } else {
-        // Real Edge Impulse inference would go here
-        // ei_impulse_result_t ei_result;
-        // run_classifier(&ei_result, features, featureCount);
+        // Use heuristic classifier
         result = runInference(features, featureCount);
     }
     
@@ -96,61 +115,161 @@ MLResult MLInference::runInference(const float* input, size_t size) {
     MLResult result = {
         .label = MLLabel::NORMAL,
         .confidence = 0.0f,
-        .scores = {0.5f, 0.1f, 0.1f, 0.2f, 0.1f},
+        .scores = {0.8f, 0.05f, 0.05f, 0.05f, 0.05f},
         .inferenceTimeUs = 0,
         .valid = true
     };
     
-    // Stub heuristic classifier based on features
-    // This provides basic functionality without a trained model
+    if (size < FEATURE_VECTOR_SIZE) {
+        result.valid = false;
+        return result;
+    }
     
-    if (size >= 10) {
-        float rssi = input[0];
-        float beaconInterval = input[5];
-        bool hasWPA2 = input[10] > 0.5f;
-        bool isHidden = input[12] > 0.5f;
-        
-        // Simple heuristics
-        if (rssi > -30 && beaconInterval < 50) {
-            // Very strong signal with fast beacons - potential rogue AP
-            result.label = MLLabel::ROGUE_AP;
-            result.scores[0] = 0.2f;
-            result.scores[1] = 0.7f;
-            result.scores[2] = 0.05f;
-            result.scores[3] = 0.03f;
-            result.scores[4] = 0.02f;
-            result.confidence = 0.7f;
-        } else if (isHidden && !hasWPA2) {
-            // Hidden network without WPA2 - suspicious
-            result.label = MLLabel::VULNERABLE;
-            result.scores[0] = 0.1f;
-            result.scores[1] = 0.1f;
-            result.scores[2] = 0.15f;
-            result.scores[3] = 0.05f;
-            result.scores[4] = 0.6f;
-            result.confidence = 0.6f;
-        } else if (!hasWPA2 && input[9] > 0.5f) {
-            // WPA1 only - potential target
-            result.label = MLLabel::DEAUTH_TARGET;
-            result.scores[0] = 0.2f;
-            result.scores[1] = 0.1f;
-            result.scores[2] = 0.1f;
-            result.scores[3] = 0.5f;
-            result.scores[4] = 0.1f;
-            result.confidence = 0.5f;
-        } else {
-            // Normal network
-            result.label = MLLabel::NORMAL;
-            result.scores[0] = 0.8f;
-            result.scores[1] = 0.05f;
-            result.scores[2] = 0.05f;
-            result.scores[3] = 0.05f;
-            result.scores[4] = 0.05f;
-            result.confidence = 0.8f;
+    // ========================================
+    // ENHANCED HEURISTIC CLASSIFIER
+    // Feature indices from features.cpp:
+    //  0: rssi, 1: noise, 2: snr, 3: channel, 4: secondary_ch
+    //  5: beacon_interval, 6: capability_lo, 7: capability_hi
+    //  8: hasWPS, 9: hasWPA, 10: hasWPA2, 11: hasWPA3
+    // 12: isHidden, 13: responseTime, 14: beaconCount, 15: beaconJitter
+    // 16: respondsToProbe, 17: probeResponseTime, 18: vendorIECount
+    // 19: supportedRates, 20: htCapabilities, 21: vhtCapabilities
+    // 22: anomalyScore
+    // ========================================
+    
+    float rssi = input[0];
+    float snr = input[2];
+    uint8_t channel = (uint8_t)input[3];
+    float beaconInterval = input[5];
+    bool hasWPS = input[8] > 0.5f;
+    bool hasWPA = input[9] > 0.5f;
+    bool hasWPA2 = input[10] > 0.5f;
+    bool hasWPA3 = input[11] > 0.5f;
+    bool isHidden = input[12] > 0.5f;
+    float beaconJitter = input[15];
+    uint8_t vendorIECount = (uint8_t)input[18];
+    uint8_t supportedRates = (uint8_t)input[19];
+    bool hasHT = input[20] > 0.5f;
+    bool hasVHT = input[21] > 0.5f;
+    
+    float anomalyScore = 0.0f;
+    
+    // ---- ROGUE AP DETECTION ----
+    // 1. Suspiciously strong signal (someone nearby with laptop hotspot)
+    if (rssi > -30) {
+        anomalyScore += 0.3f;
+    }
+    
+    // 2. Non-standard beacon interval (default is 100ms, 102.4 TU)
+    if (beaconInterval < 50 || beaconInterval > 200) {
+        anomalyScore += 0.2f;
+    }
+    
+    // 3. High beacon jitter (inconsistent timing = software AP)
+    if (beaconJitter > 10.0f) {
+        anomalyScore += 0.15f;
+    }
+    
+    // 4. Missing vendor-specific IEs (real routers have many)
+    if (vendorIECount < 2) {
+        anomalyScore += 0.1f;
+    }
+    
+    // 5. Open network with WPS enabled (honeypot pattern)
+    if (!hasWPA && !hasWPA2 && !hasWPA3 && hasWPS) {
+        anomalyScore += 0.25f;
+    }
+    
+    // 6. Channel anomaly - using unusual channels (non-1,6,11 for 2.4GHz)
+    if (channel <= 14 && channel != 1 && channel != 6 && channel != 11) {
+        anomalyScore += 0.05f;
+    }
+    
+    // 7. Claims VHT (WiFi 5) but no HT (WiFi 4) - inconsistent
+    if (hasVHT && !hasHT) {
+        anomalyScore += 0.2f;
+    }
+    
+    // 8. Very few supported rates (minimal AP implementation)
+    if (supportedRates < 4) {
+        anomalyScore += 0.1f;
+    }
+    
+    // ---- EVIL TWIN DETECTION ----
+    // Would need SSID comparison with known networks
+    // For now, flag hidden networks copying popular names
+    float evilTwinScore = 0.0f;
+    if (isHidden && rssi > -50) {
+        evilTwinScore += 0.2f;
+    }
+    
+    // ---- VULNERABLE NETWORK DETECTION ----
+    float vulnScore = 0.0f;
+    
+    // Open network
+    if (!hasWPA && !hasWPA2 && !hasWPA3) {
+        vulnScore += 0.5f;
+    }
+    
+    // WPA1 only (TKIP vulnerable)
+    if (hasWPA && !hasWPA2 && !hasWPA3) {
+        vulnScore += 0.4f;
+    }
+    
+    // WPS enabled (PIN attack vulnerable)
+    if (hasWPS) {
+        vulnScore += 0.2f;
+    }
+    
+    // Hidden SSID with weak security
+    if (isHidden && vulnScore > 0.3f) {
+        vulnScore += 0.1f;
+    }
+    
+    // ---- DEAUTH TARGET SCORING ----
+    float deauthScore = 0.0f;
+    
+    // Good signal for reliable deauth
+    if (rssi > -70 && rssi < -30) {
+        deauthScore += 0.2f;
+    }
+    
+    // Not WPA3 (PMF protected)
+    if (!hasWPA3) {
+        deauthScore += 0.3f;
+    }
+    
+    // Has active clients (would need client tracking)
+    // deauthScore += clientCount > 0 ? 0.2f : 0.0f;
+    
+    // ---- CLASSIFICATION ----
+    result.scores[0] = 1.0f - (anomalyScore + evilTwinScore + vulnScore) / 3.0f;  // NORMAL
+    result.scores[1] = min(1.0f, anomalyScore);  // ROGUE_AP
+    result.scores[2] = min(1.0f, evilTwinScore);  // EVIL_TWIN
+    result.scores[3] = min(1.0f, deauthScore);  // DEAUTH_TARGET
+    result.scores[4] = min(1.0f, vulnScore);  // VULNERABLE
+    
+    // Normalize scores
+    float sum = 0.0f;
+    for (int i = 0; i < 5; i++) sum += result.scores[i];
+    if (sum > 0) {
+        for (int i = 0; i < 5; i++) result.scores[i] /= sum;
+    }
+    
+    // Find highest score
+    int maxIdx = 0;
+    float maxScore = result.scores[0];
+    for (int i = 1; i < 5; i++) {
+        if (result.scores[i] > maxScore) {
+            maxScore = result.scores[i];
+            maxIdx = i;
         }
     }
     
+    result.label = (MLLabel)maxIdx;
+    result.confidence = maxScore;
     result.inferenceTimeUs = micros() - startTime;
+    
     return result;
 }
 

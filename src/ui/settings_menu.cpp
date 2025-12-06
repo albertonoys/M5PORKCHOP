@@ -144,13 +144,14 @@ void SettingsMenu::handleInput() {
     auto keys = M5Cardputer.Keyboard.keysState();
     auto& item = items[selectedIndex];
     
-    // Navigation with ; (up/decrease) and . (down/increase)
+    // Navigation with ; (up) and . (down)
     if (M5Cardputer.Keyboard.isKeyPressed(';')) {
-        if (item.type == SettingType::VALUE) {
-            // Adjust value down
+        if (editing && item.type == SettingType::VALUE) {
+            // Adjust value down when editing
             item.value = max(item.minVal, item.value - item.step);
-        } else if (item.type == SettingType::TOGGLE || item.type == SettingType::ACTION) {
+        } else {
             // Move selection up
+            editing = false;
             if (selectedIndex > 0) {
                 selectedIndex--;
                 if (selectedIndex < scrollOffset) {
@@ -161,11 +162,12 @@ void SettingsMenu::handleInput() {
     }
     
     if (M5Cardputer.Keyboard.isKeyPressed('.')) {
-        if (item.type == SettingType::VALUE) {
-            // Adjust value up
+        if (editing && item.type == SettingType::VALUE) {
+            // Adjust value up when editing
             item.value = min(item.maxVal, item.value + item.step);
-        } else if (item.type == SettingType::TOGGLE || item.type == SettingType::ACTION) {
+        } else {
             // Move selection down
+            editing = false;
             if (selectedIndex < items.size() - 1) {
                 selectedIndex++;
                 if (selectedIndex >= scrollOffset + VISIBLE_ITEMS) {
@@ -175,29 +177,33 @@ void SettingsMenu::handleInput() {
         }
     }
     
-    // Enter to toggle, activate action, or move to next item
+    // Enter to select/toggle/confirm
     if (keys.enter) {
         if (item.type == SettingType::ACTION) {
             // Save & Exit
             saveToConfig();
             exitRequested = true;
         } else if (item.type == SettingType::TOGGLE) {
-            // Toggle the value
+            // Toggle ON/OFF
             item.value = item.value == 0 ? 1 : 0;
         } else if (item.type == SettingType::VALUE) {
-            // Move to next item
-            if (selectedIndex < items.size() - 1) {
-                selectedIndex++;
-                if (selectedIndex >= scrollOffset + VISIBLE_ITEMS) {
-                    scrollOffset = selectedIndex - VISIBLE_ITEMS + 1;
-                }
+            if (editing) {
+                // Confirm and exit edit mode
+                editing = false;
+            } else {
+                // Enter edit mode
+                editing = true;
             }
         }
     }
     
-    // ESC/backtick to exit menu
+    // ESC/backtick to exit edit mode or menu
     if (M5Cardputer.Keyboard.isKeyPressed('`') || M5Cardputer.Keyboard.isKeyPressed(KEY_BACKSPACE)) {
-        exitRequested = true;
+        if (editing) {
+            editing = false;
+        } else {
+            exitRequested = true;
+        }
     }
 }
 
@@ -231,8 +237,8 @@ void SettingsMenu::draw(M5Canvas& canvas) {
         if (item.type == SettingType::TOGGLE) {
             valStr = item.value ? "ON" : "OFF";
         } else if (item.type == SettingType::VALUE) {
-            if (isSelected) {
-                valStr = "<" + String(item.value) + item.suffix + ">";
+            if (isSelected && editing) {
+                valStr = "[" + String(item.value) + item.suffix + "]";
             } else {
                 valStr = String(item.value) + item.suffix;
             }
@@ -262,9 +268,9 @@ void SettingsMenu::draw(M5Canvas& canvas) {
     // Help text at bottom - context sensitive
     canvas.setTextDatum(bottom_center);
     auto& currentItem = items[selectedIndex];
-    if (currentItem.type == SettingType::VALUE) {
-        canvas.drawString(";/. adjust [Enter] next", DISPLAY_W / 2, MAIN_H - 1);
+    if (editing && currentItem.type == SettingType::VALUE) {
+        canvas.drawString(";/. adjust [Enter] OK", DISPLAY_W / 2, MAIN_H - 1);
     } else {
-        canvas.drawString(";/. nav [Enter] select", DISPLAY_W / 2, MAIN_H - 1);
+        canvas.drawString(";/. nav [Enter] edit", DISPLAY_W / 2, MAIN_H - 1);
     }
 }

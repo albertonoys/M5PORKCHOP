@@ -24,12 +24,16 @@ M5Porkchop is a WiFi security research tool for the M5Cardputer (ESP32-S3 based)
 - `src/ui/settings_menu.cpp/h` - Interactive settings with TOGGLE, VALUE, ACTION item types
 
 ### Piglet Personality
-- `src/piglet/avatar.cpp/h` - ASCII art pig face rendering, AvatarState (NEUTRAL, HUNTING, EXCITED, SLEEPING, HAPPY, SAD)
+- `src/piglet/avatar.cpp/h` - ASCII art pig face rendering with derpy style, direction flipping (L/R)
 - `src/piglet/mood.cpp/h` - Context-aware phrases, happiness tracking, mode-specific phrase arrays
 
 ### Hardware
 - `src/gps/gps.cpp/h` - TinyGPS++ wrapper, power management
-- `src/ml/` - ML inference stubs for future rogue AP detection
+
+### ML System
+- `src/ml/features.cpp/h` - WiFiFeatures extraction from beacon frames (32-feature vector)
+- `src/ml/inference.cpp/h` - Heuristic classifier with Edge Impulse integration scaffold
+- `src/ml/edge_impulse.h` - Edge Impulse SDK interface (enable with `#define EDGE_IMPULSE_ENABLED`)
 
 ## Display System
 
@@ -160,3 +164,44 @@ No automated tests currently. Test on hardware:
 2. Check phrase display in each mode
 3. Confirm settings save/load across reboots
 4. Test GPS lock and wardriving CSV export
+
+## ML System
+
+### Current Architecture
+```
+WiFi Frame → FeatureExtractor → WiFiFeatures (32 floats) → MLInference → MLResult
+                                                              ↓
+                                              EdgeImpulse SDK (if enabled)
+                                                     OR
+                                              Heuristic Classifier
+```
+
+### ML Labels
+- `NORMAL` (0) - Legitimate network
+- `ROGUE_AP` (1) - Suspicious access point (strong signal, odd beacon timing)
+- `EVIL_TWIN` (2) - Impersonating known network
+- `DEAUTH_TARGET` (3) - Vulnerable to deauth attacks
+- `VULNERABLE` (4) - Open/WEP/WPA1 network
+
+### Heuristic Detection Rules
+The classifier scores networks on:
+- Signal strength anomalies (RSSI > -30 suspicious)
+- Non-standard beacon intervals (normal is 100ms)
+- Beacon jitter (software APs have higher jitter)
+- Missing vendor IEs (real routers have many)
+- Open network with WPS (honeypot pattern)
+- WPA3/PMF for deauth resistance
+
+### Training Data Collection
+In WARHOG mode, features are extracted for each network:
+```cpp
+WarhogMode::exportMLTraining("/sd/training.csv");
+```
+Outputs all 32 features + BSSID, SSID, label, GPS coords.
+
+### Edge Impulse Integration
+1. Train model at studio.edgeimpulse.com
+2. Export C++ Library for ESP32
+3. Copy `edge-impulse-sdk/` to `lib/`
+4. Uncomment `#define EDGE_IMPULSE_ENABLED` in `edge_impulse.h`
+5. Rebuild - real inference replaces heuristics

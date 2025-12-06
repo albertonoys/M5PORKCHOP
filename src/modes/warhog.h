@@ -5,6 +5,7 @@
 #include <vector>
 #include <esp_wifi.h>
 #include "../gps/gps.h"
+#include "../ml/features.h"
 
 struct WardrivingEntry {
     uint8_t bssid[6];
@@ -17,6 +18,8 @@ struct WardrivingEntry {
     double altitude;
     uint32_t timestamp;
     bool saved;
+    WiFiFeatures features;  // ML features for training data
+    uint8_t label;          // 0=unknown, 1=normal, 2=rogue, 3=evil_twin
 };
 
 class WarhogMode {
@@ -40,6 +43,7 @@ public:
     static bool exportCSV(const char* path);
     static bool exportKismet(const char* path);
     static bool exportWigle(const char* path);
+    static bool exportMLTraining(const char* path);  // ML feature vectors for training
     
     // GPS
     static bool hasGPSFix();

@@ -102,7 +102,7 @@ bool Config::load() {
         wifiConfig.channelHopInterval = doc["wifi"]["channelHopInterval"] | 500;
         wifiConfig.scanDuration = doc["wifi"]["scanDuration"] | 2000;
         wifiConfig.maxNetworks = doc["wifi"]["maxNetworks"] | 50;
-        wifiConfig.enableDeauth = doc["wifi"]["enableDeauth"] | false;
+        wifiConfig.enableDeauth = doc["wifi"]["enableDeauth"] | true;
         wifiConfig.otaSSID = doc["wifi"]["otaSSID"] | "";
         wifiConfig.otaPassword = doc["wifi"]["otaPassword"] | "";
         wifiConfig.autoConnect = doc["wifi"]["autoConnect"] | false;
