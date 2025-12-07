@@ -12,7 +12,6 @@ uint32_t Avatar::blinkInterval = 3000;
 
 // Grass animation state
 bool Avatar::grassMoving = false;
-uint8_t Avatar::grassOffset = 0;
 uint32_t Avatar::lastGrassUpdate = 0;
 uint16_t Avatar::grassSpeed = 80;  // Default fast for OINK
 char Avatar::grassPattern[32] = {0};
@@ -135,7 +134,6 @@ void Avatar::init() {
     
     // Init grass pattern - full screen width at size 2 (~24 chars)
     grassMoving = false;
-    grassOffset = 0;
     grassSpeed = 80;
     lastGrassUpdate = millis();
     for (int i = 0; i < 26; i++) {

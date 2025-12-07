@@ -37,7 +37,6 @@ private:
     
     // Grass animation state
     static bool grassMoving;
-    static uint8_t grassOffset;
     static uint32_t lastGrassUpdate;
     static uint16_t grassSpeed;  // ms per shift
     static char grassPattern[32];  // Wider for full screen coverage
