@@ -5,6 +5,7 @@
 #include "../core/wsl_bypasser.h"
 #include "../ui/display.h"
 #include "../piglet/mood.h"
+#include "../piglet/avatar.h"
 #include "../ml/inference.h"
 #include <WiFi.h>
 #include <esp_wifi.h>
@@ -133,6 +134,9 @@ void OinkMode::start() {
     lastHopTime = millis();
     lastScanTime = millis();
     
+    // Set fast grass animation speed for OINK mode
+    Avatar::setGrassSpeed(80);  // Fast ~12 FPS
+    
     // Initialize auto-attack state machine
     autoState = AutoState::SCANNING;
     stateStartTime = millis();
@@ -150,6 +154,9 @@ void OinkMode::stop() {
     
     deauthing = false;
     scanning = false;
+    
+    // Stop grass animation
+    Avatar::setGrassMoving(false);
     
     esp_wifi_set_promiscuous(false);
     
@@ -174,6 +181,9 @@ void OinkMode::update() {
     
     // Guard access to networks/handshakes vectors from promiscuous callback
     oinkBusy = true;
+    
+    // Sync grass animation with channel hopping state
+    Avatar::setGrassMoving(channelHopping);
     
     // Auto-attack state machine (like M5Gotchi)
     switch (autoState) {

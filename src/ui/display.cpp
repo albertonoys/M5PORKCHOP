@@ -218,6 +218,15 @@ void Display::drawBottomBar() {
     } else if (mode == PorkchopMode::LOG_VIEWER) {
         // LOG_VIEWER: show scroll hint
         stats = "[;/.] scroll  [Bksp] exit";
+    } else if (mode == PorkchopMode::OINK_MODE) {
+        // OINK: show Networks, Handshakes, Deauths, and current Channel
+        uint16_t netCount = OinkMode::getNetworkCount();
+        uint16_t hsCount = OinkMode::getCompleteHandshakeCount();
+        uint32_t deauthCount = OinkMode::getDeauthCount();
+        uint8_t channel = OinkMode::getChannel();
+        char buf[48];
+        snprintf(buf, sizeof(buf), "N:%d HS:%d D:%lu CH:%d", netCount, hsCount, deauthCount, channel);
+        stats = String(buf);
     } else {
         // Default: Networks, Handshakes, Deauths
         uint16_t netCount = porkchop.getNetworkCount();

@@ -5,6 +5,7 @@
 #include "../core/sdlog.h"
 #include "../ui/display.h"
 #include "../piglet/mood.h"
+#include "../piglet/avatar.h"
 #include "../ml/features.h"
 #include "../ml/inference.h"
 #include <M5Cardputer.h>
@@ -119,6 +120,10 @@ void WarhogMode::start() {
     lastScanTime = 0;  // Trigger immediate scan
     newCount = 0;
     
+    // Start slow grass animation for wardriving
+    Avatar::setGrassSpeed(200);  // Slower than OINK (~5 FPS)
+    Avatar::setGrassMoving(true);
+    
     Display::setWiFiStatus(true);
     Mood::onWarhogUpdate();  // Show WARHOG phrase on start
     Serial.printf("[WARHOG] Running (ML Mode: %s)\n", 
@@ -144,6 +149,9 @@ void WarhogMode::stop() {
     }
     scanInProgress = false;
     scanResult = -2;
+    
+    // Stop grass animation
+    Avatar::setGrassMoving(false);
     
     running = false;
     

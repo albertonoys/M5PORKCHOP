@@ -23,6 +23,11 @@ public:
     static void blink();
     static void wiggleEars();
     
+    // Grass animation control
+    static void setGrassMoving(bool moving);
+    static bool isGrassMoving() { return grassMoving; }
+    static void setGrassSpeed(uint16_t ms);  // Speed in ms per shift (lower = faster)
+    
 private:
     static AvatarState currentState;
     static bool isBlinking;
@@ -30,7 +35,16 @@ private:
     static uint32_t lastBlinkTime;
     static uint32_t blinkInterval;
     
+    // Grass animation state
+    static bool grassMoving;
+    static uint8_t grassOffset;
+    static uint32_t lastGrassUpdate;
+    static uint16_t grassSpeed;  // ms per shift
+    static char grassPattern[32];  // Wider for full screen coverage
+    
     static void drawFrame(M5Canvas& canvas, const char** frame, uint8_t lines);
+    static void drawGrass(M5Canvas& canvas);
+    static void updateGrass();
 };
 
 // Avatar frames - 5 lines each
