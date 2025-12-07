@@ -68,6 +68,9 @@ static const uint32_t ATTACK_TIMEOUT = 15000;   // 15 sec per target
 static const uint32_t WAIT_TIME = 2000;         // 2 sec between targets
 
 void OinkMode::init() {
+    // Reset busy flag in case of abnormal stop
+    oinkBusy = false;
+    
     // Free per-handshake beacon memory
     for (auto& hs : handshakes) {
         if (hs.beaconData) {
@@ -353,6 +356,12 @@ void OinkMode::update() {
                 memset(targetBssid, 0, 6);
                 Serial.println("[OINK] Target network expired");
             }
+        }
+        // Bounds check selectionIndex after potential removals
+        if (!networks.empty() && selectionIndex >= (int)networks.size()) {
+            selectionIndex = networks.size() - 1;
+        } else if (networks.empty()) {
+            selectionIndex = 0;
         }
         lastScanTime = now;
     }
@@ -891,16 +900,37 @@ int OinkMode::findOrCreateHandshake(const uint8_t* bssid, const uint8_t* station
     
     // Limit handshake count to prevent OOM
     if (handshakes.size() >= MAX_HANDSHAKES) {
-        // Remove oldest incomplete and saved handshake
+        // Priority 1: Remove oldest saved handshake (already persisted to SD)
+        bool removed = false;
         for (size_t i = 0; i < handshakes.size(); i++) {
-            if (handshakes[i].saved && !handshakes[i].isComplete()) {
-                // Free beacon data before removing
+            if (handshakes[i].saved) {
                 if (handshakes[i].beaconData) {
                     free(handshakes[i].beaconData);
                 }
                 handshakes.erase(handshakes.begin() + i);
+                removed = true;
                 break;
             }
+        }
+        // Priority 2: Remove oldest incomplete handshake (unlikely to complete)
+        if (!removed) {
+            for (size_t i = 0; i < handshakes.size(); i++) {
+                if (!handshakes[i].isComplete()) {
+                    if (handshakes[i].beaconData) {
+                        free(handshakes[i].beaconData);
+                    }
+                    handshakes.erase(handshakes.begin() + i);
+                    removed = true;
+                    break;
+                }
+            }
+        }
+        // Priority 3: Remove oldest (first) entry as last resort
+        if (!removed && !handshakes.empty()) {
+            if (handshakes[0].beaconData) {
+                free(handshakes[0].beaconData);
+            }
+            handshakes.erase(handshakes.begin());
         }
     }
     
