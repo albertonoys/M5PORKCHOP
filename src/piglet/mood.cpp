@@ -160,10 +160,10 @@ void Mood::onHandshakeCaptured(const char* apName) {
     }
     lastPhraseChange = millis();
     
-    // Double beep for handshake! (user requested two beeps)
-    M5.Speaker.tone(1500, 100);  // First beep
-    delay(120);
-    M5.Speaker.tone(2000, 100);  // Second beep (higher pitch)
+    // Celebratory beep for handshake capture (higher pitch than deauth)
+    if (Config::personality().soundEnabled) {
+        M5.Speaker.tone(1500, 150);  // Distinctive handshake beep
+    }
 }
 
 void Mood::onNewNetwork(const char* apName, int8_t rssi, uint8_t channel) {
@@ -476,15 +476,13 @@ void Mood::onWarhogUpdate() {
 }
 
 void Mood::onWarhogFound(const char* apName, uint8_t channel) {
+    (void)apName;  // Currently unused, phrases don't include AP name
+    (void)channel; // Currently unused
+    
     lastActivityTime = millis();
     happiness = min(100, happiness + 5);
     
     int idx = random(0, sizeof(PHRASES_WARHOG_FOUND) / sizeof(PHRASES_WARHOG_FOUND[0]));
-    String ap = apName ? String(apName) : "AP";
-    if (ap.length() > 10) ap = ap.substring(0, 10) + "..";
-    
-    char buf[64];
-    snprintf(buf, sizeof(buf), "%s CH%d", PHRASES_WARHOG_FOUND[idx], channel);
-    currentPhrase = buf;
+    currentPhrase = PHRASES_WARHOG_FOUND[idx];
     lastPhraseChange = millis();
 }
