@@ -221,6 +221,14 @@
     Your piglet's face lives on a 240x135 pixel canvas. Not much real
     estate, but enough to cause trouble.
 
+    Top bar format:
+
+        [MODE]          HH:MM              XX% GWM
+
+    Left = current mode. Center = GPS time or --:-- if no fix.
+    Right = battery percent + status flags. G=GPS, W=WiFi, M=ML.
+    Dashes mean inactive.
+
     The piglet has moods. Watch the face change as it hunts:
 
         NEUTRAL     HAPPY       EXCITED     HUNTING     SLEEPY      SAD
@@ -237,7 +245,7 @@
     Press O and let the piglet loose. Here's the hunting grounds:
 
         +----------------------------------------------+
-        | [OINK]                         SD GPS WiFi   |  <- Top Bar
+        | [OINK]          --:--              85% GWM   |  <- Top Bar
         +----------------------------------------------+
         |                                              |
         |       /  \      .------------------------.   |
@@ -268,7 +276,7 @@
     GPS + WiFi = tactical recon. Hook up that GPS and hit the road:
 
         +----------------------------------------------+
-        | [WARHOG]                       SD GPS WiFi   |  <- Top Bar
+        | [WARHOG]        12:45              85% GWM   |  <- Top Bar
         +----------------------------------------------+
         |                                              |
         |       !  !      .------------------------.   |
