@@ -168,7 +168,7 @@ void CapturesMenu::draw(M5Canvas& canvas) {
         canvas.setCursor(4, 50);
         canvas.print("No captures found");
         canvas.setCursor(4, 65);
-        canvas.print("Start OINK mode to hunt!");
+        canvas.print("[O] to hunt.");
         return;
     }
     

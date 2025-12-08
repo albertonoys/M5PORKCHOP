@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <vector>
 #include <map>
+#include <set>
 #include <esp_wifi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -74,6 +75,7 @@ private:
     static uint32_t scanStartTime;
     
     static std::vector<WardrivingEntry> entries;
+    static std::set<uint64_t> seenBSSIDs;  // Lightweight duplicate tracking (persists after entries cleared)
     static size_t newCount;
     
     // Statistics
@@ -102,6 +104,7 @@ private:
     static void scanTask(void* pvParameters);
     static void processScanResults();
     static void saveNewEntries();  // Auto-save entries with GPS to CSV
+    static void compactSavedEntries();  // Move saved entries to seenBSSIDs, free RAM
     static int findEntry(const uint8_t* bssid);
     static String authModeToString(wifi_auth_mode_t mode);
     static String generateFilename(const char* ext);

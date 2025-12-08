@@ -142,7 +142,7 @@ void OinkMode::start() {
     stateStartTime = millis();
     selectionIndex = 0;
     
-    Mood::setStatusMessage("Scanning for targets...");
+    Mood::setStatusMessage("hunting truffles");
     Display::setWiFiStatus(true);
     Serial.println("[OINK] Auto-attack running");
 }
@@ -219,7 +219,7 @@ void OinkMode::update() {
                     stateStartTime = now;
                     channelHopping = true;
                     deauthing = false;
-                    Mood::setStatusMessage("Rescanning...");
+                    Mood::setStatusMessage("sniff n drift");
                     Serial.println("[OINK] No targets available, rescanning");
                     break;
                 }
@@ -239,7 +239,7 @@ void OinkMode::update() {
                 Serial.printf("[OINK] Locking to %s (ch%d) - discovering clients...\n", 
                              networks[selectionIndex].ssid,
                              networks[selectionIndex].channel);
-                Mood::setStatusMessage("Sniffing clients...");
+                Mood::setStatusMessage("stalkin auths");
             }
             break;
             

@@ -15,14 +15,17 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-// Maximum entries to prevent memory exhaustion (~120 bytes each, 2000 = ~240KB)
-static const size_t MAX_ENTRIES = 2000;
+// Maximum entries in RAM to prevent memory exhaustion
+// Each entry ~200 bytes, 500 entries = ~100KB (safe for ESP32-S3 with 320KB DRAM)
+// After saving, entries are removed from RAM but BSSID tracked in seenBSSIDs set
+static const size_t MAX_ENTRIES = 500;
 
 // Static members
 bool WarhogMode::running = false;
 uint32_t WarhogMode::lastScanTime = 0;
 uint32_t WarhogMode::scanInterval = 5000;
 std::vector<WardrivingEntry> WarhogMode::entries;
+std::set<uint64_t> WarhogMode::seenBSSIDs;
 size_t WarhogMode::newCount = 0;
 uint32_t WarhogMode::totalNetworks = 0;
 uint32_t WarhogMode::openNetworks = 0;
@@ -50,6 +53,7 @@ uint32_t WarhogMode::lastMLExport = 0;
 
 void WarhogMode::init() {
     entries.clear();
+    seenBSSIDs.clear();
     newCount = 0;
     totalNetworks = 0;
     openNetworks = 0;
@@ -76,6 +80,7 @@ void WarhogMode::start() {
     
     // Clear previous session data
     entries.clear();
+    seenBSSIDs.clear();
     totalNetworks = 0;
     openNetworks = 0;
     wepNetworks = 0;
@@ -120,9 +125,9 @@ void WarhogMode::start() {
     lastScanTime = 0;  // Trigger immediate scan
     newCount = 0;
     
-    // Start slow grass animation for wardriving
+    // Set grass speed for wardriving - animation controlled by GPS lock in update()
     Avatar::setGrassSpeed(200);  // Slower than OINK (~5 FPS)
-    Avatar::setGrassMoving(true);
+    Avatar::setGrassMoving(GPS::hasFix());  // Start based on current GPS status
     
     Display::setWiFiStatus(true);
     Mood::onWarhogUpdate();  // Show WARHOG phrase on start
@@ -155,10 +160,11 @@ void WarhogMode::stop() {
     
     running = false;
     
-    // Auto-save data if we have entries
-    if (!entries.empty()) {
-        // Auto-export standard CSV
-        exportCSV("/warhog_session.csv");
+    // Final save of any entries still in RAM
+    if (!entries.empty() || seenBSSIDs.size() > 0) {
+        Serial.printf("[WARHOG] Final save - %lu in RAM, %lu total tracked\n", 
+                      entries.size(), seenBSSIDs.size());
+        saveNewEntries();  // Flush remaining to existing CSV (append mode)
         
         // Auto-export ML training data if Enhanced mode was used
         if (Config::ml().collectionMode == MLCollectionMode::ENHANCED) {
@@ -223,6 +229,17 @@ void WarhogMode::update() {
     
     uint32_t now = millis();
     static uint32_t lastPhraseTime = 0;
+    static bool lastGPSState = false;
+    
+    // Update grass animation based on GPS fix status
+    bool hasGPSFix = GPS::hasFix();
+    if (hasGPSFix != lastGPSState) {
+        Avatar::setGrassMoving(hasGPSFix);
+        lastGPSState = hasGPSFix;
+        Serial.printf("[WARHOG] GPS %s - grass %s\n", 
+                      hasGPSFix ? "locked" : "lost", 
+                      hasGPSFix ? "moving" : "stopped");
+    }
     
     // Rotate phrases every 5 seconds when idle
     if (now - lastPhraseTime >= 5000) {
@@ -348,21 +365,28 @@ void WarhogMode::processScanResults() {
         uint8_t* bssidPtr = WiFi.BSSID(i);
         if (!bssidPtr) continue;
         
+        uint64_t bssidKey = bssidToKey(bssidPtr);
+        
+        // First check if we've already saved this BSSID (it may have been cleared from entries)
+        if (seenBSSIDs.count(bssidKey) > 0) {
+            // Already processed and saved, skip
+            continue;
+        }
+        
         int idx = findEntry(bssidPtr);
         
         if (idx < 0) {
-            // Check memory limit before adding
+            // Check memory limit before adding - if full, just skip (data already saved)
             if (entries.size() >= MAX_ENTRIES) {
-                Serial.println("[WARHOG] Max entries reached, saving and clearing");
-                saveNewEntries();  // Save current entries
-                entries.clear();   // Clear to make room
-                previousCount = 0; // Reset so newCount calculation is correct
-                // Reset stats to match cleared entries
-                totalNetworks = 0;
-                openNetworks = 0;
-                wepNetworks = 0;
-                wpaNetworks = 0;
-                savedCount = 0;
+                // Don't clear! Just skip adding new ones until some are saved and compacted
+                Serial.println("[WARHOG] Max entries in RAM, saving to free space...");
+                saveNewEntries();
+                compactSavedEntries();  // Remove saved entries from RAM
+                
+                // If still full after compact, skip this network
+                if (entries.size() >= MAX_ENTRIES) {
+                    continue;
+                }
             }
             
             // New network - use Arduino WiFi accessors
@@ -380,8 +404,7 @@ void WarhogMode::processScanResults() {
             
             // Extract ML features - Enhanced mode uses beacon-captured features
             if (enhancedMode) {
-                uint64_t key = bssidToKey(bssidPtr);
-                auto it = beaconFeatures.find(key);
+                auto it = beaconFeatures.find(bssidKey);
                 if (it != beaconFeatures.end()) {
                     // Use beacon-extracted features (full IE parsing, WPS, vendor IEs, etc.)
                     entry.features = it->second;
@@ -581,6 +604,7 @@ void WarhogMode::saveNewEntries() {
                     e.latitude, e.longitude, e.altitude, e.timestamp);
             
             e.saved = true;
+            seenBSSIDs.insert(bssidToKey(e.bssid));  // Track as seen
             newSaved++;
             savedCount++;
         } else if (e.saved) {
@@ -595,6 +619,32 @@ void WarhogMode::saveNewEntries() {
     
     SDLOG("WARHOG", "Saved %lu entries (skipped: %lu no coords, %lu already saved)", 
           newSaved, skippedNoCoords, skippedAlreadySaved);
+}
+
+void WarhogMode::compactSavedEntries() {
+    // Move all saved entries to seenBSSIDs set (8 bytes each vs 200), free RAM
+    // Keep unsaved entries (waiting for GPS fix) in entries vector
+    
+    std::vector<WardrivingEntry> unsaved;
+    unsaved.reserve(entries.size() / 4);  // Estimate ~25% unsaved
+    
+    for (const auto& e : entries) {
+        uint64_t key = bssidToKey(e.bssid);
+        if (e.saved) {
+            // Already on disk - just track BSSID
+            seenBSSIDs.insert(key);
+        } else {
+            // Not saved yet (no GPS) - keep in RAM
+            unsaved.push_back(e);
+        }
+    }
+    
+    size_t freed = entries.size() - unsaved.size();
+    entries = std::move(unsaved);
+    entries.shrink_to_fit();  // Release unused memory
+    
+    SDLOG("WARHOG", "Compacted: freed %lu entries, kept %lu unsaved, tracking %lu BSSIDs",
+          freed, entries.size(), seenBSSIDs.size());
 }
 
 bool WarhogMode::hasGPSFix() {

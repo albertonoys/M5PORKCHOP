@@ -49,30 +49,28 @@ void setup() {
     // Apply saved brightness
     M5.Display.setBrightness(Config::personality().brightness * 255 / 100);
     
-    Display::showProgress("Loading...", 10);
-    
+    Display::showProgress("pig booting.", 10);
+
     // Initialize piglet personality
     Avatar::init();
     Mood::init();
-    Display::showProgress("Loading...", 30);
-    
+    Display::showProgress("pig booting.", 30);
+
     // Initialize GPS (if enabled)
     if (Config::gps().enabled) {
         GPS::init(Config::gps().rxPin, Config::gps().txPin, Config::gps().baudRate);
-        Display::showProgress("GPS ready...", 50);
+        Display::showProgress("gps online.", 50);
     }
-    
+
     // Initialize ML subsystem
     FeatureExtractor::init();
     MLInference::init();
-    Display::showProgress("ML ready...", 70);
-    
+    Display::showProgress("brain loaded.", 70);
+
     // Initialize modes
     OinkMode::init();
     WarhogMode::init();
-    Display::showProgress("Modes ready...", 90);
-    
-    // Init main controller
+    Display::showProgress("weapons hot.", 90);    // Init main controller
     porkchop.init();
     Display::showProgress("Ready!", 100);
     

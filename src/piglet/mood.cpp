@@ -5,7 +5,7 @@
 #include "../ui/display.h"
 
 // Static members
-String Mood::currentPhrase = "OINK!";
+String Mood::currentPhrase = "oink";
 int Mood::happiness = 50;
 uint32_t Mood::lastPhraseChange = 0;
 uint32_t Mood::phraseInterval = 5000;
@@ -13,104 +13,104 @@ uint32_t Mood::lastActivityTime = 0;
 
 // Phrase categories
 const char* PHRASES_HAPPY[] = {
-    "OINK OINK!",
-    "Sniffin' packets!",
-    "Got a good one!",
-    "More handshakes!",
-    "I'm a good piggy!",
-    "Delicious data~",
-    "OOOIINK!",
-    "Truffle found!"
+    "snout pwns all",
+    "oink oink oink",
+    "got that truffle",
+    "packets nom nom",
+    "hog on a roll",
+    "mud life best life",
+    "truffle shuffle",
+    "chaos tastes good"
 };
 
 const char* PHRASES_EXCITED[] = {
-    "JACKPOT!!!",
-    "WPA2 YUMMY!",
-    "HASHCAT FOOD!",
-    "CAPTURE THIS!",
-    "OMG OMG OMG!",
-    "BACON BITS!!"
+    "OINK OINK OINK",
+    "pwned em good",
+    "truffle in the bag",
+    "gg no re",
+    "snout goes brrrr",
+    "0day buffet"
 };
 
 const char* PHRASES_HUNTING[] = {
-    "Searching...",
-    "Sniff sniff...",
-    "Where's that AP?",
-    "Patience piggy...",
-    "Monitoring...",
-    "Waiting..."
+    "snout to ground",
+    "sniff n drift",
+    "hunting truffles",
+    "curious piggy",
+    "diggin deep",
+    "where da truffles"
 };
 
 const char* PHRASES_SLEEPY[] = {
-    "zzZzZ...",
-    "*yawn*",
-    "So quiet...",
-    "Bored oink...",
-    "Need WiFi...",
-    "Sleepy piggy..."
+    "bored piggy",
+    "null n void",
+    "no truffles here",
+    "/dev/null",
+    "zzz oink zzz",
+    "sleepy piggy"
 };
 
 const char* PHRASES_SAD[] = {
-    "No networks...",
-    "GPS lost...",
-    "Lonely piggy...",
-    "Need friends...",
-    "Where is wifi?",
-    "Sad oink..."
+    "starving piggy",
+    "404 no truffle",
+    "lost n confused",
+    "empty trough",
+    "sad lil piggy",
+    "need dem truffles"
 };
 
 const char* PHRASES_IDLE[] = {
-    "Ready to hunt!",
-    "Press [O] OINK",
-    "Press [W] WARHOG",
-    "Waiting orders",
-    "Porkchop ready!",
-    "What's cooking?"
+    "oink?",
+    "[O] hunt",
+    "[W] roam",
+    "piggy awaits",
+    "hack the planet",
+    "snout on standby"
 };
 
 // WARHOG wardriving phrases
 const char* PHRASES_WARHOG[] = {
-    "Road trippin'~",
-    "GPS locked! OINK!",
-    "Mapping the hood!",
-    "Drive-by WiFi!",
-    "Cruisin' for APs",
-    "Hog on wheels!",
-    "Surveying turf...",
-    "Snout on the road",
-    "WiFi safari!",
-    "Collecting coords~",
-    "Piggy road rage!",
-    "Vroom vroom oink!"
+    "hog on patrol",
+    "mobile n hostile",
+    "snout mappin",
+    "oink n log",
+    "piggy on a roll",
+    "wardrive n thrive",
+    "gps locked",
+    "loggin truffles",
+    "wigle wiggle",
+    "truffle coords",
+    "roamin piggy",
+    "mappin turf"
 };
 
 const char* PHRASES_WARHOG_FOUND[] = {
-    "New AP mapped!",
-    "Added to the map!",
-    "GPS + WiFi = <3",
-    "Another one!",
-    "Logged & tagged!",
-    "Oink! Coordinates!",
-    "On the grid now!",
-    "Marked the spot!"
+    "truffle logged",
+    "stash it good",
+    "oink logged",
+    "coords yoinked",
+    "for the herd",
+    "another one",
+    "bagged n tagged",
+    "mine now lol"
 };
 
 // Deauth success - short MAC format %02X%02X
 const char* PHRASES_DEAUTH_SUCCESS[] = {
-    "Oops! %s fell off",
-    "Bye bye %s~",
-    "%s go brrr...",
-    "Kicked %s lol",
-    "%s.exe stopped",
-    "Bonk! %s down",
-    "%s has left chat",
-    "Yeet! %s gone",
-    "%s disconnected",
-    "RIP %s oink~"
+    "%s oinked out",
+    "%s got rekt",
+    "%s yeeted",
+    "%s bye bye",
+    "%s snout bonk",
+    "%s evicted",
+    "%s oink oink",
+    "%s trampled",
+    "%s skill issue",
+    "%s squealed"
 };
 
 void Mood::init() {
-    currentPhrase = "OINK!";
+    currentPhrase = "oink";
     happiness = 50;
     lastPhraseChange = millis();
     phraseInterval = 5000;
@@ -145,10 +145,10 @@ void Mood::onHandshakeCaptured(const char* apName) {
         String ap = String(apName);
         if (ap.length() > 12) ap = ap.substring(0, 12) + "..";
         const char* templates[] = {
-            "Got %s!",
-            "%s pwned!",
-            "Yummy %s!",
-            "%s captured!"
+            "%s pwned",
+            "%s gg ez",
+            "rekt %s",
+            "%s is mine"
         };
         int idx = random(0, 4);
         char buf[48];
@@ -176,11 +176,11 @@ void Mood::onNewNetwork(const char* apName, int8_t rssi, uint8_t channel) {
         if (ap.length() > 10) ap = ap.substring(0, 10) + "..";
         
         const char* templates[] = {
-            "Sniffed %s on CH%d!",
-            "%s @ %ddB yummy!",
-            "Oink! %s CH%d",
-            "Tasty %s %ddB!",
-            "Nom nom %s!"
+            "sniffed %s ch%d",
+            "%s %ddb yum",
+            "found %s oink",
+            "oink %s",
+            "new truffle %s"
         };
         int idx = random(0, 5);
         char buf[64];
@@ -260,18 +260,18 @@ void Mood::onWiFiLost() {
 void Mood::onGPSFix() {
     happiness = min(happiness + 10, 100);
     lastActivityTime = millis();
-    currentPhrase = "GPS lock! Let's go!";
+    currentPhrase = "gps locked n loaded";
     lastPhraseChange = millis();
 }
 
 void Mood::onGPSLost() {
     happiness = max(happiness - 10, -100);
-    currentPhrase = "Lost GPS...";
+    currentPhrase = "gps lost sad piggy";
     lastPhraseChange = millis();
 }
 
 void Mood::onLowBattery() {
-    currentPhrase = "Feed me power!";
+    currentPhrase = "piggy needs juice";
     lastPhraseChange = millis();
 }
 
@@ -377,38 +377,38 @@ int Mood::getCurrentHappiness() {
 
 // Sniffing phrases
 const char* PHRASES_SNIFFING[] = {
-    "Sniff sniff...",
-    "*snort* *snort*",
-    "Nose to ground!",
-    "Smells like WiFi~",
-    "Oinking around...",
-    "Hunting truffles...",
-    "Snout active!",
-    "On the scent..."
+    "sniff sniff",
+    "pcap n nap",
+    "parsing mud",
+    "channel hoppin",
+    "raw sniffin",
+    "mon0 piggy",
+    "dump n pump",
+    "truffle hunt"
 };
 
 // Deauth/digging phrases
 const char* PHRASES_DEAUTH[] = {
-    "Digging up %s!",
-    "Truffle found! %s",
-    "Rooting at %s~",
-    "*dig* *dig* %s",
-    "Uprooting %s!",
-    "Shaking %s loose!",
-    "Poking %s hard!",
-    "Snout attack! %s"
+    "rootin at %s",
+    "bonkin %s",
+    "snout on %s",
+    "oink at %s",
+    "shakin %s tree",
+    "oinkin at %s",
+    "poke poke %s",
+    "pwning %s"
 };
 
 // Idle phrases (non-misleading)
 const char* PHRASES_MENU_IDLE[] = {
-    "Ready to hunt!",
-    "Press [O] OINK",
-    "Press [W] WARHOG",
-    "Porkchop ready!",
-    "Waiting orders...",
-    "Oink? Oink?",
-    "Choose a mode!",
-    "Let's go hunting!"
+    "oink oink",
+    "[O] truffle hunt",
+    "[W] hog out",
+    "piggy ready",
+    "awaiting chaos",
+    "pick ur poison",
+    "do somethin",
+    "hack or snack"
 };
 
 void Mood::onSniffing(uint16_t networkCount, uint8_t channel) {

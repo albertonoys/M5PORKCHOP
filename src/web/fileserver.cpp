@@ -531,7 +531,7 @@ bool FileServer::start(const char* ssid, const char* password) {
         return false;
     }
     
-    strcpy(statusMessage, "Connecting...");
+    strcpy(statusMessage, "jacking in.");
     Serial.printf("[FILESERVER] Starting connection to %s\n", targetSSID);
     
     // Start non-blocking connection
@@ -623,7 +623,7 @@ void FileServer::updateConnecting() {
     
     // Update status with dots animation
     int dots = (elapsed / 500) % 4;
-    snprintf(statusMessage, sizeof(statusMessage), "Connecting%.*s", dots, "...");
+    snprintf(statusMessage, sizeof(statusMessage), "jacking in%.*s", dots, "...");
     
     // Timeout after 15 seconds
     if (elapsed > 15000) {
@@ -646,7 +646,7 @@ void FileServer::updateRunning() {
         
         if (WiFi.status() != WL_CONNECTED) {
             Serial.println("[FILESERVER] WiFi lost, reconnecting...");
-            strcpy(statusMessage, "Reconnecting...");
+            strcpy(statusMessage, "retry hack.");
             
             // Stop server but keep credentials
             if (server) {

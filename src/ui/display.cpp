@@ -449,13 +449,13 @@ void Display::drawModeInfo(M5Canvas& canvas, PorkchopMode mode) {
             canvas.drawString(info, 2, 26);
         } else if (!networks.empty()) {
             canvas.setTextColor(COLOR_FG);
-            canvas.drawString("Scanning...", 2, 2);
+            canvas.drawString("sniffing.", 2, 2);
             canvas.setTextColor(COLOR_ACCENT);
             char buf[32];
             snprintf(buf, sizeof(buf), "Found %d networks", (int)networks.size());
             canvas.drawString(buf, 2, 14);
         } else {
-            canvas.drawString("Scanning for networks...", 2, MAIN_H / 2 - 5);
+            canvas.drawString("hunting aps.", 2, MAIN_H / 2 - 5);
         }
         
         // Show stats at bottom
@@ -526,7 +526,7 @@ void Display::drawFileTransferScreen(M5Canvas& canvas) {
     
     if (FileServer::isConnecting()) {
         // Show connection progress
-        canvas.drawString("Connecting to WiFi...", DISPLAY_W / 2, 30);
+        canvas.drawString("jacking in.", DISPLAY_W / 2, 30);
         canvas.setTextColor(COLOR_ACCENT);
         canvas.drawString(Config::wifi().otaSSID, DISPLAY_W / 2, 45);
         canvas.setTextColor(COLOR_FG);
@@ -543,9 +543,9 @@ void Display::drawFileTransferScreen(M5Canvas& canvas) {
         canvas.drawString("or http://porkchop.local", DISPLAY_W / 2, 60);
     } else if (FileServer::isRunning()) {
         // Server running but WiFi lost
-        canvas.drawString("WiFi disconnected!", DISPLAY_W / 2, 35);
+        canvas.drawString("link dead.", DISPLAY_W / 2, 35);
         canvas.setTextColor(COLOR_ACCENT);
-        canvas.drawString("Reconnecting...", DISPLAY_W / 2, 50);
+        canvas.drawString("retry hack.", DISPLAY_W / 2, 50);
     } else {
         // Not running - check why
         canvas.setTextColor(COLOR_ACCENT);
@@ -556,7 +556,7 @@ void Display::drawFileTransferScreen(M5Canvas& canvas) {
             canvas.setTextColor(COLOR_FG);
             canvas.drawString(FileServer::getStatus(), DISPLAY_W / 2, 65);
         } else {
-            canvas.drawString("No WiFi configured!", DISPLAY_W / 2, 35);
+            canvas.drawString("no creds lol.", DISPLAY_W / 2, 35);
             canvas.drawString("Set SSID in Settings", DISPLAY_W / 2, 50);
         }
     }
