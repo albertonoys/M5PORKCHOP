@@ -195,7 +195,7 @@ void Mood::onNewNetwork(const char* apName, int8_t rssi, uint8_t channel) {
     } else {
         // Hidden network
         char buf[48];
-        snprintf(buf, sizeof(buf), "Hidden net CH%d %ddB", channel, rssi);
+        snprintf(buf, sizeof(buf), "sneaky truffle CH%d %ddB", channel, rssi);
         currentPhrase = buf;
     }
     lastPhraseChange = millis();
