@@ -251,12 +251,12 @@
 
     Bottom bar - the numbers that matter:
 
-        N:42    = Networks found
-        HS:3    = Handshakes captured
-        D:127   = Deauths sent
-        CH:6    = Current channel
-        PWN:xxx = Last network pwned
-        1:23    = Uptime
+        N:42    = Snouts don't lie. 42 networks in range.
+        HS:3    = 3 four-ways in the bag. Hashcat is waiting.
+        D:127   = 127 frames of pure chaos unleashed.
+        CH:6    = Currently sniffing channel 6.
+        PWN:xxx = Trophy wall. Last victim's SSID.
+        1:23    = How long piggy been running wild.
 
     The grass under piggy's feet tells you what's happening. When you
     see it scrolling, channel hopping is active - the snout is working.
@@ -282,11 +282,11 @@
 
     Bottom bar - the wardriving scoreboard:
 
-        U:128           = 128 unique truffles spotted this run
-        S:45            = 45 entries dumped to SD
-        [42.36,-71.05]  = Your current coords - lat,lon
-        S:7             = 7 satellites locked - more is better
-        12:45           = Uptime
+        U:128           = 128 unique APs mapped. New territory.
+        S:45            = 45 entries written to SD. Receipts.
+        [42.36,-71.05]  = You are here. Lat,lon.
+        S:7             = 7 birds in the sky tracking you back.
+        12:45           = Time on the hunt.
 
     The grass is your GPS indicator. Moving grass = fix acquired,
     coords are logging, you're making progress. Static grass = no fix,
