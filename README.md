@@ -251,12 +251,12 @@
 
     Bottom bar - the numbers that matter:
 
-        N:42    = 42 truffles sniffed (networks found)
-        HS:3    = 3 handshakes in the bag
-        D:127   = 127 clients yeeted (deauths sent)
-        CH:6    = Snooping on channel 6 right now
-        PWN:xxx = Last network you pwned (shows after capture)
-        1:23    = How long this pig been running
+        N:42    = 42 truffles sniffed - networks your snout found
+        HS:3    = 3 handshakes in the bag - ready for hashcat
+        D:127   = 127 clients yeeted - deauth frames sent
+        CH:6    = Currently snooping channel 6
+        PWN:xxx = Last network you pwned - shows after capture
+        1:23    = Uptime - how long this pig been running
 
     The grass under piggy's feet tells you what's happening. When you
     see it scrolling, channel hopping is active - the snout is working.
@@ -284,8 +284,8 @@
 
         U:128           = 128 unique truffles spotted this run
         S:45            = 45 entries dumped to SD
-        [42.36,-71.05]  = Where you at (lat,lon)
-        S:7             = 7 birds in the sky (satellites)
+        [42.36,-71.05]  = Your current coords - lat,lon
+        S:7             = 7 satellites locked - more is better
         12:45           = Uptime
 
     The grass is your GPS indicator. Moving grass = fix acquired,
