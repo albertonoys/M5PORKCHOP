@@ -229,7 +229,7 @@
 
 ----[ 6.2 - OINK Mode Screen
 
-    When you're hunting truffles (networks), here's what you see:
+    Press O and let the piglet loose. Here's the hunting grounds:
 
         +----------------------------------------------+
         | [OINK]                         SD GPS WiFi   |  <- Top Bar
@@ -244,20 +244,22 @@
         | N:42 HS:3 D:127 CH:6                    1:23 |  <- Stats + Uptime
         +----------------------------------------------+
 
-    Bottom bar breakdown:
-        N:42    = 42 networks discovered
-        HS:3    = 3 complete handshakes captured
-        D:127   = 127 deauth frames sent
-        CH:6    = Currently on channel 6
-        1:23    = Uptime (1 min 23 sec)
+    Bottom bar - the numbers that matter:
 
-    The grass at the pig's feet animates when channel hopping is active.
-    Static grass = idle. Moving grass = actively hunting through channels.
+        N:42    = 42 truffles sniffed (networks found)
+        HS:3    = 3 handshakes in the bag
+        D:127   = 127 clients yeeted (deauths sent)
+        CH:6    = Snooping on channel 6 right now
+        1:23    = How long this pig been running
+
+    The grass under piggy's feet tells you what's happening. When you
+    see it scrolling, channel hopping is active - the snout is working.
+    Static grass means the pig is chilling, waiting for orders.
 
 
 ----[ 6.3 - WARHOG Mode Screen
 
-    Wardriving mode with GPS. The piggy goes mobile:
+    GPS + WiFi = tactical recon. Hook up that GPS and hit the road:
 
         +----------------------------------------------+
         | [WARHOG]                       SD GPS WiFi   |  <- Top Bar
@@ -272,19 +274,20 @@
         | U:128 S:45 [42.36,-71.05] S:7          12:45 |  <- GPS Stats
         +----------------------------------------------+
 
-    Bottom bar breakdown:
-        U:128           = 128 unique networks seen this session
-        S:45            = 45 entries saved to SD card
-        [42.36,-71.05]  = Current GPS coordinates (lat,lon)
-        S:7             = 7 satellites locked
+    Bottom bar - the wardriving scoreboard:
+
+        U:128           = 128 unique truffles spotted this run
+        S:45            = 45 entries dumped to SD
+        [42.36,-71.05]  = Where you at (lat,lon)
+        S:7             = 7 birds in the sky (satellites)
         12:45           = Uptime
 
-    Grass animation:
-        Moving  = GPS has fix, we're rolling and logging
-        Static  = No GPS fix, waiting for satellites
+    The grass is your GPS indicator. Moving grass = fix acquired,
+    coords are logging, you're making progress. Static grass = no fix,
+    piggy is blind and sad, nothing getting saved with coords.
 
-    When GPS locks, piggy celebrates. When GPS is lost, piggy is sad.
-    The grass tells you at a glance if you're actually logging coords.
+    When the fix locks, piggy goes "gps locked n loaded" and gets hyped.
+    When you lose it, piggy sulks. The grass never lies.
 
 
 --[ 7 - Configuration
