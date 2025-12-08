@@ -216,19 +216,6 @@
     Your piglet's face lives on a 240x135 pixel canvas. Not much real
     estate, but enough to cause trouble.
 
-    +----------------------------------------+
-    | [OINK]                     SD GPS WiFi | <- Top Bar (14px)
-    +----------------------------------------+
-    |                                        |
-    |      ?  ?     ,----------------------. |
-    |     (o 00) < | sniff n drift        | | <- Main Canvas
-    |     (    )   | found 42 truffles    | |    (107px)
-    |              `----------------------'  |
-    |                                        |
-    +----------------------------------------+
-    | N:42  HS:3  D:127         CH:6  -45dBm | <- Bottom Bar (14px)
-    +----------------------------------------+
-
     The piglet has moods. Watch the face change as it hunts:
 
         NEUTRAL     HAPPY       EXCITED     HUNTING     SLEEPY      SAD
@@ -239,18 +226,65 @@
     (Yes, we spent actual development time on pig facial expressions.
     No regrets.)
 
-    Sample phrases you'll see:
 
-        HAPPY:     "snout pwns all" "truffle shuffle" "hog on a roll"
-        EXCITED:   "OINK OINK OINK" "truffle in the bag" "0day buffet"
-        HUNTING:   "snout to ground" "hunting truffles" "where da truffles"
-        SLEEPY:    "bored piggy" "zzz oink zzz" "no truffles here"
-        SAD:       "starving piggy" "404 no truffle" "need dem truffles"
-        WARHOG:    "hog on patrol" "wardrive n thrive" "wigle wiggle"
+----[ 6.2 - OINK Mode Screen
 
-    Top Bar:    Current mode, hardware status (SD/GPS/WiFi icons)
-    Main:       Your derpy companion + whatever it's thinking
-    Bottom:     The numbers that matter (Networks/Handshakes/Deauths)
+    When you're hunting truffles (networks), here's what you see:
+
+    +----------------------------------------+
+    | [OINK]                     SD GPS WiFi | <- Top Bar
+    +----------------------------------------+
+    |                                        |
+    |      /  \     ,----------------------. |
+    |     (> 00) < | hunting truffles     | | <- Pig + Speech
+    |     (    )   |                       | |
+    |   1010110110  <- animated grass       |    Grass scrolls when
+    |                                        |    channel hopping
+    +----------------------------------------+
+    | N:42 HS:3 D:127 CH:6              1:23 | <- Stats + Uptime
+    +----------------------------------------+
+
+    Bottom bar breakdown:
+        N:42    = 42 networks discovered
+        HS:3    = 3 complete handshakes captured
+        D:127   = 127 deauth frames sent
+        CH:6    = Currently on channel 6
+        1:23    = Uptime (1 min 23 sec)
+
+    The grass at the pig's feet animates when channel hopping is active.
+    Static grass = idle. Moving grass = actively hunting through channels.
+
+
+----[ 6.3 - WARHOG Mode Screen
+
+    Wardriving mode with GPS. The piggy goes mobile:
+
+    +----------------------------------------+
+    | [WARHOG]                   SD GPS WiFi | <- Top Bar
+    +----------------------------------------+
+    |                                        |
+    |      !  !     ,----------------------. |
+    |     (@ 00) < | hog on patrol        | | <- Excited piggy
+    |     (    )   |                       | |
+    |   1110100111  <- animated grass       |    Grass moves when
+    |                                        |    GPS has fix
+    +----------------------------------------+
+    | U:128 S:45 [42.36,-71.05] S:7    12:45 | <- GPS Stats
+    +----------------------------------------+
+
+    Bottom bar breakdown:
+        U:128           = 128 unique networks seen this session
+        S:45            = 45 entries saved to SD card
+        [42.36,-71.05]  = Current GPS coordinates (lat,lon)
+        S:7             = 7 satellites locked
+        12:45           = Uptime
+
+    Grass animation:
+        Moving  = GPS has fix, we're rolling and logging
+        Static  = No GPS fix, waiting for satellites
+
+    When GPS locks, piggy celebrates. When GPS is lost, piggy is sad.
+    The grass tells you at a glance if you're actually logging coords.
 
 
 --[ 7 - Configuration
@@ -260,14 +294,22 @@
         +------------+-------------------------------+---------+
         | Setting    | Description                   | Default |
         +------------+-------------------------------+---------+
+        | WiFi SSID  | AP name for file transfer     | PORKCHOP|
+        | WiFi Pass  | Password for file transfer    | oink1234|
         | Sound      | Beeps when things happen      | ON      |
         | Brightness | Display brightness            | 80%     |
-        | CH Hop     | Channel hop interval (ms)     | 500     |
-        | Scan Time  | Per-channel scan duration     | 2000    |
+        | Dim After  | Screen dim timeout (0=never)  | 30s     |
+        | Dim Level  | Brightness when dimmed        | 10%     |
+        | CH Hop     | Channel hop interval          | 500ms   |
+        | Scan Time  | Dwell time per channel        | 2000ms  |
         | Deauth     | Enable deauth attacks         | ON      |
         | GPS        | Enable GPS module             | ON      |
-        | GPS PwrSave| Power saving for GPS          | ON      |
+        | GPS PwrSave| Sleep GPS when not hunting    | ON      |
+        | Scan Intv  | WARHOG scan frequency         | 5s      |
+        | GPS Baud   | GPS module baud rate          | 115200  |
+        | Timezone   | UTC offset for timestamps     | 0       |
         | ML Mode    | Basic/Enhanced beacon capture | Basic   |
+        | SD Log     | Debug logging to SD card      | OFF     |
         +------------+-------------------------------+---------+
 
 
@@ -275,31 +317,65 @@
 
     Want to train your own model? Here's the workflow:
 
-    Step 1: Collect data
-        - Run WARHOG mode in various environments
-        - Let it build up a nice dataset
-        - Export ML training data to SD card
+----[ 8.1 - Data Collection
 
-    Step 2: Label your data
-        - 0 = unknown (unlabeled)
-        - 1 = normal (legitimate APs)
-        - 2 = rogue_ap (suspicious)
-        - 3 = evil_twin (impersonating)
-        - 4 = vulnerable (weak security)
+    WARHOG mode automatically collects ML training data. No extra steps.
 
-    Step 3: Train on Edge Impulse
-        - Create project at studio.edgeimpulse.com
-        - Upload your labeled CSV
-        - Design impulse: Raw data -> Neural Network
-        - Train, test, iterate
+    How it works:
+        - Every network gets 32 features extracted from beacon frames
+        - Data accumulates in memory as you drive around
+        - Every 60 seconds, WARHOG dumps to /ml_training.csv (crash protection)
+        - When you stop WARHOG (G0 button), final export happens
+        - Worst case you lose 1 minute of data if piggy crashes
 
-    Step 4: Deploy
-        - Export as "C++ Library" for ESP32
-        - Drop edge-impulse-sdk/ into lib/
-        - Uncomment EDGE_IMPULSE_ENABLED
-        - Rebuild and flash
+    The dump contains:
+        BSSID, SSID, channel, RSSI, authmode, HT caps, vendor IEs,
+        beacon interval, jitter, GPS coords, timestamp, and label
 
-    Now your piglet has a real brain.
+    Set ML Mode to Enhanced in settings for deep beacon parsing.
+    Basic mode uses ESP32 scan API. Enhanced mode sniffs raw 802.11.
+    More features, more CPU, more fun.
+
+----[ 8.2 - Labeling
+
+    Your training data starts with label=0 (unknown). Open the CSV
+    and manually label each network:
+
+        0 = unknown (unlabeled, skip during training)
+        1 = normal (legitimate APs you know and trust)
+        2 = rogue_ap (suspicious, strong signal, weird timing)
+        3 = evil_twin (impersonating a real network)
+        4 = vulnerable (open/WEP/WPA1/WPS enabled)
+
+    Pro tip: War drive your neighborhood, label everything normal.
+    Then set up sketchy APs in the lab and label those as rogue/evil.
+    The contrast teaches the model what's sus.
+
+----[ 8.3 - Training on Edge Impulse
+
+    Edge Impulse handles the heavy lifting:
+
+        1. Create project at studio.edgeimpulse.com
+        2. Upload your labeled ml_training.csv
+        3. Design impulse: Raw data block -> Classification (Keras)
+        4. Train for 50+ epochs, check confusion matrix
+        5. Test on held-out data, iterate if needed
+
+    Aim for 90%+ accuracy before deploying. Your piggy deserves
+    a brain that actually works.
+
+----[ 8.4 - Deployment
+
+    When your model is ready:
+
+        1. Export as "C++ Library" targeting ESP32
+        2. Extract edge-impulse-sdk/ into porkchop/lib/
+        3. Open src/ml/edge_impulse.h
+        4. Uncomment: #define EDGE_IMPULSE_ENABLED
+        5. Rebuild and flash
+
+    Now your piglet runs real inference instead of heuristics.
+    The grass still moves the same way, but the brain got an upgrade.
 
 
 --[ 9 - Code Structure
