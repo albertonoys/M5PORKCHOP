@@ -4,6 +4,7 @@
 #include "../core/config.h"
 #include "../core/xp.h"
 #include "../ui/display.h"
+#include "../modes/oink.h"
 
 // Static members
 String Mood::currentPhrase = "oink";
@@ -144,6 +145,19 @@ const char* PHRASES_DEAUTH_SUCCESS[] = {
     "%s squealed"
 };
 
+// PMKID captured - clientless attack, special celebration!
+const char* PHRASES_PMKID_CAPTURED[] = {
+    "PMKID YOINK!",
+    "CLIENTLESS PWN!",
+    "NO DEAUTH NEEDED!",
+    "STEALTHY GRAB!",
+    "EZ MODE ACTIVATED",
+    "PMKID SNORT!",
+    "SILENT BUT DEADLY",
+    "PASSIVE AGGRESSION",
+    "GHOST MODE PWN"
+};
+
 void Mood::init() {
     currentPhrase = "oink";
     happiness = 50;
@@ -207,6 +221,36 @@ void Mood::onHandshakeCaptured(const char* apName) {
     if (Config::personality().soundEnabled) {
         M5.Speaker.tone(1500, 150);  // Distinctive handshake beep
     }
+}
+
+void Mood::onPMKIDCaptured(const char* apName) {
+    happiness = min(happiness + 40, 100);  // Even happier than handshake!
+    lastActivityTime = millis();
+    
+    // Award XP for PMKID capture (75 XP - more than handshake)
+    XP::addXP(XPEvent::PMKID_CAPTURED);
+    
+    // Bonus XP for low battery clutch capture
+    if (M5.Power.getBatteryLevel() < 10) {
+        XP::addXP(XPEvent::LOW_BATTERY_CAPTURE);
+    }
+    
+    // Show PMKID-specific phrase
+    int idx = random(0, sizeof(PHRASES_PMKID_CAPTURED) / sizeof(PHRASES_PMKID_CAPTURED[0]));
+    currentPhrase = PHRASES_PMKID_CAPTURED[idx];
+    lastPhraseChange = millis();
+    
+    // Triple beep for PMKID - it's special!
+    if (Config::personality().soundEnabled) {
+        M5.Speaker.tone(1800, 100);
+        delay(120);
+        M5.Speaker.tone(2000, 100);
+        delay(120);
+        M5.Speaker.tone(2200, 150);
+    }
+    
+    // Auto-save the PMKID
+    OinkMode::saveAllPMKIDs();
 }
 
 void Mood::onNewNetwork(const char* apName, int8_t rssi, uint8_t channel) {

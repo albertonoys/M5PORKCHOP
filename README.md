@@ -73,11 +73,13 @@
         * Channel hopping across all 802.11 channels
         * Promiscuous mode packet capture  
         * EAPOL frame detection and 4-way handshake reconstruction
+        * PMKID extraction from M1 frames (clientless attack!)
         * Deauth capability for... "authorized testing purposes"
         * Real-time ML classification of suspicious APs
         * Auto-attack mode cycles through targets automatically
         * Targeted deauth prioritizes discovered clients
         * PCAP export to SD for post-processing
+        * Hashcat 22000 format for PMKID (ready for cracking)
 
 
 ----[ 3.2 - WARHOG Mode

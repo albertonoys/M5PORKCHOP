@@ -62,6 +62,16 @@ struct CapturedHandshake {
     bool isFull() const { return (capturedMask & 0x0F) == 0x0F; }
 };
 
+// PMKID capture - clientless attack, extracted from EAPOL M1
+struct CapturedPMKID {
+    uint8_t bssid[6];
+    uint8_t station[6];
+    char ssid[33];
+    uint8_t pmkid[16];
+    uint32_t timestamp;
+    bool saved;
+};
+
 class OinkMode {
 public:
     static void init();
@@ -92,6 +102,12 @@ public:
     static bool saveAllHandshakes();
     static void autoSaveCheck();
     
+    // PMKID capture (clientless attack)
+    static const std::vector<CapturedPMKID>& getPMKIDs() { return pmkids; }
+    static uint16_t getPMKIDCount() { return pmkids.size(); }
+    static bool savePMKID22000(const CapturedPMKID& p, const char* path);
+    static bool saveAllPMKIDs();
+    
     // Channel hopping
     static void setChannel(uint8_t ch);
     static uint8_t getChannel() { return currentChannel; }
@@ -120,6 +136,7 @@ private:
     
     static std::vector<DetectedNetwork> networks;
     static std::vector<CapturedHandshake> handshakes;
+    static std::vector<CapturedPMKID> pmkids;
     static int targetIndex;
     static uint8_t targetBssid[6];  // Store BSSID to handle index invalidation
     static int selectionIndex;  // Cursor for network selection
@@ -148,6 +165,7 @@ private:
 
     static int findNetwork(const uint8_t* bssid);
     static int findOrCreateHandshake(const uint8_t* bssid, const uint8_t* station);
+    static int findOrCreatePMKID(const uint8_t* bssid, const uint8_t* station);
     static void sortNetworksByPriority();
     static bool hasHandshakeFor(const uint8_t* bssid);
     static int getNextTarget();  // Smart target selection

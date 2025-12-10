@@ -3,7 +3,7 @@
 ## Project Overview
 
 M5Porkchop is a WiFi security research tool for the M5Cardputer (ESP32-S3 based) with a "piglet" mascot personality. It features:
-- **OINK Mode**: WiFi scanning, handshake capture, deauth attacks
+- **OINK Mode**: WiFi scanning, handshake capture, PMKID capture, deauth attacks
 - **WARHOG Mode**: Wardriving with GPS logging
 - **PIGGYBLUES Mode**: BLE notification spam (AppleJuice, FastPair, Samsung, SwiftPair)
 - **RPG XP System**: Level up from BACON N00B to MUDGE UNCHA1NED (40 ranks)
@@ -127,6 +127,7 @@ Mood phrases are context-aware arrays in `mood.cpp`:
 - `PHRASES_PIGGYBLUES_STATUS[]` - During BLE spam activity
 - `PHRASES_PIGGYBLUES_IDLE[]` - PiggyBlues idle/scanning
 - `PHRASES_DEAUTH_SUCCESS[]` - After successful deauth
+- `PHRASES_PMKID_CAPTURED[]` - Clientless PMKID capture (3 beeps!)
 
 Call appropriate `Mood::onXxx()` method to trigger phrase updates.
 

