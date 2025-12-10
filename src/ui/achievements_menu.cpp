@@ -144,13 +144,12 @@ void AchievementsMenu::draw(M5Canvas& canvas) {
     for (uint8_t i = scrollOffset; i < TOTAL_ACHIEVEMENTS && i < scrollOffset + VISIBLE_ITEMS; i++) {
         bool hasIt = (unlocked & ACHIEVEMENTS[i].flag) != 0;
         
-        // Highlight selected
+        // Highlight selected (pink bg, black text) - toast style
         if (i == selectedIndex) {
             canvas.fillRect(0, y - 1, canvas.width(), lineHeight, COLOR_FG);
-            canvas.setTextColor(TFT_BLACK);
+            canvas.setTextColor(COLOR_BG);
         } else {
-            // Use dimmer pink (0x7A8A) for locked, full pink for unlocked
-            canvas.setTextColor(hasIt ? COLOR_FG : 0x7A8A);
+            canvas.setTextColor(COLOR_FG);
         }
         
         // Lock/unlock indicator
@@ -178,50 +177,31 @@ void AchievementsMenu::draw(M5Canvas& canvas) {
 }
 
 void AchievementsMenu::drawDetail(M5Canvas& canvas) {
-    canvas.fillScreen(TFT_BLACK);
-    
-    // Draw border
-    canvas.drawRect(10, 15, canvas.width() - 20, 75, COLOR_FG);
+    canvas.fillScreen(COLOR_BG);
     
     bool hasIt = (XP::getAchievements() & ACHIEVEMENTS[selectedIndex].flag) != 0;
     
-    // Achievement name centered at top (show UNKNOWN if locked)
-    canvas.setTextColor(COLOR_FG);
+    // Toast style: pink filled box with black text
+    int boxW = 200;
+    int boxH = 70;
+    int boxX = (canvas.width() - boxW) / 2;
+    int boxY = (canvas.height() - boxH) / 2;
+    
+    canvas.fillRoundRect(boxX, boxY, boxW, boxH, 8, COLOR_FG);
+    
+    // Black text on pink background
+    canvas.setTextColor(COLOR_BG, COLOR_FG);
     canvas.setTextSize(1);
     canvas.setTextDatum(top_center);
-    canvas.drawString(hasIt ? ACHIEVEMENTS[selectedIndex].name : "UNKNOWN", canvas.width() / 2, 22);
     
-    // Status (use pig pink for unlocked, grey for locked)
-    canvas.setTextDatum(top_center);
-    canvas.setTextColor(hasIt ? COLOR_FG : TFT_DARKGREY);
-    canvas.drawString(hasIt ? "UNLOCKED" : "LOCKED", canvas.width() / 2, 36);
+    // Achievement name (show UNKNOWN if locked)
+    canvas.drawString(hasIt ? ACHIEVEMENTS[selectedIndex].name : "UNKNOWN", canvas.width() / 2, boxY + 10);
+    
+    // Status
+    canvas.drawString(hasIt ? "UNLOCKED" : "LOCKED", canvas.width() / 2, boxY + 26);
     
     // How to get it (show ??? if locked)
-    canvas.setTextColor(COLOR_FG);
-    canvas.setTextDatum(top_center);
-    
-    // Word wrap the howTo text (max ~30 chars per line)
-    String howTo = hasIt ? ACHIEVEMENTS[selectedIndex].howTo : "???";
-    int y = 52;
-    while (howTo.length() > 0) {
-        String line;
-        if (howTo.length() <= 30) {
-            line = howTo;
-            howTo = "";
-        } else {
-            // Find last space before char 30
-            int lastSpace = howTo.lastIndexOf(' ', 30);
-            if (lastSpace > 0) {
-                line = howTo.substring(0, lastSpace);
-                howTo = howTo.substring(lastSpace + 1);
-            } else {
-                line = howTo.substring(0, 30);
-                howTo = howTo.substring(30);
-            }
-        }
-        canvas.drawString(line, canvas.width() / 2, y);
-        y += 12;
-    }
+    canvas.drawString(hasIt ? ACHIEVEMENTS[selectedIndex].howTo : "???", canvas.width() / 2, boxY + 46);
     
     // Reset text datum
     canvas.setTextDatum(top_left);
