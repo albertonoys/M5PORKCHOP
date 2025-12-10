@@ -414,9 +414,20 @@ void SpectrumMode::onBeacon(const uint8_t* bssid, uint8_t channel, int8_t rssi, 
 String SpectrumMode::getSelectedInfo() {
     if (selectedIndex >= 0 && selectedIndex < (int)networks.size()) {
         const auto& net = networks[selectedIndex];
+        
+        // Bottom bar: ~33 chars available (240px - margins - uptime)
+        // Fixed part: " -XXdB chXX YYYY" = ~16 chars worst case
+        // SSID gets max 15 chars + ".." if truncated
+        const int MAX_SSID_DISPLAY = 15;
+        
+        String ssid = net.ssid[0] ? net.ssid : "[hidden]";
+        if (ssid.length() > MAX_SSID_DISPLAY) {
+            ssid = ssid.substring(0, MAX_SSID_DISPLAY) + "..";
+        }
+        
         char buf[64];
         snprintf(buf, sizeof(buf), "%s %ddB ch%d %s", 
-                 net.ssid[0] ? net.ssid : "[hidden]", 
+                 ssid.c_str(), 
                  net.rssi, net.channel,
                  authModeToShortString(net.authmode));
         return String(buf);
