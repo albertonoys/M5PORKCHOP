@@ -57,7 +57,7 @@ void Porkchop::init() {
         {"PIGGY BLUES Mode", 8, "BLE notification spam"},
         {"File Transfer", 3, "WiFi file server"},
         {"Captures", 4, "View saved loot"},
-        {"Achievements", 9, "View unlocked feats"},
+        {"Achievements", 9, "Proof of pwn"},
         {"Log Viewer", 7, "Debug log tail"},
         {"Settings", 5, "Tweak the pig"},
         {"About", 6, "Credits and info"}
