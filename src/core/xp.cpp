@@ -110,7 +110,6 @@ static const char* ACHIEVEMENT_NAMES[] = {
     "SPEED RUN",
     "CHAOS AGENT",
     "N13TZSCH3",
-    // New achievements (bits 17-46)
     "T3N THOU$AND",
     "N3WB SNIFFER",
     "500 P1GS",

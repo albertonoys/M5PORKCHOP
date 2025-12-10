@@ -231,3 +231,109 @@ inline uint8_t countAchievements(uint64_t achievements) {
     }
     return count;
 }
+
+// ============================================================================
+// SSID/String Validation Helpers
+// Pure functions for safe string handling
+// ============================================================================
+
+// Check if character is printable ASCII (32-126)
+inline bool isPrintableASCII(char c) {
+    return c >= 32 && c <= 126;
+}
+
+// Check if SSID contains only printable characters
+// Returns true if all characters are printable, false otherwise
+inline bool isValidSSID(const char* ssid, size_t len) {
+    if (ssid == nullptr || len == 0) return false;
+    if (len > 32) return false;  // Max SSID length
+    for (size_t i = 0; i < len; i++) {
+        if (!isPrintableASCII(ssid[i])) return false;
+    }
+    return true;
+}
+
+// Check if SSID is hidden (zero-length or all null bytes)
+inline bool isHiddenSSID(const uint8_t* ssid, uint8_t len) {
+    if (len == 0) return true;
+    for (uint8_t i = 0; i < len; i++) {
+        if (ssid[i] != 0) return false;
+    }
+    return true;
+}
+
+// Calculate simple checksum of buffer (for integrity checking)
+inline uint8_t calculateChecksum(const uint8_t* data, size_t len) {
+    uint8_t sum = 0;
+    for (size_t i = 0; i < len; i++) {
+        sum ^= data[i];
+    }
+    return sum;
+}
+
+// ============================================================================
+// Channel Validation
+// From: src/modes/spectrum.cpp
+// ============================================================================
+
+// Check if channel is valid for 2.4GHz band (1-14)
+inline bool isValid24GHzChannel(uint8_t channel) {
+    return channel >= 1 && channel <= 14;
+}
+
+// Check if channel is a non-overlapping channel in US/EU (1, 6, 11)
+inline bool isNonOverlappingChannel(uint8_t channel) {
+    return channel == 1 || channel == 6 || channel == 11;
+}
+
+// Calculate center frequency for 2.4GHz channel in MHz
+// Channel 1 = 2412 MHz, each channel +5 MHz (except ch14 = 2484)
+inline uint16_t channelToFrequency(uint8_t channel) {
+    if (channel < 1 || channel > 14) return 0;
+    if (channel == 14) return 2484;
+    return 2407 + (channel * 5);
+}
+
+// Calculate channel from frequency
+inline uint8_t frequencyToChannel(uint16_t freqMHz) {
+    if (freqMHz == 2484) return 14;
+    if (freqMHz < 2412 || freqMHz > 2472) return 0;
+    return (freqMHz - 2407) / 5;
+}
+
+// ============================================================================
+// RSSI/Signal Helpers
+// ============================================================================
+
+// Convert RSSI to signal quality percentage (0-100)
+// Uses typical range of -90 dBm (weak) to -30 dBm (strong)
+inline uint8_t rssiToQuality(int8_t rssi) {
+    if (rssi >= -30) return 100;
+    if (rssi <= -90) return 0;
+    return (uint8_t)((rssi + 90) * 100 / 60);
+}
+
+// Check if RSSI indicates a usable signal (typically > -80 dBm)
+inline bool isUsableSignal(int8_t rssi) {
+    return rssi > -80;
+}
+
+// Check if RSSI indicates excellent signal (typically > -50 dBm)
+inline bool isExcellentSignal(int8_t rssi) {
+    return rssi > -50;
+}
+
+// ============================================================================
+// Time/Duration Helpers
+// ============================================================================
+
+// Convert milliseconds to TU (Time Units, 1 TU = 1024 microseconds)
+// Used for beacon intervals
+inline uint16_t msToTU(uint16_t ms) {
+    return (uint16_t)((uint32_t)ms * 1000 / 1024);
+}
+
+// Convert TU to milliseconds
+inline uint16_t tuToMs(uint16_t tu) {
+    return (uint16_t)((uint32_t)tu * 1024 / 1000);
+}
