@@ -1197,20 +1197,22 @@ void Mood::onWarhogFound(const char* apName, uint8_t channel) {
     lastPhraseChange = millis();
 }
 
+// Static flag for BLE first-target sniff (reset via resetBLESniffState on mode start)
+static bool bleFirstTargetSniffed = false;
+
+void Mood::resetBLESniffState() {
+    bleFirstTargetSniffed = false;
+}
+
 void Mood::onPiggyBluesUpdate(const char* vendor, int8_t rssi, uint8_t targetCount, uint8_t totalFound) {
     lastActivityTime = millis();
     happiness = min(100, happiness + 1);  // Tiny permanent boost
     applyMomentumBoost(5);  // Small excitement for spam activity
     
     // Sniff on first target acquisition only (not every update)
-    static bool firstTargetSniffed = false;
-    if (vendor != nullptr && rssi != 0 && !firstTargetSniffed) {
+    if (vendor != nullptr && rssi != 0 && !bleFirstTargetSniffed) {
         Avatar::sniff();
-        firstTargetSniffed = true;
-    }
-    // Reset on idle (no targets) so next session can sniff again
-    if (targetCount == 0 && totalFound == 0) {
-        firstTargetSniffed = false;
+        bleFirstTargetSniffed = true;
     }
     
     // Award XP for BLE spam (vendor-specific tracking for achievements)

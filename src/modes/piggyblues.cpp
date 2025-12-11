@@ -330,6 +330,7 @@ void PiggyBluesMode::start() {
     
     // Reset state for new session
     init();
+    Mood::resetBLESniffState();  // Reset first-target sniff for new session
     
     // Show warning dialog
     if (!showWarningDialog()) {

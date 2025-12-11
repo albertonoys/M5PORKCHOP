@@ -31,6 +31,7 @@ public:
     static void onWarhogUpdate();
     static void onWarhogFound(const char* apName = nullptr, uint8_t channel = 0);
     static void onPiggyBluesUpdate(const char* vendor = nullptr, int8_t rssi = 0, uint8_t targetCount = 0, uint8_t totalFound = 0);
+    static void resetBLESniffState();  // Reset first-target sniff flag on mode start
     
     // Get current mood phrase
     static const String& getCurrentPhrase();
