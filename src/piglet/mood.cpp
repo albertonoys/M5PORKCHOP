@@ -929,21 +929,13 @@ void Mood::updateAvatarState() {
     switch (mode) {
         case PorkchopMode::OINK_MODE:
         case PorkchopMode::SPECTRUM_MODE:
-            // Hunting modes: stay HUNTING, go EXCITED on high mood
-            if (effectiveMood > MOOD_PEEK_HIGH_THRESHOLD) {
-                Avatar::setState(AvatarState::EXCITED);
-            } else {
-                Avatar::setState(AvatarState::HUNTING);
-            }
+            // Hunting modes: ALWAYS show HUNTING (mood peek handles emotional flashes)
+            Avatar::setState(AvatarState::HUNTING);
             break;
             
         case PorkchopMode::PIGGYBLUES_MODE:
-            // Aggressive mode: stay ANGRY, go EXCITED on high mood
-            if (effectiveMood > MOOD_PEEK_HIGH_THRESHOLD) {
-                Avatar::setState(AvatarState::EXCITED);
-            } else {
-                Avatar::setState(AvatarState::ANGRY);
-            }
+            // Aggressive mode: ALWAYS show ANGRY (mood peek handles emotional flashes)
+            Avatar::setState(AvatarState::ANGRY);
             break;
             
         case PorkchopMode::WARHOG_MODE:
