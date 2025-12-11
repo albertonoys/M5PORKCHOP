@@ -3,9 +3,12 @@
 #include "mood.h"
 #include "../core/config.h"
 #include "../core/xp.h"
+#include "../core/porkchop.h"
 #include "../ui/display.h"
 #include "../modes/oink.h"
 #include <Preferences.h>
+
+extern Porkchop porkchop;
 
 // Phase 10: Mood persistence
 static Preferences moodPrefs;
@@ -852,16 +855,65 @@ void Mood::updateAvatarState() {
     // Phase 8: Pass mood intensity to avatar for animation timing
     Avatar::setMoodIntensity(effectiveMood);
     
-    if (effectiveMood > 70) {
-        Avatar::setState(AvatarState::EXCITED);
-    } else if (effectiveMood > 30) {
-        Avatar::setState(AvatarState::HAPPY);
-    } else if (effectiveMood > -10) {
-        Avatar::setState(AvatarState::NEUTRAL);
-    } else if (effectiveMood > -50) {
-        Avatar::setState(AvatarState::SLEEPY);
-    } else {
-        Avatar::setState(AvatarState::SAD);
+    // Mode-aware avatar state selection
+    PorkchopMode mode = porkchop.getMode();
+    
+    switch (mode) {
+        case PorkchopMode::OINK_MODE:
+        case PorkchopMode::SPECTRUM_MODE:
+            // Hunting modes: stay HUNTING, go EXCITED on high mood
+            if (effectiveMood > 70) {
+                Avatar::setState(AvatarState::EXCITED);
+            } else {
+                Avatar::setState(AvatarState::HUNTING);
+            }
+            break;
+            
+        case PorkchopMode::PIGGYBLUES_MODE:
+            // Aggressive mode: stay ANGRY, go EXCITED on high mood
+            if (effectiveMood > 70) {
+                Avatar::setState(AvatarState::EXCITED);
+            } else {
+                Avatar::setState(AvatarState::ANGRY);
+            }
+            break;
+            
+        case PorkchopMode::WARHOG_MODE:
+            // Wardriving: relaxed hunting, biased toward happy
+            if (effectiveMood > 70) {
+                Avatar::setState(AvatarState::EXCITED);
+            } else if (effectiveMood > 10) {
+                Avatar::setState(AvatarState::HAPPY);
+            } else {
+                Avatar::setState(AvatarState::NEUTRAL);
+            }
+            break;
+            
+        case PorkchopMode::FILE_TRANSFER:
+            // File transfer: stay happy unless very sad
+            if (effectiveMood > 70) {
+                Avatar::setState(AvatarState::EXCITED);
+            } else if (effectiveMood > -30) {
+                Avatar::setState(AvatarState::HAPPY);
+            } else {
+                Avatar::setState(AvatarState::NEUTRAL);
+            }
+            break;
+            
+        default:
+            // IDLE, MENU, SETTINGS, etc: full mood-based expression
+            if (effectiveMood > 70) {
+                Avatar::setState(AvatarState::EXCITED);
+            } else if (effectiveMood > 30) {
+                Avatar::setState(AvatarState::HAPPY);
+            } else if (effectiveMood > -10) {
+                Avatar::setState(AvatarState::NEUTRAL);
+            } else if (effectiveMood > -50) {
+                Avatar::setState(AvatarState::SLEEPY);
+            } else {
+                Avatar::setState(AvatarState::SAD);
+            }
+            break;
     }
 }
 

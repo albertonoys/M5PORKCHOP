@@ -42,8 +42,8 @@ const char* AVATAR_EXCITED_R[] = {
 };
 
 const char* AVATAR_HUNTING_R[] = {
-    " /  \\ ",
-    "(> 00)",
+    " |  | ",
+    "(= 00)",
     "(    )"
 };
 
@@ -91,8 +91,8 @@ const char* AVATAR_EXCITED_L[] = {
 };
 
 const char* AVATAR_HUNTING_L[] = {
-    " /  \\ ",
-    "(00 <)",
+    " |  | ",
+    "(00 =)",
     "(    )z"
 };
 
