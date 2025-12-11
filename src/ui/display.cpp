@@ -191,11 +191,19 @@ void Display::drawTopBar() {
             modeStr = "LOG VIEWER";
             break;
         case PorkchopMode::CAPTURES:
-            modeStr = "LOOT";
+            {
+                char buf[24];
+                snprintf(buf, sizeof(buf), "L00T (%d)", CapturesMenu::getCount());
+                modeStr = buf;
+            }
             modeColor = COLOR_ACCENT;
             break;
         case PorkchopMode::ACHIEVEMENTS:
-            modeStr = "PR00F";
+            {
+                char buf[24];
+                snprintf(buf, sizeof(buf), "PR00F (%d/%d)", XP::getUnlockedCount(), AchievementsMenu::TOTAL_ACHIEVEMENTS);
+                modeStr = buf;
+            }
             modeColor = COLOR_ACCENT;
             break;
     }

@@ -15,106 +15,105 @@ bool Avatar::grassMoving = false;
 uint32_t Avatar::lastGrassUpdate = 0;
 uint16_t Avatar::grassSpeed = 80;  // Default fast for OINK
 char Avatar::grassPattern[32] = {0};
-
 // Internal state for looking direction
-static bool facingRight = false;
+static bool facingRight = true;  // Default: pig looks right
 static uint32_t lastFlipTime = 0;
 static uint32_t flipInterval = 5000;
 
 // --- DERPY STYLE with direction ---
-// Left facing frames (eye on left, snout 00 on right)
-const char* AVATAR_NEUTRAL_L[] = {
+// Right-looking frames (snout 00 on right side of face, pig looks RIGHT)
+const char* AVATAR_NEUTRAL_R[] = {
     " ?  ? ",
     "(o 00)",
     "(    )"
 };
 
-const char* AVATAR_HAPPY_L[] = {
+const char* AVATAR_HAPPY_R[] = {
     " ^  ^ ",
     "(^ 00)",
     "(    )"
 };
 
-const char* AVATAR_EXCITED_L[] = {
+const char* AVATAR_EXCITED_R[] = {
     " !  ! ",
     "(@ 00)",
     "(    )"
 };
 
-const char* AVATAR_HUNTING_L[] = {
+const char* AVATAR_HUNTING_R[] = {
     " /  \\ ",
     "(> 00)",
     "(    )"
 };
 
-const char* AVATAR_SLEEPY_L[] = {
+const char* AVATAR_SLEEPY_R[] = {
     " v  v ",
     "(- 00)",
     "(    )"
 };
 
-const char* AVATAR_SAD_L[] = {
+const char* AVATAR_SAD_R[] = {
     " .  . ",
     "(T 00)",
     "(    )"
 };
 
-const char* AVATAR_ANGRY_L[] = {
+const char* AVATAR_ANGRY_R[] = {
     " \\  / ",
     "(# 00)",
     "(    )"
 };
 
-const char* AVATAR_BLINK_L[] = {
+const char* AVATAR_BLINK_R[] = {
     " ?  ? ",
     "(- 00)",
     "(    )"
 };
 
-// Right facing frames (snout 00 on left, eye on right)
-const char* AVATAR_NEUTRAL_R[] = {
+// Left-looking frames (snout 00 on left side of face, pig looks LEFT, z pigtail)
+const char* AVATAR_NEUTRAL_L[] = {
     " ?  ? ",
     "(00 o)",
     "(    )z"
 };
 
-const char* AVATAR_HAPPY_R[] = {
+const char* AVATAR_HAPPY_L[] = {
     " ^  ^ ",
     "(00 ^)",
     "(    )z"
 };
 
-const char* AVATAR_EXCITED_R[] = {
+const char* AVATAR_EXCITED_L[] = {
     " !  ! ",
     "(00 @)",
     "(    )z"
 };
 
-const char* AVATAR_HUNTING_R[] = {
+const char* AVATAR_HUNTING_L[] = {
     " /  \\ ",
     "(00 <)",
     "(    )z"
 };
 
-const char* AVATAR_SLEEPY_R[] = {
+const char* AVATAR_SLEEPY_L[] = {
     " v  v ",
     "(00 -)",
     "(    )z"
 };
 
-const char* AVATAR_SAD_R[] = {
+const char* AVATAR_SAD_L[] = {
     " .  . ",
     "(00 T)",
     "(    )z"
 };
 
-const char* AVATAR_ANGRY_R[] = {
+const char* AVATAR_ANGRY_L[] = {
     " \\  / ",
     "(00 #)",
     "(    )z"
 };
 
-const char* AVATAR_BLINK_R[] = {
+const char* AVATAR_BLINK_L[] = {
     " ?  ? ",
     "(00 -)",
     "(    )z"
@@ -127,8 +126,8 @@ void Avatar::init() {
     lastBlinkTime = millis();
     blinkInterval = random(4000, 8000);
     
-    // Init direction
-    facingRight = false;
+    // Init direction - default facing right (toward speech bubble)
+    facingRight = true;
     lastFlipTime = millis();
     flipInterval = random(3000, 10000);
     

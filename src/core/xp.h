@@ -163,6 +163,7 @@ public:
     static void unlockAchievement(PorkAchievement ach);
     static bool hasAchievement(PorkAchievement ach);
     static uint64_t getAchievements();
+    static uint8_t getUnlockedCount();  // Count of unlocked achievements
     static const char* getAchievementName(PorkAchievement ach);
     
     // Stats access

@@ -12,6 +12,7 @@ public:
     static void update();
     static void draw(M5Canvas& canvas);
     static bool isActive() { return active; }
+    static const uint8_t TOTAL_ACHIEVEMENTS = 47;  // 17 original + 30 new
     
 private:
     static uint8_t selectedIndex;
@@ -21,7 +22,6 @@ private:
     static bool showingDetail;  // Showing achievement detail popup
     
     static const uint8_t VISIBLE_ITEMS = 5;
-    static const uint8_t TOTAL_ACHIEVEMENTS = 47;  // 17 original + 30 new
     
     static void handleInput();
     static void drawDetail(M5Canvas& canvas);

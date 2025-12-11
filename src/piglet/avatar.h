@@ -23,6 +23,9 @@ public:
     static void blink();
     static void wiggleEars();
     
+    // Flash state temporarily (e.g., EXCITED on handshake capture)
+    static void flashState(AvatarState state, uint8_t cycles);
+    
     // Grass animation control
     static void setGrassMoving(bool moving);
     static bool isGrassMoving() { return grassMoving; }
@@ -36,6 +39,12 @@ private:
     static bool earsUp;
     static uint32_t lastBlinkTime;
     static uint32_t blinkInterval;
+    
+    // Flash state system (temporary state override)
+    static uint8_t flashCyclesRemaining;
+    static AvatarState flashStateType;
+    static AvatarState returnStateType;
+    static uint32_t lastFlashCycleTime;
     
     // Grass animation state
     static bool grassMoving;

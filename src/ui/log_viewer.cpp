@@ -186,6 +186,7 @@ void LogViewer::render() {
     // Instructions in bottom bar
     M5Canvas& bottom = Display::getBottomBar();
     bottom.fillSprite(COLOR_BG);
+    bottom.setTextSize(1);
     bottom.setTextColor(COLOR_FG);
     bottom.setTextDatum(TL_DATUM);
     char info[24];

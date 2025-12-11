@@ -146,4 +146,7 @@ void Menu::draw(M5Canvas& canvas) {
     if (scrollOffset + VISIBLE_ITEMS < menuItems.size()) {
         canvas.drawString("v", DISPLAY_W - 15, yOffset + (VISIBLE_ITEMS - 1) * lineHeight);
     }
+    
+    // Reset text size for next draw cycle
+    canvas.setTextSize(1);
 }

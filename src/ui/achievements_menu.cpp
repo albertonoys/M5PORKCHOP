@@ -158,24 +158,14 @@ void AchievementsMenu::draw(M5Canvas& canvas) {
     
     canvas.fillScreen(TFT_BLACK);
     
-    // Count unlocked
+    // Get unlocked achievements
     uint64_t unlocked = XP::getAchievements();
-    int unlockedCount = 0;
-    for (int i = 0; i < TOTAL_ACHIEVEMENTS; i++) {
-        if (unlocked & ACHIEVEMENTS[i].flag) unlockedCount++;
-    }
     
-    // Title
     canvas.setTextColor(COLOR_FG);
     canvas.setTextSize(1);
-    canvas.setCursor(4, 2);
-    canvas.printf("ACHIEVEMENTS %d/%d", unlockedCount, TOTAL_ACHIEVEMENTS);
-    
-    // Divider line
-    canvas.drawFastHLine(0, 12, canvas.width(), COLOR_FG);
     
     // Draw achievements list
-    int y = 16;
+    int y = 2;
     int lineHeight = 18;
     
     for (uint8_t i = scrollOffset; i < TOTAL_ACHIEVEMENTS && i < scrollOffset + VISIBLE_ITEMS; i++) {

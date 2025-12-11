@@ -61,6 +61,10 @@ README and user-facing docs use oldschool Phrack hacker magazine style:
 
 ### Piglet Personality
 - `src/piglet/avatar.cpp/h` - ASCII art pig face rendering with derpy style, direction flipping (L/R)
+  - Right-facing frames (`_R` suffix): snout `00` on right, eye on left, pig looks RIGHT →, no pigtail
+  - Left-facing frames (`_L` suffix): snout `00` on left, eye on right, pig looks LEFT ←, `z` pigtail on right
+  - Default: pig faces right (toward speech bubble)
+  - The `z` character represents the curly pigtail, NOT a sleep indicator
 - `src/piglet/mood.cpp/h` - Context-aware phrases, happiness tracking, mode-specific phrase arrays
 
 ### Hardware

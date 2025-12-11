@@ -529,6 +529,16 @@ uint64_t XP::getAchievements() {
     return data.achievements;
 }
 
+uint8_t XP::getUnlockedCount() {
+    uint8_t count = 0;
+    uint64_t ach = data.achievements;
+    while (ach) {
+        count += ach & 1;
+        ach >>= 1;
+    }
+    return count;
+}
+
 const char* XP::getAchievementName(PorkAchievement ach) {
     uint8_t idx = 0;
     uint64_t mask = 1ULL;

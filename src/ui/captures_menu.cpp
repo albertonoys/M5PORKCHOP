@@ -161,26 +161,19 @@ void CapturesMenu::draw(M5Canvas& canvas) {
     if (!active) return;
     
     canvas.fillScreen(TFT_BLACK);
-    
-    // Title
     canvas.setTextColor(COLOR_FG);
     canvas.setTextSize(1);
-    canvas.setCursor(4, 2);
-    canvas.printf("LOOT (%d)", captures.size());
-    
-    // Divider line
-    canvas.drawFastHLine(0, 12, canvas.width(), COLOR_FG);
     
     if (captures.empty()) {
-        canvas.setCursor(4, 50);
+        canvas.setCursor(4, 40);
         canvas.print("No captures found");
-        canvas.setCursor(4, 65);
+        canvas.setCursor(4, 55);
         canvas.print("[O] to hunt.");
         return;
     }
     
     // Draw captures list
-    int y = 16;
+    int y = 2;
     int lineHeight = 18;
     
     for (uint8_t i = scrollOffset; i < captures.size() && i < scrollOffset + VISIBLE_ITEMS; i++) {

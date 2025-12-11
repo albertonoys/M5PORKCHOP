@@ -23,6 +23,7 @@ public:
     static void draw(M5Canvas& canvas);
     static bool isActive() { return active; }
     static String getSelectedBSSID();
+    static size_t getCount() { return captures.size(); }
     
 private:
     static std::vector<CaptureInfo> captures;
