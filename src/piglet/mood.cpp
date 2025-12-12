@@ -30,6 +30,9 @@ String Mood::phraseQueue[3] = {"", "", ""};
 uint8_t Mood::phraseQueueCount = 0;
 uint32_t Mood::lastQueuePop = 0;
 
+// Milestone celebration tracking (reset on init)
+static uint32_t milestonesShown = 0;
+
 // Mood peek system - briefly show emotional state during mode-locked states
 static bool moodPeekActive = false;
 static uint32_t moodPeekStartTime = 0;
@@ -226,6 +229,9 @@ static void addToHistory(int catIdx, int idx) {
 
 // Helper: pick random phrase avoiding last 3 used
 static int pickPhraseIdx(PhraseCategory cat, int count) {
+    // Guard against empty phrase arrays
+    if (count <= 0) return 0;
+    
     initPhraseHistory();
     int catIdx = (int)cat;
     int idx;
@@ -357,18 +363,18 @@ const char* PHRASES_PIGGYBLUES_IDLE[] = {
     "making friends (forcibly)"
 };
 
-// Deauth success - short MAC format %02X%02X
+// Deauth success - 802.11 hacker rap style
 const char* PHRASES_DEAUTH_SUCCESS[] = {
-    "%s oinked out",
-    "%s got rekt",
-    "%s yeeted",
-    "%s bye bye",
-    "%s snout bonk",
-    "%s evicted",
-    "%s oink oink",
-    "%s trampled",
-    "%s skill issue",
-    "%s squealed"
+    "%s disassoc'd",
+    "%s reason code 7",
+    "%s frame dropped",
+    "%s wifi canceled",
+    "%s unauth'd lol",
+    "%s ejected ez",
+    "%s 802.11 rekt",
+    "%s connection ded",
+    "%s off my channel",
+    "%s skill issue"
 };
 
 // PMKID captured - clientless attack, special celebration!
@@ -415,6 +421,9 @@ void Mood::init() {
     // Reset phrase queue
     phraseQueueCount = 0;
     
+    // Reset milestone tracking for new session
+    milestonesShown = 0;
+    
     // Phase 10: Load saved mood from NVS
     moodPrefs.begin(MOOD_NVS_NAMESPACE, true);  // Read-only
     int8_t savedMood = moodPrefs.getChar("mood", 50);
@@ -459,7 +468,7 @@ void Mood::update() {
     }
     
     // Phase 9: Check for milestone celebrations
-    static uint32_t milestonesShown = 0;  // Bitfield of shown milestones
+    // (milestonesShown is file-level static, reset in init())
     const SessionStats& sess = XP::getSession();
     
     // Network milestones: 10, 50, 100, 500, 1000
@@ -1074,40 +1083,53 @@ int Mood::getCurrentHappiness() {
     return happiness;
 }
 
-// Sniffing phrases
+// Sniffing phrases - 802.11 monitor mode style
 const char* PHRASES_SNIFFING[] = {
-    "sniff sniff",
-    "pcap n nap",
-    "parsing mud",
     "channel hoppin",
     "raw sniffin",
     "mon0 piggy",
-    "dump n pump",
-    "truffle hunt"
+    "promisc mode",
+    "beacon dump",
+    "frame harvest",
+    "airsnort vibes",
+    "ether tapping",
+    "mgmt snooping",
+    "pcap or it didnt",
+    "0x8000 stalkin",
+    "radiodump",
+    "passive recon"
 };
 
-// Deauth/digging phrases
+// Deauth/digging phrases - 802.11 hacker rap style
 const char* PHRASES_DEAUTH[] = {
-    "rootin at %s",
-    "bonkin %s",
-    "snout on %s",
-    "oink at %s",
-    "shakin %s tree",
-    "oinkin at %s",
-    "poke poke %s",
-    "pwning %s"
+    "droppin frames on %s",
+    "802.11 slayin %s",
+    "disassoc %s hard",
+    "mgmt frame rain %s",
+    "reason code 7 %s",
+    "snout checkin %s",
+    "kickin %s off turf",
+    "deauth flow on %s"
 };
 
-// Idle phrases (non-misleading)
+// Idle phrases - mode hints and hacker personality
 const char* PHRASES_MENU_IDLE[] = {
-    "oink oink",
     "[O] truffle hunt",
     "[W] hog out",
-    "piggy ready",
-    "awaiting chaos",
+    "[B] spam the ether",
+    "[H] peek the spectrum",
     "pick ur poison",
-    "do somethin",
-    "hack or snack"
+    "press key or perish",
+    "awaiting chaos",
+    "idle paws...",
+    "root or reboot",
+    "802.11 on standby",
+    "snout calibrated",
+    "kernel panik ready",
+    "inject or eject",
+    "oink//null",
+    "promiscuous mode",
+    "sudo make bacon"
 };
 
 void Mood::onSniffing(uint16_t networkCount, uint8_t channel) {

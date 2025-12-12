@@ -46,6 +46,8 @@ bool SpectrumMode::keyWasPressed = false;
 uint8_t SpectrumMode::currentChannel = 1;
 uint32_t SpectrumMode::lastHopTime = 0;
 uint32_t SpectrumMode::startTime = 0;
+volatile bool SpectrumMode::pendingReveal = false;
+char SpectrumMode::pendingRevealSSID[33] = {0};
 
 void SpectrumMode::init() {
     networks.clear();
@@ -57,6 +59,8 @@ void SpectrumMode::init() {
     lastHopTime = 0;
     startTime = 0;
     busy = false;
+    pendingReveal = false;
+    pendingRevealSSID[0] = 0;
 }
 
 void SpectrumMode::start() {
@@ -109,6 +113,12 @@ void SpectrumMode::update() {
     if (!running) return;
     
     uint32_t now = millis();
+    
+    // Process deferred reveal logging (from callback)
+    if (pendingReveal) {
+        Serial.printf("[SPECTRUM] Hidden SSID revealed: %s\n", pendingRevealSSID);
+        pendingReveal = false;
+    }
     
     // Handle input
     handleInput();
@@ -376,9 +386,12 @@ void SpectrumMode::pruneStale() {
     busy = false;
 }
 
-void SpectrumMode::onBeacon(const uint8_t* bssid, uint8_t channel, int8_t rssi, const char* ssid, wifi_auth_mode_t authmode, bool hasPMF) {
+void SpectrumMode::onBeacon(const uint8_t* bssid, uint8_t channel, int8_t rssi, const char* ssid, wifi_auth_mode_t authmode, bool hasPMF, bool isProbeResponse) {
     // Skip if main thread is accessing networks
     if (busy) return;
+    
+    bool hasSSID = (ssid && ssid[0] != 0);
+    
     // Look for existing network
     for (auto& net : networks) {
         if (memcmp(net.bssid, bssid, 6) == 0) {
@@ -387,7 +400,21 @@ void SpectrumMode::onBeacon(const uint8_t* bssid, uint8_t channel, int8_t rssi, 
             net.lastSeen = millis();
             net.authmode = authmode;  // Update auth mode
             net.hasPMF = hasPMF;      // Update PMF status
-            if (ssid && ssid[0] && net.ssid[0] == 0) {
+            
+            // Probe response can reveal hidden SSID
+            if (hasSSID && net.isHidden && net.ssid[0] == 0) {
+                strncpy(net.ssid, ssid, 32);
+                net.ssid[32] = 0;
+                net.wasRevealed = true;
+                // Defer logging to main thread (avoid Serial in WiFi callback)
+                if (!pendingReveal) {
+                    strncpy(pendingRevealSSID, ssid, 32);
+                    pendingRevealSSID[32] = 0;
+                    pendingReveal = true;
+                }
+            }
+            // Also update if we had no SSID before
+            else if (hasSSID && net.ssid[0] == 0) {
                 strncpy(net.ssid, ssid, 32);
                 net.ssid[32] = 0;
             }
@@ -400,15 +427,20 @@ void SpectrumMode::onBeacon(const uint8_t* bssid, uint8_t channel, int8_t rssi, 
     
     SpectrumNetwork net = {0};
     memcpy(net.bssid, bssid, 6);
-    if (ssid) {
+    if (hasSSID) {
         strncpy(net.ssid, ssid, 32);
         net.ssid[32] = 0;
+        net.isHidden = false;
+    } else {
+        // Empty SSID = hidden network
+        net.isHidden = true;
     }
     net.channel = channel;
     net.rssi = rssi;
     net.lastSeen = millis();
     net.authmode = authmode;
     net.hasPMF = hasPMF;
+    net.wasRevealed = false;
     
     networks.push_back(net);
     
@@ -419,6 +451,9 @@ void SpectrumMode::onBeacon(const uint8_t* bssid, uint8_t channel, int8_t rssi, 
 }
 
 String SpectrumMode::getSelectedInfo() {
+    // Guard against callback race
+    if (busy) return "Scanning...";
+    
     if (selectedIndex >= 0 && selectedIndex < (int)networks.size()) {
         const auto& net = networks[selectedIndex];
         
@@ -427,7 +462,12 @@ String SpectrumMode::getSelectedInfo() {
         // SSID gets max 15 chars + ".." if truncated
         const int MAX_SSID_DISPLAY = 15;
         
-        String ssid = net.ssid[0] ? net.ssid : "[hidden]";
+        String ssid;
+        if (net.ssid[0]) {
+            ssid = net.wasRevealed ? String("*") + net.ssid : net.ssid;
+        } else {
+            ssid = "[hidden]";
+        }
         if (ssid.length() > MAX_SSID_DISPLAY) {
             ssid = ssid.substring(0, MAX_SSID_DISPLAY) + "..";
         }
@@ -461,6 +501,8 @@ void SpectrumMode::promiscuousCallback(void* buf, wifi_promiscuous_pkt_type_t ty
     // Check frame type - beacon (0x80) or probe response (0x50)
     uint8_t frameType = payload[0];
     if (frameType != 0x80 && frameType != 0x50) return;
+    
+    bool isProbeResponse = (frameType == 0x50);
     
     // BSSID is at offset 16
     const uint8_t* bssid = payload + 16;
@@ -522,7 +564,7 @@ void SpectrumMode::promiscuousCallback(void* buf, wifi_promiscuous_pkt_type_t ty
     }
     
     // Update spectrum data
-    onBeacon(bssid, channel, rssi, ssid, authmode, hasPMF);
+    onBeacon(bssid, channel, rssi, ssid, authmode, hasPMF, isProbeResponse);
 }
 
 // Check if auth mode is considered vulnerable (OPEN, WEP, WPA1)
