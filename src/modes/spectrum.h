@@ -6,18 +6,11 @@
 #include <vector>
 #include <esp_wifi_types.h>
 
-// Signal trail history depth
-const int RSSI_HISTORY_SIZE = 8;
-
 struct SpectrumNetwork {
     uint8_t bssid[6];
     char ssid[33];
     uint8_t channel;         // 1-13
     int8_t rssi;             // Latest RSSI
-    int8_t peakRssi;         // Peak hold - strongest RSSI seen
-    uint32_t peakTime;       // When peak was recorded
-    int8_t rssiHistory[RSSI_HISTORY_SIZE];  // Ring buffer for signal trails
-    uint8_t historyIndex;    // Current position in ring buffer
     uint32_t lastSeen;       // millis() of last beacon
     wifi_auth_mode_t authmode; // Security type (OPEN/WEP/WPA/WPA2/WPA3)
     bool hasPMF;             // Protected Management Frames (immune to deauth)
@@ -60,7 +53,6 @@ private:
     static void handleInput();
     static void drawSpectrum(M5Canvas& canvas);
     static void drawGaussianLobe(M5Canvas& canvas, float centerFreqMHz, int8_t rssi, bool filled);
-    static void drawGaussianLobeGhost(M5Canvas& canvas, float centerFreqMHz, int8_t rssi, int age);
     static void drawAxis(M5Canvas& canvas);
     static void drawChannelMarkers(M5Canvas& canvas);
     static void pruneStale();        // Remove networks not seen recently
