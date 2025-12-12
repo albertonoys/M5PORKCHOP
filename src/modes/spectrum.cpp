@@ -277,7 +277,25 @@ void SpectrumMode::drawSpectrum(M5Canvas& canvas) {
         return a.rssi < b.rssi;
     });
     
-    // Draw each network's Gaussian lobe
+    // First pass: Draw signal trail ghost lobes (faded history)
+    for (size_t i = 0; i < sorted.size(); i++) {
+        const auto& net = sorted[i];
+        float freq = channelToFreq(net.channel);
+        
+        // Draw ghost trails from history (oldest to newest, progressively brighter)
+        for (int h = 0; h < RSSI_HISTORY_SIZE; h++) {
+            // Start from oldest entry in ring buffer
+            int idx = (net.historyIndex + h) % RSSI_HISTORY_SIZE;
+            int8_t histRssi = net.rssiHistory[idx];
+            
+            // Only draw if different from current (avoid overlap)
+            if (histRssi != net.rssi) {
+                drawGaussianLobeGhost(canvas, freq, histRssi, h);
+            }
+        }
+    }
+    
+    // Second pass: Draw current lobes (solid)
     for (size_t i = 0; i < sorted.size(); i++) {
         const auto& net = sorted[i];
         float freq = channelToFreq(net.channel);
@@ -289,6 +307,18 @@ void SpectrumMode::drawSpectrum(M5Canvas& canvas) {
         }
         
         drawGaussianLobe(canvas, freq, net.rssi, isSelected);
+        
+        // Third pass: Draw peak hold markers
+        if (net.peakRssi > net.rssi) {
+            int peakY = rssiToY(net.peakRssi);
+            int centerX = freqToX(freq);
+            
+            // Only draw if in visible area
+            if (centerX >= SPECTRUM_LEFT && centerX <= SPECTRUM_RIGHT && peakY < SPECTRUM_BOTTOM) {
+                // Small horizontal line at peak level
+                canvas.drawFastHLine(centerX - 3, peakY, 7, COLOR_FG);
+            }
+        }
     }
 }
 
@@ -333,6 +363,51 @@ void SpectrumMode::drawGaussianLobe(M5Canvas& canvas, float centerFreqMHz,
                 // Outline only - connect points
                 canvas.drawLine(prevX, prevY, x, y, COLOR_FG);
             }
+        }
+        
+        prevX = x;
+        prevY = y;
+    }
+}
+
+// Ghost lobe for signal trails - faded/dashed based on age
+void SpectrumMode::drawGaussianLobeGhost(M5Canvas& canvas, float centerFreqMHz,
+                                          int8_t rssi, int age) {
+    const float sigma = 6.6f;
+    
+    int peakY = rssiToY(rssi);
+    int baseY = SPECTRUM_BOTTOM;
+    
+    if (peakY >= baseY) return;
+    
+    // Calculate fade color based on age (older = more faded)
+    // age 0 = oldest, age 7 = newest
+    // Fade from very dim to slightly visible
+    // Use stipple pattern: draw every Nth pixel based on age
+    int skipRate = 8 - age;  // Oldest skips most, newest skips least
+    if (skipRate < 2) skipRate = 2;  // At least every 2nd pixel
+    
+    int pixelCount = 0;
+    int prevX = -1;
+    int prevY = baseY;
+    
+    for (float freq = centerFreqMHz - 15; freq <= centerFreqMHz + 15; freq += 1.0f) {
+        int x = freqToX(freq);
+        
+        if (x < SPECTRUM_LEFT || x > SPECTRUM_RIGHT) {
+            prevX = x;
+            prevY = baseY;
+            continue;
+        }
+        
+        float dist = freq - centerFreqMHz;
+        float amplitude = expf(-0.5f * (dist * dist) / (sigma * sigma));
+        int y = baseY - (int)((baseY - peakY) * amplitude);
+        
+        // Stipple pattern - only draw every Nth point for ghost effect
+        pixelCount++;
+        if ((pixelCount % skipRate) == 0 && y < baseY) {
+            canvas.drawPixel(x, y, COLOR_FG);
         }
         
         prevX = x;
@@ -391,15 +466,26 @@ void SpectrumMode::onBeacon(const uint8_t* bssid, uint8_t channel, int8_t rssi, 
     if (busy) return;
     
     bool hasSSID = (ssid && ssid[0] != 0);
+    uint32_t now = millis();
     
     // Look for existing network
     for (auto& net : networks) {
         if (memcmp(net.bssid, bssid, 6) == 0) {
-            // Update existing
+            // Push current RSSI to history ring buffer before updating
+            net.rssiHistory[net.historyIndex] = net.rssi;
+            net.historyIndex = (net.historyIndex + 1) % RSSI_HISTORY_SIZE;
+            
+            // Update current RSSI
             net.rssi = rssi;
-            net.lastSeen = millis();
-            net.authmode = authmode;  // Update auth mode
-            net.hasPMF = hasPMF;      // Update PMF status
+            net.lastSeen = now;
+            net.authmode = authmode;
+            net.hasPMF = hasPMF;
+            
+            // Update peak hold (decay peak after 5 seconds)
+            if (rssi > net.peakRssi || (now - net.peakTime) > 5000) {
+                net.peakRssi = rssi;
+                net.peakTime = now;
+            }
             
             // Probe response can reveal hidden SSID
             if (hasSSID && net.isHidden && net.ssid[0] == 0) {
@@ -437,7 +523,14 @@ void SpectrumMode::onBeacon(const uint8_t* bssid, uint8_t channel, int8_t rssi, 
     }
     net.channel = channel;
     net.rssi = rssi;
-    net.lastSeen = millis();
+    net.peakRssi = rssi;  // Initial peak is current
+    net.peakTime = now;
+    net.historyIndex = 0;
+    // Initialize history with current RSSI
+    for (int i = 0; i < RSSI_HISTORY_SIZE; i++) {
+        net.rssiHistory[i] = rssi;
+    }
+    net.lastSeen = now;
     net.authmode = authmode;
     net.hasPMF = hasPMF;
     net.wasRevealed = false;
