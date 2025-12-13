@@ -150,6 +150,20 @@ Two separate timers control pig behavior when stationary (grass not moving):
 - **Colors**: COLOR_FG = 0xFD75 (piglet pink), COLOR_BG = 0x0000 (black)
 - **Display**: 240x135 pixels, landscape orientation
 
+### Toast/Dialog Styling
+All modal dialogs and toasts use consistent styling:
+```cpp
+// Black border (2px) then pink fill with rounded corners
+canvas.fillRoundRect(boxX - 2, boxY - 2, boxW + 4, boxH + 4, 8, COLOR_BG);
+canvas.fillRoundRect(boxX, boxY, boxW, boxH, 8, COLOR_FG);
+
+// Black text on pink background, centered
+canvas.setTextColor(COLOR_BG, COLOR_FG);
+canvas.setTextDatum(top_center);
+canvas.drawString("Message", centerX, boxY + 8);
+```
+Used in: `showToast()`, `showLevelUp()`, `showClassPromotion()`, warning dialogs, nuke confirmation, achievement details.
+
 ## Keyboard Navigation (M5Cardputer)
 
 - **`;`** - Previous/Up/Decrease value

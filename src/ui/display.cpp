@@ -497,7 +497,8 @@ void Display::showToast(const String& message) {
     
     mainCanvas.fillSprite(COLOR_BG);
     
-    // Pink filled box with slight padding for border effect
+    // Black border then pink fill
+    mainCanvas.fillRoundRect(boxX - 2, boxY - 2, boxW + 4, boxH + 4, 8, COLOR_BG);
     mainCanvas.fillRoundRect(boxX, boxY, boxW, boxH, 8, COLOR_FG);
     
     // Black text on pink background
@@ -534,7 +535,8 @@ void Display::showLevelUp(uint8_t oldLevel, uint8_t newLevel) {
     
     mainCanvas.fillSprite(COLOR_BG);
     
-    // Pink filled box
+    // Black border then pink fill
+    mainCanvas.fillRoundRect(boxX - 2, boxY - 2, boxW + 4, boxH + 4, 8, COLOR_BG);
     mainCanvas.fillRoundRect(boxX, boxY, boxW, boxH, 8, COLOR_FG);
     
     // Black text on pink background
@@ -604,7 +606,8 @@ void Display::showClassPromotion(const char* oldClass, const char* newClass) {
     
     mainCanvas.fillSprite(COLOR_BG);
     
-    // Pink filled box
+    // Black border then pink fill
+    mainCanvas.fillRoundRect(boxX - 2, boxY - 2, boxW + 4, boxH + 4, 8, COLOR_BG);
     mainCanvas.fillRoundRect(boxX, boxY, boxW, boxH, 8, COLOR_FG);
     
     // Black text on pink background

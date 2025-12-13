@@ -215,6 +215,8 @@ void AchievementsMenu::drawDetail(M5Canvas& canvas) {
     int boxX = (canvas.width() - boxW) / 2;
     int boxY = (canvas.height() - boxH) / 2;
     
+    // Black border then pink fill
+    canvas.fillRoundRect(boxX - 2, boxY - 2, boxW + 4, boxH + 4, 8, COLOR_BG);
     canvas.fillRoundRect(boxX, boxY, boxW, boxH, 8, COLOR_FG);
     
     // Black text on pink background
