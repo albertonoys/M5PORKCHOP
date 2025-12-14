@@ -33,14 +33,11 @@ bool Display::dimmed = false;
 bool Display::snapping = false;
 String Display::bottomOverlay = "";
 
-// PWNED banner state (displayed in top bar)
+// PWNED banner state (displayed in top bar, persists until reboot)
 static String lootSSID = "";
-static uint32_t lootDisplayUntil = 0;
-const uint32_t LOOT_DISPLAY_MS = 60000;  // 1 minute
 
 void Display::showLoot(const String& ssid) {
     lootSSID = ssid;
-    lootDisplayUntil = millis() + LOOT_DISPLAY_MS;
 }
 
 extern Porkchop porkchop;
@@ -332,7 +329,7 @@ void Display::drawBottomBar() {
         stats = "[;/.] scroll  [Bksp] exit";
     } else if (mode == PorkchopMode::OINK_MODE) {
         // OINK: show Networks, Handshakes, Deauths, Channel, and BRO count
-        // (LOOT banner is now shown in XP bar area, not bottom bar)
+        // (PWNED banner is shown in top bar)
         uint16_t netCount = OinkMode::getNetworkCount();
         uint16_t hsCount = OinkMode::getCompleteHandshakeCount();
         uint32_t deauthCount = OinkMode::getDeauthCount();

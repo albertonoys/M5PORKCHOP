@@ -1929,10 +1929,6 @@ bool OinkMode::hasHandshakeFor(const uint8_t* bssid) {
     return false;
 }
 
-String OinkMode::getLastPwned() {
-    return lastPwnedSSID;
-}
-
 void OinkMode::sortNetworksByPriority() {
     // Sort networks by attack priority:
     // 1. Has clients + no handshake + not PMF (highest priority)
