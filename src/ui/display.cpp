@@ -370,8 +370,8 @@ void Display::drawBottomBar() {
         // SPECTRUM: show selected network info or scan status
         stats = SpectrumMode::getSelectedInfo();
     } else if (mode == PorkchopMode::BOAR_BROS) {
-        // BOAR BROS: show key hints
-        stats = "[;/.] scroll  [D] delete  [Bksp] exit";
+        // BOAR BROS: show delete hint
+        stats = "[D] delete";
     } else {
         // Default: Networks, Handshakes, Deauths
         uint16_t netCount = porkchop.getNetworkCount();
