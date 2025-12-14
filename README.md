@@ -105,11 +105,13 @@
         BOAR BROS exclusion list. Tagged networks are permanently ignored:
 
         * Excluded from attack targeting - your home router stays safe
+        * Excluding current target aborts attack immediately - instant mercy
         * Excluded from deauth storms - don't pwn your own network
         * Persists across reboots in /boar_bros.txt on SD card
         * Hidden networks stored as "NONAME BRO"
         * View/manage in menu: BOAR BROS (shows count: BRO: X)
         * Delete bros from the list with [D] key in management menu
+        * Visible in HOG ON SPECTRUM mode with [BRO] indicator
 
         Your neighbor's router? Fair game. Your own? BOAR BRO.
 
@@ -249,6 +251,7 @@
         * Lobe height based on RSSI - stronger signal = taller peak
         * [VULN!] indicator for weak security (OPEN/WEP/WPA1)
         * [DEAUTH] indicator for networks without PMF protection
+        * [BRO] indicator for networks in your BOAR BROS exclusion list
         * Network selection via ; and . - scroll through discovered APs
         * Enter key shows network details (SSID, BSSID, RSSI, channel, auth)
         * Bottom bar shows selected network info or scan status
