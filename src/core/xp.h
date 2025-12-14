@@ -201,6 +201,9 @@ public:
     // Draw XP bar on canvas
     static void drawBar(M5Canvas& canvas);
     
+    // LOOT banner (displayed for 1 minute after capture)
+    static void showLoot(const String& ssid);
+    
     // Level up callback (set by display to show popup)
     static void setLevelUpCallback(void (*callback)(uint8_t oldLevel, uint8_t newLevel));
 

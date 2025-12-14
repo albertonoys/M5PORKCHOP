@@ -376,8 +376,10 @@ void Porkchop::handleInput() {
                 int idx = OinkMode::getSelectionIndex();
                 if (OinkMode::excludeNetwork(idx)) {
                     Display::showToast("BOAR BRO added!");
+                    delay(500);  // Standard toast duration
                 } else {
                     Display::showToast("Already a bro");
+                    delay(500);  // Standard toast duration
                 }
             }
             eWasPressed = true;

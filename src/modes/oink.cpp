@@ -3,6 +3,7 @@
 #include "oink.h"
 #include "../core/config.h"
 #include "../core/wsl_bypasser.h"
+#include "../core/xp.h"
 #include "../ui/display.h"
 #include "../piglet/mood.h"
 #include "../piglet/avatar.h"
@@ -335,6 +336,7 @@ void OinkMode::update() {
     if (pendingHandshakeComplete) {
         Mood::onHandshakeCaptured(pendingHandshakeSSID);
         lastPwnedSSID = String(pendingHandshakeSSID);
+        XP::showLoot(lastPwnedSSID);  // Show LOOT banner for 1 minute
         pendingHandshakeComplete = false;
     }
     
@@ -342,6 +344,7 @@ void OinkMode::update() {
     if (pendingPMKIDCapture) {
         Mood::onPMKIDCaptured(pendingPMKIDSSID);
         lastPwnedSSID = String(pendingPMKIDSSID);  // PMKID counts as pwned!
+        XP::showLoot(lastPwnedSSID);  // Show LOOT banner for 1 minute
         pendingPMKIDCapture = false;
     }
     

@@ -307,20 +307,16 @@ void Display::drawBottomBar() {
         // LOG_VIEWER: show scroll hint
         stats = "[;/.] scroll  [Bksp] exit";
     } else if (mode == PorkchopMode::OINK_MODE) {
-        // OINK: show Networks, Handshakes, Deauths, Channel, and last pwned
+        // OINK: show Networks, Handshakes, Deauths, Channel, and BRO count
+        // (LOOT banner is now shown in XP bar area, not bottom bar)
         uint16_t netCount = OinkMode::getNetworkCount();
         uint16_t hsCount = OinkMode::getCompleteHandshakeCount();
         uint32_t deauthCount = OinkMode::getDeauthCount();
         uint8_t channel = OinkMode::getChannel();
         uint16_t broCount = OinkMode::getExcludedCount();
-        String pwned = OinkMode::getLastPwned();
         char buf[64];
-        if (pwned.length() > 0) {
-            // Truncate SSID if too long (7 chars + ".." to fit with 2-digit channel)
-            if (pwned.length() > 7) pwned = pwned.substring(0, 7) + "..";
-            snprintf(buf, sizeof(buf), "N:%d HS:%d D:%lu CH:%d PWN:%s", netCount, hsCount, deauthCount, channel, pwned.c_str());
-        } else if (broCount > 0) {
-            // Show BOAR BRO count when no recent pwn
+        if (broCount > 0) {
+            // Show BOAR BRO count
             snprintf(buf, sizeof(buf), "N:%d HS:%d D:%lu CH:%d BRO:%d", netCount, hsCount, deauthCount, channel, broCount);
         } else {
             snprintf(buf, sizeof(buf), "N:%d HS:%d D:%lu CH:%d", netCount, hsCount, deauthCount, channel);

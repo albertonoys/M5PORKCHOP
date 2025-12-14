@@ -245,6 +245,16 @@ static uint32_t lastKmAwarded = 0;
 static uint16_t lastXPGainAmount = 0;
 static uint32_t lastXPGainMs = 0;
 
+// LOOT banner state (displayed on y=99 left side)
+static String lootSSID = "";
+static uint32_t lootDisplayUntil = 0;
+const uint32_t LOOT_DISPLAY_MS = 60000;  // 1 minute
+
+void XP::showLoot(const String& ssid) {
+    lootSSID = ssid;
+    lootDisplayUntil = millis() + LOOT_DISPLAY_MS;
+}
+
 void XP::startSession() {
     memset(&session, 0, sizeof(session));
     session.startTime = millis();
@@ -945,6 +955,20 @@ void XP::drawBar(M5Canvas& canvas) {
         char gainStr[16];
         snprintf(gainStr, sizeof(gainStr), "+%u PTS!", (unsigned)lastXPGainAmount);
         canvas.drawString(gainStr, xpLabelX, barY + 8);
+    }
+    
+    // Draw LOOT banner on left side of same line (y = barY + 8)
+    if (lootSSID.length() > 0 && millis() < lootDisplayUntil) {
+        String lootText = "LOOT: " + lootSSID;
+        int maxLootW = xpLabelX - 6;  // Leave gap before +N PTS area
+        // Truncate if needed
+        while (canvas.textWidth(lootText) > maxLootW && lootText.length() > 8) {
+            lootText = lootText.substring(0, lootText.length() - 1);
+        }
+        if (canvas.textWidth(lootText) > maxLootW) {
+            lootText = lootText.substring(0, lootText.length() - 2) + "..";
+        }
+        canvas.drawString(lootText, 2, barY + 8);
     }
     
     // Draw progress bar
