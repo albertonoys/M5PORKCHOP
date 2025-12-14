@@ -238,16 +238,14 @@ void BoarBrosMenu::draw(M5Canvas& canvas) {
         // SSID or "Unknown"
         canvas.setCursor(4, y);
         String displayName = bro.ssid.length() > 0 ? bro.ssid : "(unknown)";
-        if (displayName.length() > 14) {
-            displayName = displayName.substring(0, 12) + "..";
+        if (displayName.length() > 12) {
+            displayName = displayName.substring(0, 10) + "..";
         }
         canvas.print(displayName);
         
-        // BSSID (shortened)
-        canvas.setCursor(110, y);
-        // Show last 8 chars of BSSID for space
-        String shortBssid = bro.bssidStr.substring(9);  // "DD:EE:FF"
-        canvas.print(shortBssid);
+        // Full BSSID (fits at x=80, 17 chars * 6px = 102px, ends at 182px)
+        canvas.setCursor(80, y);
+        canvas.print(bro.bssidStr);
         
         y += lineHeight;
     }
