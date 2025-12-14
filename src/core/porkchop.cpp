@@ -380,23 +380,21 @@ void Porkchop::handleInput() {
             return;
         }
         // E key - add selected network to BOAR BROS exclusion list
-        if (M5Cardputer.Keyboard.isKeyPressed('e') || M5Cardputer.Keyboard.isKeyPressed('E')) {
-            static bool eWasPressed = false;
-            if (!eWasPressed) {
-                int idx = OinkMode::getSelectionIndex();
-                if (OinkMode::excludeNetwork(idx)) {
-                    Display::showToast("BOAR BRO added!");
-                    delay(500);  // Standard toast duration
-                } else {
-                    Display::showToast("Already a bro");
-                    delay(500);  // Standard toast duration
-                }
+        static bool eWasPressed = false;
+        bool ePressed = M5Cardputer.Keyboard.isKeyPressed('e') || M5Cardputer.Keyboard.isKeyPressed('E');
+        if (ePressed && !eWasPressed) {
+            int idx = OinkMode::getSelectionIndex();
+            if (OinkMode::excludeNetwork(idx)) {
+                Display::showToast("BOAR BRO added!");
+                delay(500);  // Standard toast duration
+                // Move to next network after excluding current one
+                OinkMode::moveSelectionDown();
+            } else {
+                Display::showToast("Already a bro");
+                delay(500);  // Standard toast duration
             }
-            eWasPressed = true;
-        } else {
-            static bool eWasPressed = false;
-            eWasPressed = false;
         }
+        eWasPressed = ePressed;
     }
     
     // WARHOG mode - Backspace to stop and return to idle
