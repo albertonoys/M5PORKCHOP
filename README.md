@@ -545,7 +545,7 @@
 
 ----[ 3.10 - Achievements
 
-    47 secret badges to prove you're not just grinding mindlessly.
+    60 secret badges to prove you're not just grinding mindlessly.
     Or maybe you are. Either way, proof of pwn.
 
     The Achievements menu shows what you've earned. Locked ones show
@@ -592,7 +592,7 @@
     -1ms jitter, and +5% on everything. The grind pays off.
 
 
-----[ 3.10.2 - Mood Buffs/Debuffs
+----[ 3.11.2 - Mood Buffs/Debuffs
 
     The mood system ties happiness to mechanics. Happy pig = aggressive.
     Sad pig = sluggish. Keep the meter up and feel the difference.
@@ -823,7 +823,7 @@
         | Dim After  | Screen dim timeout, 0=never   | 30s     |
         | Dim Level  | Brightness when dimmed        | 20%     |
         | CH Hop     | Channel hop interval          | 500ms   |
-        | Lock Time  | Client discovery window       | 3000ms  |
+        | Lock Time  | Client discovery window       | 4000ms  |
         | Deauth     | Enable deauth attacks         | ON      |
         | Rnd MAC    | Randomize MAC on mode start   | ON      |
         | DO NO HAM  | Passive-only recon mode       | OFF     |
