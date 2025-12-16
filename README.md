@@ -279,13 +279,20 @@
         * 5000 BSSID cache before dedup stops (more than enough)
         * Crash protection: 60s auto-dumps, worst case = 1 min data loss
         * 32-feature ML extraction for every AP (Enhanced mode)
+        * Dual export: internal CSV + WiGLE v1.6 format simultaneously
 
     Export formats for your collection:
 
         * CSV: Spreadsheet warriors, this is yours
-        * Wigle: Upload directly to wigle.net, flex your coverage
+        * Wigle: v1.6 format, ready for wigle.net upload
         * Kismet NetXML: For the old school with Kismet workflows
         * ML Training: Feature vectors for Edge Impulse, feed the brain
+
+    WiGLE integration is automatic. Every geotagged network gets written
+    to both /wardriving/warhog_*.csv (internal format) and
+    /wardriving/warhog_*.wigle.csv (WiGLE v1.6). Take the .wigle.csv
+    files home and upload at wigle.net/upload for instant leaderboard
+    points. API upload coming in a future release.
 
     No GPS? No coordinates. The pig still logs networks but you get zeros
     in the lat/lon columns. ML training data still useful though - Enhanced
@@ -830,6 +837,8 @@
         | WiFi SSID  | Network for file transfer     | -       |
         | WiFi Pass  | Password for that network     | -       |
         | WPA-SEC Key| 32-char hex key for cracking  | -       |
+        | WiGLE Name | WiGLE API name for uploads    | -       |
+        | WiGLE Token| WiGLE API token for uploads   | -       |
         | Sound      | Beeps when things happen      | ON      |
         | Brightness | Display brightness            | 80%     |
         | Dim After  | Screen dim timeout, 0=never   | 30s     |

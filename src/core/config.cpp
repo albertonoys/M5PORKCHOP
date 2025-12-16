@@ -118,6 +118,8 @@ bool Config::load() {
         wifiConfig.otaPassword = doc["wifi"]["otaPassword"] | "";
         wifiConfig.autoConnect = doc["wifi"]["autoConnect"] | false;
         wifiConfig.wpaSecKey = doc["wifi"]["wpaSecKey"] | "";
+        wifiConfig.wigleApiName = doc["wifi"]["wigleApiName"] | "";
+        wifiConfig.wigleApiToken = doc["wifi"]["wigleApiToken"] | "";
     }
     
     // BLE config (PIGGY BLUES)
@@ -230,6 +232,8 @@ bool Config::save() {
     doc["wifi"]["otaPassword"] = wifiConfig.otaPassword;
     doc["wifi"]["autoConnect"] = wifiConfig.autoConnect;
     doc["wifi"]["wpaSecKey"] = wifiConfig.wpaSecKey;
+    doc["wifi"]["wigleApiName"] = wifiConfig.wigleApiName;
+    doc["wifi"]["wigleApiToken"] = wifiConfig.wigleApiToken;
     
     // BLE config (PIGGY BLUES)
     doc["ble"]["burstInterval"] = bleConfig.burstInterval;
@@ -334,6 +338,58 @@ bool Config::loadWpaSecKeyFromFile() {
         SDLog::log("CFG", "WPA-SEC key imported from file");
     } else {
         Serial.println("[CONFIG] Warning: Could not delete wpasec_key.txt");
+    }
+    
+    return true;
+}
+
+bool Config::loadWigleKeyFromFile() {
+    const char* keyFile = "/wigle_key.txt";
+    
+    if (!sdAvailable || !SD.exists(keyFile)) {
+        return false;
+    }
+    
+    File f = SD.open(keyFile, FILE_READ);
+    if (!f) {
+        Serial.println("[CONFIG] Failed to open wigle_key.txt");
+        return false;
+    }
+    
+    // Read the key file (format: apiname:apitoken)
+    String content = f.readStringUntil('\n');
+    content.trim();
+    f.close();
+    
+    // Find the colon separator
+    int colonPos = content.indexOf(':');
+    if (colonPos < 1) {
+        Serial.println("[CONFIG] Invalid WiGLE key format (expected name:token)");
+        return false;
+    }
+    
+    String apiName = content.substring(0, colonPos);
+    String apiToken = content.substring(colonPos + 1);
+    
+    apiName.trim();
+    apiToken.trim();
+    
+    if (apiName.isEmpty() || apiToken.isEmpty()) {
+        Serial.println("[CONFIG] WiGLE API name or token is empty");
+        return false;
+    }
+    
+    // Store the keys
+    wifiConfig.wigleApiName = apiName;
+    wifiConfig.wigleApiToken = apiToken;
+    save();
+    
+    // Delete the file for security
+    if (SD.remove(keyFile)) {
+        Serial.println("[CONFIG] Deleted wigle_key.txt after import");
+        SDLog::log("CFG", "WiGLE API keys imported from file");
+    } else {
+        Serial.println("[CONFIG] Warning: Could not delete wigle_key.txt");
     }
     
     return true;

@@ -48,6 +48,8 @@ struct WiFiConfig {
     String otaPassword = "";
     bool autoConnect = false;
     String wpaSecKey = "";              // WPA-SEC.stanev.org user key (32 hex chars)
+    String wigleApiName = "";           // WiGLE API Name (from wigle.net/account)
+    String wigleApiToken = "";          // WiGLE API Token (from wigle.net/account)
 };
 
 // BLE settings for PIGGY BLUES mode
@@ -79,6 +81,7 @@ public:
     static bool loadPersonality();
     static bool isSDAvailable();
     static bool loadWpaSecKeyFromFile();  // Load key from /wpasec_key.txt and delete file
+    static bool loadWigleKeyFromFile();   // Load keys from /wigle_key.txt and delete file
     
     // Getters
     static GPSConfig& gps() { return gpsConfig; }

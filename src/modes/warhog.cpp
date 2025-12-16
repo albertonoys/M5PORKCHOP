@@ -82,6 +82,7 @@ uint32_t WarhogMode::savedCount = 0;      // Geotagged networks (CSV)
 uint32_t WarhogMode::mlOnlyCount = 0;     // Networks without GPS (ML only)
 String WarhogMode::currentFilename = "";
 String WarhogMode::currentMLFilename = "";
+String WarhogMode::currentWigleFilename = "";
 
 // Scan state
 bool WarhogMode::scanInProgress = false;
@@ -125,6 +126,7 @@ void WarhogMode::init() {
     mlOnlyCount = 0;
     currentFilename = "";
     currentMLFilename = "";
+    currentWigleFilename = "";
     
     // Check if Enhanced ML mode is enabled
     enhancedMode = (Config::ml().collectionMode == MLCollectionMode::ENHANCED);
@@ -155,6 +157,7 @@ void WarhogMode::start() {
     mlOnlyCount = 0;
     currentFilename = "";
     currentMLFilename = "";
+    currentWigleFilename = "";
     
     // Guard beacon map in case callback still registered from previous session
     beaconMapBusy = true;
@@ -585,6 +588,128 @@ void WarhogMode::appendMLEntry(const uint8_t* bssid, const char* ssid,
     f.close();
 }
 
+// Ensure WiGLE file exists with header
+bool WarhogMode::ensureWigleFileReady() {
+    if (currentWigleFilename.length() > 0) return true;
+    
+    // Ensure wardriving directory exists
+    if (!SD.exists("/wardriving")) {
+        if (!SD.mkdir("/wardriving")) {
+            Serial.println("[WARHOG] Failed to create /wardriving directory");
+            return false;
+        }
+    }
+    
+    currentWigleFilename = generateFilename("wigle.csv");
+    
+    File f = openFileWithRetry(currentWigleFilename.c_str(), FILE_WRITE);
+    if (!f) {
+        Serial.printf("[WARHOG] Failed to create WiGLE CSV: %s\n", currentWigleFilename.c_str());
+        currentWigleFilename = "";
+        return false;
+    }
+    
+    // WiGLE format v1.6 pre-header
+    f.print("WigleWifi-1.6,appRelease=");
+    #ifdef CURRENT_VERSION
+    f.print(CURRENT_VERSION);
+    #else
+    f.print("0.1.x");
+    #endif
+    f.print(",model=M5Cardputer,release=ESP32-S3,device=PORKCHOP,display=240x135,board=m5stack,brand=M5Stack,star=Sol,body=3,subBody=0\n");
+    
+    // WiGLE format header
+    f.println("MAC,SSID,AuthMode,FirstSeen,Channel,Frequency,RSSI,CurrentLatitude,CurrentLongitude,AltitudeMeters,AccuracyMeters,RCOIs,MfgrId,Type");
+    f.close();
+    
+    Serial.printf("[WARHOG] Created WiGLE CSV: %s\n", currentWigleFilename.c_str());
+    return true;
+}
+
+// Convert auth mode to WiGLE capability string format
+String WarhogMode::authModeToWigleString(wifi_auth_mode_t mode) {
+    switch (mode) {
+        case WIFI_AUTH_OPEN:
+            return "[ESS]";
+        case WIFI_AUTH_WEP:
+            return "[WEP][ESS]";
+        case WIFI_AUTH_WPA_PSK:
+            return "[WPA-PSK-CCMP][ESS]";
+        case WIFI_AUTH_WPA2_PSK:
+            return "[WPA2-PSK-CCMP][ESS]";
+        case WIFI_AUTH_WPA_WPA2_PSK:
+            return "[WPA-PSK-CCMP+TKIP][WPA2-PSK-CCMP+TKIP][ESS]";
+        case WIFI_AUTH_WPA3_PSK:
+            return "[WPA3-SAE][ESS]";
+        case WIFI_AUTH_WPA2_WPA3_PSK:
+            return "[WPA2-PSK-CCMP][WPA3-SAE][ESS]";
+        case WIFI_AUTH_WAPI_PSK:
+            return "[WAPI-PSK][ESS]";
+        default:
+            return "[ESS]";
+    }
+}
+
+// Append single network to WiGLE file
+void WarhogMode::appendWigleEntry(const uint8_t* bssid, const char* ssid,
+                                   int8_t rssi, uint8_t channel, wifi_auth_mode_t auth,
+                                   double lat, double lon, double alt, double accuracy) {
+    if (!ensureWigleFileReady()) return;
+    
+    File f = openFileWithRetry(currentWigleFilename.c_str(), FILE_APPEND);
+    if (!f) return;
+    
+    // MAC (BSSID with colons)
+    f.printf("%02X:%02X:%02X:%02X:%02X:%02X,",
+            bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
+    
+    // SSID (escaped)
+    writeCSVField(f, ssid);
+    f.print(",");
+    
+    // AuthMode (WiGLE capability string)
+    f.print(authModeToWigleString(auth));
+    f.print(",");
+    
+    // FirstSeen (timestamp) - use GPS time if available, else millis
+    GPSData gps = GPS::getData();
+    if (gps.date > 0 && gps.time > 0) {
+        // date format: DDMMYY, time format: HHMMSSCC
+        uint8_t day = gps.date / 10000;
+        uint8_t month = (gps.date / 100) % 100;
+        uint8_t year = gps.date % 100;
+        uint8_t hour = gps.time / 1000000;
+        uint8_t minute = (gps.time / 10000) % 100;
+        uint8_t second = (gps.time / 100) % 100;
+        f.printf("20%02d-%02d-%02d %02d:%02d:%02d,", year, month, day, hour, minute, second);
+    } else {
+        // Fallback - use boot time reference
+        f.printf("1970-01-01 00:00:%02d,", (millis() / 1000) % 60);
+    }
+    
+    // Channel
+    f.printf("%d,", channel);
+    
+    // Frequency (calculate from channel for 2.4GHz)
+    int freq = 2412 + (channel - 1) * 5;
+    if (channel == 14) freq = 2484;  // Special case for channel 14
+    f.printf("%d,", freq);
+    
+    // RSSI
+    f.printf("%d,", rssi);
+    
+    // Latitude, Longitude, Altitude
+    f.printf("%.6f,%.6f,%.1f,", lat, lon, alt);
+    
+    // AccuracyMeters (GPS HDOP as accuracy estimate, or default 10m)
+    f.printf("%.1f,", accuracy > 0 ? accuracy : 10.0);
+    
+    // RCOIs (empty), MfgrId (empty), Type (WIFI)
+    f.println(",,WIFI");
+    
+    f.close();
+}
+
 void WarhogMode::processScanResults() {
     int n = scanResult;
     
@@ -672,9 +797,15 @@ void WarhogMode::processScanResults() {
         // Write to files based on GPS status
         if (Config::isSDAvailable()) {
             if (hasGPS) {
-                // Full wardriving: both CSV and ML
+                // Full wardriving: both CSV, WiGLE, and ML
                 appendCSVEntry(bssidPtr, ssid, rssi, channel, authmode,
                               gpsData.latitude, gpsData.longitude, gpsData.altitude);
+                
+                // WiGLE format export (HDOP * 5 as rough accuracy estimate in meters)
+                double accuracy = gpsData.hdop > 0 ? gpsData.hdop * 5.0 : 10.0;
+                appendWigleEntry(bssidPtr, ssid, rssi, channel, authmode,
+                                gpsData.latitude, gpsData.longitude, gpsData.altitude, accuracy);
+                
                 savedCount++;
                 geotaggedThisScan++;
                 XP::addXP(XPEvent::WARHOG_LOGGED);  // +2 XP for geotagged network

@@ -117,6 +117,7 @@ Commit messages MUST be in full Phrack mode:
 ### Web Interface
 - `src/web/fileserver.cpp/h` - WiFi AP file server for SD card access, black/white web UI
 - `src/web/wpasec.cpp/h` - WPA-SEC distributed cracking client (wpa-sec.stanev.org)
+- `src/web/wigle.cpp/h` - WiGLE wardriving client (wigle.net API upload)
 
 ### Piglet Personality
 - `src/piglet/avatar.cpp/h` - ASCII art pig face rendering with derpy style, direction flipping (L/R)
@@ -363,6 +364,76 @@ String WPASec::normalizeBSSID(const char* bssid) {
 // 3. SSID = everything between second colon and last colon
 // 4. PASSWORD = after the last colon
 ```
+
+## WiGLE Integration
+
+### Overview
+WiGLE (Wireless Geographic Logging Engine) integration for wardriving data upload to wigle.net.
+Automatic WiGLE v1.6 CSV export during WARHOG mode, plus API upload capability.
+
+### Architecture
+- `src/web/wigle.h` - WiGLE static class, upload status enum, API constants
+- `src/web/wigle.cpp` - HTTP client, Basic Auth, multipart upload
+- `src/modes/warhog.cpp` - Auto-export functions for WiGLE CSV format
+
+### WiGLE CSV Format v1.6
+Pre-header with device info, then 14-column data:
+```
+WigleWifi-1.6,appRelease=PORKCHOP,model=M5Cardputer,release=0.1.5,device=ESP32-S3,display=,board=M5Stack,brand=M5Stack,star=Sol,body=3,subBody=0
+MAC,SSID,AuthMode,FirstSeen,Channel,Frequency,RSSI,CurrentLatitude,CurrentLongitude,AltitudeMeters,AccuracyMeters,RCOIs,MfgrId,Type
+AA:BB:CC:DD:EE:FF,NetworkName,[WPA2-PSK-CCMP][ESS],2025-01-15 14:30:00,6,2437,-65,51.5074,-0.1278,10.5,5.0,,,WIFI
+```
+
+### AuthMode String Conversion
+ESP32 `wifi_auth_mode_t` is converted to WiGLE capability format:
+- WIFI_AUTH_OPEN → "[ESS]"
+- WIFI_AUTH_WEP → "[WEP][ESS]"
+- WIFI_AUTH_WPA_PSK → "[WPA-PSK-CCMP][ESS]"
+- WIFI_AUTH_WPA2_PSK → "[WPA2-PSK-CCMP][ESS]"
+- WIFI_AUTH_WPA_WPA2_PSK → "[WPA-PSK-CCMP+WPA2-PSK-CCMP][ESS]"
+- WIFI_AUTH_WPA3_PSK → "[WPA3-SAE][ESS]"
+
+### Frequency Calculation
+Derived from channel number:
+```cpp
+int freq = (channel == 14) ? 2484 : (2412 + (channel - 1) * 5);
+```
+
+### Auto-Export in WARHOG
+Every geotagged network triggers two file writes:
+1. `appendCSVEntry()` - Internal CSV format
+2. `appendWigleEntry()` - WiGLE v1.6 format
+
+Files created in `/wardriving/` with pattern:
+- `warhog_YYYYMMDD_HHMMSS.csv` - Internal format
+- `warhog_YYYYMMDD_HHMMSS.wigle.csv` - WiGLE format
+
+### API Upload
+- **Host**: `api.wigle.net` (HTTPS port 443)
+- **Endpoint**: `POST /api/v2/file/upload`
+- **Auth**: Basic Auth with API Name:Token base64 encoded
+- **Format**: multipart/form-data with `file` field
+
+### Key Management
+```cpp
+// In config.cpp - called during init()
+bool Config::loadWigleKeyFromFile() {
+    // 1. Read /wigle_key.txt from SD
+    // 2. Parse format: "apiname:apitoken"
+    // 3. Validate both parts exist
+    // 4. Save to wifiConfig.wigleApiName and wigleApiToken
+    // 5. Delete the file for security
+}
+```
+
+### Local Cache Files (SD card)
+- `/wigle_uploaded.txt` - List of uploaded filenames (one per line)
+- `/wigle_key.txt` - Key import file, format: `name:token` (auto-deleted after import)
+
+### Settings Menu Items
+- "WiGLE Name" - Display only (masked: "abc...")
+- "WiGLE Token" - Display only (masked: "abcd...efgh")
+- "< Load WiGLE Key >" - Import credentials from /wigle_key.txt
 
 ## Build Commands
 

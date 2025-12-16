@@ -64,6 +64,7 @@ private:
     static uint32_t mlOnlyCount;     // Networks saved to ML file without GPS
     static String currentFilename;   // Current session CSV file
     static String currentMLFilename; // Current session ML training file
+    static String currentWigleFilename; // Current session WiGLE CSV file
     
     // Enhanced ML mode - beacon capture
     static bool enhancedMode;
@@ -82,14 +83,19 @@ private:
     // File helpers - write directly per-network
     static bool ensureCSVFileReady();
     static bool ensureMLFileReady();
+    static bool ensureWigleFileReady();
     static void appendCSVEntry(const uint8_t* bssid, const char* ssid,
                                int8_t rssi, uint8_t channel, wifi_auth_mode_t auth,
                                double lat, double lon, double alt);
     static void appendMLEntry(const uint8_t* bssid, const char* ssid,
                               const WiFiFeatures& features, uint8_t label,
                               double lat, double lon);
+    static void appendWigleEntry(const uint8_t* bssid, const char* ssid,
+                                 int8_t rssi, uint8_t channel, wifi_auth_mode_t auth,
+                                 double lat, double lon, double alt, double accuracy);
     
     static String authModeToString(wifi_auth_mode_t mode);
+    static String authModeToWigleString(wifi_auth_mode_t mode);
     static String generateFilename(const char* ext);
     
     // Enhanced mode promiscuous callback

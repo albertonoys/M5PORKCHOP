@@ -68,6 +68,37 @@ void SettingsMenu::loadFromConfig() {
         "Read /wpasec_key.txt"
     });
     
+    // WiGLE API Name display (masked)
+    String wigleNameStatus = Config::wifi().wigleApiName.isEmpty() ? "(not set)" : 
+        Config::wifi().wigleApiName.substring(0, 3) + "...";
+    items.push_back({
+        "WiGLE Name",
+        SettingType::TEXT,
+        0, 0, 0, 0, "",
+        wigleNameStatus,
+        "wigle.net API name"
+    });
+    
+    // WiGLE API Token display (masked)
+    String wigleTokenStatus = Config::wifi().wigleApiToken.isEmpty() ? "(not set)" : 
+        Config::wifi().wigleApiToken.substring(0, 4) + "..." + 
+        Config::wifi().wigleApiToken.substring(Config::wifi().wigleApiToken.length() - 4);
+    items.push_back({
+        "WiGLE Token",
+        SettingType::TEXT,
+        0, 0, 0, 0, "",
+        wigleTokenStatus,
+        "wigle.net API token"
+    });
+    
+    // Load WiGLE Key File action - reads from /wigle_key.txt
+    items.push_back({
+        "< Load WiGLE Key >",
+        SettingType::ACTION,
+        0, 0, 0, 0, "", "",
+        "Read /wigle_key.txt"
+    });
+    
     // Sound toggle
     items.push_back({
         "Sound",
@@ -438,6 +469,21 @@ void SettingsMenu::handleInput() {
                         Display::showToast("Invalid key");
                     }
                 }
+            } else if (item.label == "< Load WiGLE Key >") {
+                // Load WiGLE API credentials from file
+                if (Config::loadWigleKeyFromFile()) {
+                    Display::showToast("WiGLE key loaded!");
+                    // Refresh the display to show masked credentials
+                    loadFromConfig();
+                } else {
+                    if (!Config::isSDAvailable()) {
+                        Display::showToast("No SD card");
+                    } else if (!SD.exists("/wigle_key.txt")) {
+                        Display::showToast("No key file");
+                    } else {
+                        Display::showToast("Invalid format");
+                    }
+                }
             }
         } else if (item.type == SettingType::TOGGLE) {
             // Toggle ON/OFF
@@ -451,9 +497,9 @@ void SettingsMenu::handleInput() {
                 editing = true;
             }
         } else if (item.type == SettingType::TEXT) {
-            // Skip text editing for WPA-SEC display (read-only)
-            if (item.label == "WPA-SEC") {
-                // Do nothing - this is display only
+            // Skip text editing for read-only display fields
+            if (item.label == "WPA-SEC" || item.label == "WiGLE Name" || item.label == "WiGLE Token") {
+                // Do nothing - these are display only (loaded from file)
             } else {
                 // Enter text editing mode
                 textEditing = true;
