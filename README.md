@@ -1088,10 +1088,6 @@
     some guy debugging frame injection at 3am
     while the pig judges silently from the display.
 
-    The royal "we" - for developers who are
-    definitely not lonely, just... distributed
-    across a single physical instance.
-
     Contributors welcome. The pig needs friends.
     The pig's creator needs therapy.
     Both are accepting pull requests.
