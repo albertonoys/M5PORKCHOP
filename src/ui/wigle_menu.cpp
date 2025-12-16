@@ -238,18 +238,6 @@ void WigleMenu::draw(M5Canvas& canvas) {
     canvas.setTextColor(COLOR_FG);
     canvas.setTextSize(1);
     
-    // Show detail overlay if active
-    if (detailViewActive && !files.empty()) {
-        drawDetailView(canvas);
-        return;
-    }
-    
-    // Show connecting overlay
-    if (connectingWiFi || uploadingFile) {
-        drawConnecting(canvas);
-        return;
-    }
-    
     // Empty state
     if (files.empty()) {
         canvas.setCursor(4, 35);
@@ -261,7 +249,7 @@ void WigleMenu::draw(M5Canvas& canvas) {
         return;
     }
     
-    // File list
+    // File list (always drawn, modals overlay on top)
     int y = 2;
     int lineHeight = 18;
     
@@ -316,6 +304,15 @@ void WigleMenu::draw(M5Canvas& canvas) {
         canvas.setCursor(canvas.width() - 10, 2 + (VISIBLE_ITEMS - 1) * lineHeight);
         canvas.setTextColor(COLOR_FG);
         canvas.print("v");
+    }
+    
+    // Draw modals on top of list (matching captures_menu pattern)
+    if (detailViewActive) {
+        drawDetailView(canvas);
+    }
+    
+    if (connectingWiFi || uploadingFile) {
+        drawConnecting(canvas);
     }
 }
 
