@@ -12,7 +12,7 @@ public:
     static void update();
     static void draw(M5Canvas& canvas);
     static bool isActive() { return active; }
-    static const uint8_t TOTAL_ACHIEVEMENTS = 60;  // 48 original + 12 DO NO HAM/BOAR BROS
+    static const uint8_t TOTAL_ACHIEVEMENTS = 63;  // 48 base + 12 DNH/BOAR + 3 CLIENT MONITOR
     
 private:
     static uint8_t selectedIndex;
