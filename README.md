@@ -1198,7 +1198,7 @@
         https://buymeacoffee.com/0ct0
 
     Your coffee becomes my code.
-    Your code becomes everyone's pig.
+    My code becomes everyone's pig.
     Circle of life. Hakuna matata. Oink.
 
     (Not required. Never expected. Always appreciated.
