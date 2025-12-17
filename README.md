@@ -58,6 +58,7 @@
     6 - Controls
     7 - Configuration
         7.1 - Color Themes
+        7.2 - API Keys Setup
     8 - ML Training Pipeline
     9 - Code Structure
     10 - Legal sh*t
@@ -285,7 +286,6 @@
 
         * CSV: Spreadsheet warriors, this is yours
         * Wigle: v1.6 format, ready for wigle.net upload
-        * Kismet NetXML: For the old school with Kismet workflows
         * ML Training: Feature vectors for Edge Impulse, feed the brain
 
     WiGLE integration is automatic. Every geotagged network gets written
@@ -400,7 +400,7 @@
 
     Time to exfil. Your pig caught the goods, now get 'em off the device.
 
-    PORKCHOP fires up a WiFi AP client (connects to YOUR network) and
+    PORKCHOP connects to YOUR WiFi network (station mode, not AP) and
     serves a janky black-and-white web interface. No CSS crimes here,
     just function.
 
@@ -883,7 +883,6 @@
         | SD Log     | Debug logging to SD card      | OFF     |
         | BLE Burst  | BLE advertisement interval    | 200ms   |
         | BLE Adv    | Per-packet duration           | 100ms   |
-        | BLE Rescan | Target device refresh rate    | 60s     |
         +------------+-------------------------------+---------+
 
     GPS pin defaults work for original Cardputer + Grove GPS. If you're
@@ -905,7 +904,7 @@
         | M4TR1X     | Green phosphor. See the code, Neo          |
         | AMB3R      | Warm terminal amber. Old school CRT feels  |
         | BL00D      | Aggressive red. For when you mean business |
-        | GH0ST      | Grey on black. Low-viz stealth mode        |
+        | GH0ST      | White on black. Low-viz stealth mode       |
         +------------+--------------------------------------------+
         | PAP3R      | Black on white. The inverted heresy        |
         | BUBBLEGUM  | Hot pink on white. Aggressively visible    |
@@ -915,11 +914,52 @@
         | L1TTL3M1XY | OG Game Boy LCD. 1989 pea-soup nostalgia   |
         | B4NSH33    | P1 phosphor green. VT100 ghost vibes       |
         +------------+--------------------------------------------+
+        | L1TTL3M1XY | OG Game Boy LCD. 1989 pea-soup nostalgia   |
+        | B4NSH33    | P1 phosphor green. VT100 ghost vibes       |
+        +------------+--------------------------------------------+
 
-    Dark themes (top) keep things tactical. Inverted themes (bottom)
+    Dark themes (top 6) keep things tactical. Inverted themes (middle 4)
     exist for outdoor visibility or psychological warfare on bystanders.
+    Retro themes (bottom 2) for the nostalgic freaks who miss CRTs.
 
     Theme persists across reboots. The pig never forgets a color scheme.
+
+
+----[ 7.2 - API Keys Setup
+
+    Cloud features need credentials. The pig doesn't store them in
+    flash - they live in config after you import from SD.
+
+
+    WiGLE (wigle.net) - for wardrive uploads:
+
+        1. Create account at wigle.net (free)
+        2. Go to Account -> API Token section
+        3. Generate or copy your API name and token
+        4. Create file on SD card root: /wigle_key.txt
+        5. Format: apiname:apitoken (one line, colon separator)
+        6. In PORKCHOP: Settings -> < Load WiGLE Key >
+        7. File auto-deletes after import
+
+        Now PORK TRACKS menu can upload your wardrives.
+
+
+    WPA-SEC (wpa-sec.stanev.org) - for distributed cracking:
+
+        1. Register at wpa-sec.stanev.org (free)
+        2. Get your 32-character hex API key from profile
+        3. Create file on SD card root: /wpasec_key.txt
+        4. Contents: just the key, nothing else
+        5. In PORKCHOP: Settings -> < Load WPA-SEC Key >
+           Or just reboot - auto-imports on boot
+        6. File self-destructs after import
+
+        Now LOOT menu can upload handshakes and fetch results.
+
+
+    Why the file dance? No USB keyboard on the Cardputer for entering
+    64 character strings. SD card is faster. File deletion is paranoia.
+    The pig doesn't judge your OpSec. The pig just oinks and forgets.
 
 
 --[ 8 - ML Training Pipeline
@@ -1037,6 +1077,7 @@
     |   |
     |   +-- web/
     |       +-- fileserver.cpp/h  # WiFi file transfer server
+    |       +-- wigle.cpp/h       # WiGLE wardriving upload client
     |       +-- wpasec.cpp/h      # WPA-SEC distributed cracking client
     |
     +-- scripts/
