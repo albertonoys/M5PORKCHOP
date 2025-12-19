@@ -204,7 +204,7 @@ void SpectrumMode::update() {
                 delay(120);
                 M5.Speaker.tone(500, 150);
             }
-            Display::showToast("Signal lost");
+            Display::showToast("SIGNAL LOST");
             delay(300);  // Brief pause so user sees toast
             
             busy = false;
@@ -240,7 +240,7 @@ void SpectrumMode::update() {
     if (startTime > 0 && (now - startTime) >= 15 * 60 * 1000) {
         if (!XP::hasAchievement(ACH_NIETZSWINE)) {
             XP::unlockAchievement(ACH_NIETZSWINE);
-            Display::showToast("the ether deauths back");
+            Display::showToast("THE ETHER DEAUTHS BACK");
         }
     }
 }
@@ -324,7 +324,7 @@ void SpectrumMode::handleClientMonitorInput() {
             // Add to BOAR BROS via OinkMode
             OinkMode::excludeNetworkByBSSID(networks[monitoredNetworkIndex].bssid,
                                              networks[monitoredNetworkIndex].ssid);
-            Display::showToast("Excluded - returning");
+            Display::showToast("EXCLUDED - RETURNING");
             delay(500);
             exitClientMonitor();
         }
@@ -469,7 +469,7 @@ void SpectrumMode::drawClientOverlay(M5Canvas& canvas) {
     if (monitoredNetworkIndex < 0 || 
         monitoredNetworkIndex >= (int)networks.size()) {
         canvas.setTextDatum(middle_center);
-        canvas.drawString("Network lost", 120, 45);
+        canvas.drawString("NETWORK LOST", 120, 45);
         return;
     }
     
@@ -493,8 +493,8 @@ void SpectrumMode::drawClientOverlay(M5Canvas& canvas) {
     // Empty list message [P14]
     if (net.clientCount == 0) {
         canvas.setTextDatum(middle_center);
-        canvas.drawString("No clients detected", 120, 40);
-        canvas.drawString("Waiting for data frames...", 120, 55);
+        canvas.drawString("NO CLIENTS DETECTED", 120, 40);
+        canvas.drawString("WAITING FOR DATA FRAMES...", 120, 55);
         return;
     }
     
@@ -1195,7 +1195,7 @@ String SpectrumMode::getMonitoredSSID() {
         monitoredNetworkIndex >= (int)networks.size()) return "";
     
     const char* ssid = networks[monitoredNetworkIndex].ssid;
-    if (ssid[0] == 0) return "<hidden>";  // [P15]
+    if (ssid[0] == 0) return "<HIDDEN>";  // [P15]
     
     // Truncate for bottom bar [P9]
     char truncated[12];

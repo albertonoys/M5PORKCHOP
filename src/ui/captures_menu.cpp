@@ -384,8 +384,8 @@ void CapturesMenu::drawNukeConfirm(M5Canvas& canvas) {
     // Hacker edgy message
     canvas.drawString("!! SCORCHED EARTH !!", centerX, boxY + 8);
     canvas.drawString("rm -rf /handshakes/*", centerX, boxY + 22);
-    canvas.drawString("This kills the loot.", centerX, boxY + 36);
-    canvas.drawString("[Y] Do it  [N] Abort", centerX, boxY + 54);
+    canvas.drawString("THIS KILLS THE LOOT.", centerX, boxY + 36);
+    canvas.drawString("[Y] DO IT  [N] ABORT", centerX, boxY + 54);
 }
 
 void CapturesMenu::nukeLoot() {
@@ -471,11 +471,11 @@ void CapturesMenu::drawDetailView(M5Canvas& canvas) {
         if (pwLine.length() > 20) pwLine = pwLine.substring(0, 18) + "..";
         canvas.drawString(pwLine, centerX, boxY + 54);
     } else if (cap.status == CaptureStatus::UPLOADED) {
-        canvas.drawString("Uploaded, waiting...", centerX, boxY + 38);
-        canvas.drawString("[R] Refresh results", centerX, boxY + 54);
+        canvas.drawString("UPLOADED, WAITING...", centerX, boxY + 38);
+        canvas.drawString("[R] REFRESH RESULTS", centerX, boxY + 54);
     } else {
-        canvas.drawString("Not uploaded yet", centerX, boxY + 38);
-        canvas.drawString("[U] Upload to WPA-SEC", centerX, boxY + 54);
+        canvas.drawString("NOT UPLOADED YET", centerX, boxY + 38);
+        canvas.drawString("[U] UPLOAD TO WPA-SEC", centerX, boxY + 54);
     }
     
     canvas.drawString("[Enter/`] Close", centerX, boxY + 72);
@@ -497,13 +497,13 @@ void CapturesMenu::drawConnecting(M5Canvas& canvas) {
     int centerX = canvas.width() / 2;
     
     if (connectingWiFi) {
-        canvas.drawString("Connecting WiFi...", centerX, boxY + 8);
+        canvas.drawString("CONNECTING WIFI...", centerX, boxY + 8);
         canvas.drawString(WPASec::getStatus(), centerX, boxY + 22);
     } else if (uploadingFile) {
-        canvas.drawString("Uploading...", centerX, boxY + 8);
+        canvas.drawString("UPLOADING...", centerX, boxY + 8);
         canvas.drawString(WPASec::getStatus(), centerX, boxY + 22);
     } else if (refreshingResults) {
-        canvas.drawString("Fetching results...", centerX, boxY + 8);
+        canvas.drawString("FETCHING RESULTS...", centerX, boxY + 8);
         canvas.drawString(WPASec::getStatus(), centerX, boxY + 22);
     }
 }
@@ -515,14 +515,14 @@ void CapturesMenu::uploadSelected() {
     
     // Check if WPA-SEC key is configured
     if (Config::wifi().wpaSecKey.isEmpty()) {
-        Display::showToast("Set WPA-SEC key first");
+        Display::showToast("SET WPA-SEC KEY FIRST");
         delay(500);
         return;
     }
     
     // Already cracked? No need to upload
     if (cap.status == CaptureStatus::CRACKED) {
-        Display::showToast("Already cracked!");
+        Display::showToast("ALREADY CRACKED!");
         delay(500);
         return;
     }
@@ -533,7 +533,7 @@ void CapturesMenu::uploadSelected() {
     String pcapPath = "/handshakes/" + baseName + ".pcap";
     
     if (!SD.exists(pcapPath)) {
-        Display::showToast("No PCAP file found");
+        Display::showToast("NO PCAP FILE FOUND");
         delay(500);
         return;
     }
@@ -566,7 +566,7 @@ void CapturesMenu::uploadSelected() {
     uploadingFile = false;
     
     if (success) {
-        Display::showToast("Upload OK!");
+        Display::showToast("UPLOAD OK!");
         delay(500);
         // Update status
         captures[selectedIndex].status = CaptureStatus::UPLOADED;
@@ -584,7 +584,7 @@ void CapturesMenu::uploadSelected() {
 void CapturesMenu::refreshResults() {
     // Check if WPA-SEC key is configured
     if (Config::wifi().wpaSecKey.isEmpty()) {
-        Display::showToast("Set WPA-SEC key first");
+        Display::showToast("SET WPA-SEC KEY FIRST");
         delay(500);
         return;
     }

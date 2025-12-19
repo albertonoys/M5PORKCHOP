@@ -209,7 +209,7 @@ void Porkchop::setMode(PorkchopMode mode) {
             break;
         case PorkchopMode::WARHOG_MODE:
             Avatar::setState(AvatarState::EXCITED);
-            Display::showToast("Sniffing the air...");
+            Display::showToast("SNIFFING THE AIR...");
             SDLog::log("PORK", "Mode: WARHOG");
             WarhogMode::start();
             break;
@@ -420,11 +420,11 @@ void Porkchop::handleInput() {
         if (bPressed && !bWasPressed) {
             int idx = OinkMode::getSelectionIndex();
             if (OinkMode::excludeNetwork(idx)) {
-                Display::showToast("BOAR BRO added!");
+                Display::showToast("BOAR BRO ADDED!");
                 delay(500);
                 OinkMode::moveSelectionDown();
             } else {
-                Display::showToast("Already a bro");
+                Display::showToast("ALREADY A BRO");
                 delay(500);
             }
         }

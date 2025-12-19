@@ -471,8 +471,8 @@ bool PiggyBluesMode::showWarningDialog() {
         
         int centerX = DISPLAY_W / 2;
         canvas.drawString("!! WARNING !!", centerX, boxY + 8);
-        canvas.drawString("BLE notification spam", centerX, boxY + 22);
-        canvas.drawString("Educational use only!", centerX, boxY + 36);
+        canvas.drawString("BLE NOTIFICATION SPAM", centerX, boxY + 22);
+        canvas.drawString("EDUCATIONAL USE ONLY!", centerX, boxY + 36);
         
         char buf[24];
         snprintf(buf, sizeof(buf), "[Y] Yes  [`] No (%lu)", remaining);

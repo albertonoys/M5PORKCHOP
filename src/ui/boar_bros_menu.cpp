@@ -115,7 +115,7 @@ size_t BoarBrosMenu::getCount() {
 }
 
 String BoarBrosMenu::getSelectedInfo() {
-    if (bros.empty()) return "[B] Add from OINK mode";
+    if (bros.empty()) return "[B] ADD FROM OINK MODE";
     if (selectedIndex < bros.size()) {
         return bros[selectedIndex].bssidStr;
     }
@@ -202,7 +202,7 @@ void BoarBrosMenu::deleteSelected() {
         scrollOffset = bros.size() > 0 ? bros.size() - 1 : 0;
     }
     
-    Display::showToast("Bro removed!");
+    Display::showToast("BRO REMOVED!");
     delay(500);
 }
 
@@ -288,7 +288,7 @@ void BoarBrosMenu::drawDeleteConfirm(M5Canvas& canvas) {
     canvas.setTextColor(COLOR_BG, COLOR_FG);
     canvas.setTextDatum(top_center);
     
-    canvas.drawString("Remove this bro?", boxX + boxW / 2, boxY + 10);
+    canvas.drawString("REMOVE THIS BRO?", boxX + boxW / 2, boxY + 10);
     
     String broName = bros[selectedIndex].ssid.length() > 0 ? 
                      bros[selectedIndex].ssid : bros[selectedIndex].bssidStr;
@@ -296,7 +296,7 @@ void BoarBrosMenu::drawDeleteConfirm(M5Canvas& canvas) {
     if (broName.length() > 18) broName = broName.substring(0, 16) + "..";
     canvas.drawString(broName, boxX + boxW / 2, boxY + 24);
     
-    canvas.drawString("[Y]es  [N]o", boxX + boxW / 2, boxY + 40);
+    canvas.drawString("[Y]ES  [N]O", boxX + boxW / 2, boxY + 40);
     
     canvas.setTextDatum(top_left);
 }

@@ -356,7 +356,7 @@ void WarhogMode::update() {
         
         if (freeHeap < HEAP_CRITICAL_THRESHOLD) {
             Serial.println("[WARHOG] CRITICAL: Low heap! Emergency cleanup...");
-            Display::showToast("Low memory!");
+            Display::showToast("LOW MEMORY!");
             // Emergency: clear tracking data to prevent crash
             // Guard beacon map from promiscuous callback during clear
             beaconMapBusy = true;

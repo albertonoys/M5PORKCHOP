@@ -178,7 +178,7 @@ void WigleMenu::handleInput() {
     // R key - refresh list
     if (M5Cardputer.Keyboard.isKeyPressed('r') || M5Cardputer.Keyboard.isKeyPressed('R')) {
         scanFiles();
-        Display::showToast("Refreshed");
+        Display::showToast("REFRESHED");
         delay(500);
     }
     
@@ -198,14 +198,14 @@ void WigleMenu::uploadSelected() {
     
     // Check if already uploaded
     if (file.status == WigleFileStatus::UPLOADED) {
-        Display::showToast("Already uploaded");
+        Display::showToast("ALREADY UPLOADED");
         delay(500);
         return;
     }
     
     // Check for credentials
     if (!WiGLE::hasCredentials()) {
-        Display::showToast("No WiGLE API key");
+        Display::showToast("NO WIGLE API KEY");
         delay(500);
         return;
     }
@@ -216,7 +216,7 @@ void WigleMenu::uploadSelected() {
     // Connect to WiFi if needed
     connectingWiFi = true;
     if (!WiGLE::isConnected()) {
-        Display::showToast("Connecting...");
+        Display::showToast("CONNECTING...");
         if (!WiGLE::connect()) {
             connectingWiFi = false;
             Display::showToast(WiGLE::getLastError());
@@ -229,14 +229,14 @@ void WigleMenu::uploadSelected() {
     
     // Upload the file
     uploadingFile = true;
-    Display::showToast("Uploading...");
+    Display::showToast("UPLOADING...");
     
     bool success = WiGLE::uploadFile(file.fullPath.c_str());
     uploadingFile = false;
     
     if (success) {
         file.status = WigleFileStatus::UPLOADED;
-        Display::showToast("Upload OK!");
+        Display::showToast("UPLOAD OK!");
     } else {
         Display::showToast(WiGLE::getLastError());
     }
@@ -395,7 +395,7 @@ void WigleMenu::drawDetailView(M5Canvas& canvas) {
     canvas.drawString(statusText, boxX + boxW / 2, boxY + 40);
     
     // Action hint
-    canvas.drawString("[U]pload  [Any]Close", boxX + boxW / 2, boxY + 56);
+    canvas.drawString("[U]PLOAD  [ANY]CLOSE", boxX + boxW / 2, boxY + 56);
     
     canvas.setTextDatum(top_left);
 }
@@ -413,9 +413,9 @@ void WigleMenu::drawConnecting(M5Canvas& canvas) {
     canvas.setTextDatum(top_center);
     
     if (connectingWiFi) {
-        canvas.drawString("Connecting...", boxX + boxW / 2, boxY + 12);
+        canvas.drawString("CONNECTING...", boxX + boxW / 2, boxY + 12);
     } else if (uploadingFile) {
-        canvas.drawString("Uploading...", boxX + boxW / 2, boxY + 12);
+        canvas.drawString("UPLOADING...", boxX + boxW / 2, boxY + 12);
     }
     
     canvas.drawString(WiGLE::getStatus(), boxX + boxW / 2, boxY + 30);
@@ -453,8 +453,8 @@ void WigleMenu::drawNukeConfirm(M5Canvas& canvas) {
     
     canvas.drawString("!! NUKE THE TRACK !!", centerX, boxY + 8);
     canvas.drawString(displayName, centerX, boxY + 24);
-    canvas.drawString("This kills the file.", centerX, boxY + 38);
-    canvas.drawString("[Y] Do it  [N] Abort", centerX, boxY + 54);
+    canvas.drawString("THIS KILLS THE FILE.", centerX, boxY + 38);
+    canvas.drawString("[Y] DO IT  [N] ABORT", centerX, boxY + 54);
     
     canvas.setTextDatum(top_left);
 }
@@ -481,9 +481,9 @@ void WigleMenu::nukeTrack() {
     WiGLE::removeFromUploaded(file.fullPath.c_str());
     
     if (deleted) {
-        Display::showToast("Track nuked!");
+        Display::showToast("TRACK NUKED!");
     } else {
-        Display::showToast("Nuke failed");
+        Display::showToast("NUKE FAILED");
     }
     delay(500);
     

@@ -389,7 +389,7 @@ void Display::drawBottomBar() {
         stats = Menu::getSelectedDescription();
     } else if (mode == PorkchopMode::LOG_VIEWER) {
         // LOG_VIEWER: show scroll hint
-        stats = "[;/.] scroll  [Bksp] exit";
+        stats = "[;/.] SCROLL  [BKSP] EXIT";
     } else if (mode == PorkchopMode::OINK_MODE) {
         // OINK: show Networks, Handshakes, Channel, and optionally Deauths/BRO count
         // (PWNED banner is shown in top bar)
@@ -459,7 +459,7 @@ void Display::drawBottomBar() {
         stats = SpectrumMode::getSelectedInfo();
     } else if (mode == PorkchopMode::BOAR_BROS) {
         // BOAR BROS: show delete hint
-        stats = "[D] delete";
+        stats = "[D] DELETE";
     } else {
         // Default: Networks, Handshakes, Deauths
         uint16_t netCount = porkchop.getNetworkCount();
@@ -535,7 +535,7 @@ bool Display::showConfirmBox(const String& title, const String& message) {
     
     mainCanvas.setTextSize(1);
     mainCanvas.drawString(message, DISPLAY_W / 2, 45);
-    mainCanvas.drawString("[Y]es / [N]o", DISPLAY_W / 2, MAIN_H - 20);
+    mainCanvas.drawString("[Y]ES / [N]O", DISPLAY_W / 2, MAIN_H - 20);
     
     pushAll();
     
@@ -581,7 +581,7 @@ void Display::showBootSplash() {
     
     // Subtitle
     M5.Display.setTextSize(1);
-    M5.Display.drawString("Basically you, but as an ASCII pig.", DISPLAY_W / 2, DISPLAY_H / 2 + 20);
+    M5.Display.drawString("BASICALLY YOU, BUT AS AN ASCII PIG.", DISPLAY_W / 2, DISPLAY_H / 2 + 20);
     M5.Display.drawString("BETA", DISPLAY_W / 2, DISPLAY_H / 2 + 35);
     
     delay(1200);
@@ -827,13 +827,13 @@ void Display::drawModeInfo(M5Canvas& canvas, PorkchopMode mode) {
             canvas.drawString(info, 2, 26);
         } else if (!networks.empty()) {
             canvas.setTextColor(COLOR_FG);
-            canvas.drawString("sniffin", 2, 2);
+            canvas.drawString("SNIFFIN", 2, 2);
             canvas.setTextColor(COLOR_ACCENT);
             char buf[32];
-            snprintf(buf, sizeof(buf), "found %d truffles", (int)networks.size());
+            snprintf(buf, sizeof(buf), "FOUND %d TRUFFLES", (int)networks.size());
             canvas.drawString(buf, 2, 14);
         } else {
-            canvas.drawString("hunting truffles", 2, MAIN_H / 2 - 5);
+            canvas.drawString("HUNTING TRUFFLES", 2, MAIN_H / 2 - 5);
         }
         
         // Show stats at bottom
@@ -841,13 +841,13 @@ void Display::drawModeInfo(M5Canvas& canvas, PorkchopMode mode) {
         uint16_t hsCount = OinkMode::getCompleteHandshakeCount();
         uint32_t deauthCnt = OinkMode::getDeauthCount();
         char stats[48];
-        snprintf(stats, sizeof(stats), "N:%d HS:%d D:%lu [Bksp]=Stop", 
+        snprintf(stats, sizeof(stats), "N:%d HS:%d D:%lu [BKSP]=STOP", 
                  (int)networks.size(), hsCount, deauthCnt);
         canvas.drawString(stats, 2, MAIN_H - 12);
     } else if (mode == PorkchopMode::WARHOG_MODE) {
         // Show wardriving info
-        canvas.drawString("Wardriving mode active", 2, MAIN_H - 25);
-        canvas.drawString("Collecting GPS + WiFi data", 2, MAIN_H - 15);
+        canvas.drawString("WARDRIVING MODE ACTIVE", 2, MAIN_H - 25);
+        canvas.drawString("COLLECTING GPS + WIFI DATA", 2, MAIN_H - 15);
     }
 }
 
@@ -868,7 +868,7 @@ void Display::drawSettingsScreen(M5Canvas& canvas) {
     
     canvas.setTextDatum(top_center);
     canvas.setTextColor(COLOR_ACCENT);
-    canvas.drawString("[Enter] to go back", DISPLAY_W / 2, MAIN_H - 12);
+    canvas.drawString("[ENTER] TO GO BACK", DISPLAY_W / 2, MAIN_H - 12);
 }
 
 // Hacker culture quotes for About screen
@@ -954,7 +954,7 @@ void Display::drawAboutScreen(M5Canvas& canvas) {
     
     // Easter egg hint
     canvas.setTextColor(COLOR_ACCENT);
-    canvas.drawString("[Enter] ???", DISPLAY_W / 2, MAIN_H - 12);
+    canvas.drawString("[ENTER] ???", DISPLAY_W / 2, MAIN_H - 12);
 }
 
 void Display::drawFileTransferScreen(M5Canvas& canvas) {
@@ -970,14 +970,14 @@ void Display::drawFileTransferScreen(M5Canvas& canvas) {
     
     if (FileServer::isConnecting()) {
         // Show connection progress
-        canvas.drawString("jacking in.", DISPLAY_W / 2, 30);
+        canvas.drawString("JACKING IN.", DISPLAY_W / 2, 30);
         canvas.setTextColor(COLOR_ACCENT);
         canvas.drawString(Config::wifi().otaSSID, DISPLAY_W / 2, 45);
         canvas.setTextColor(COLOR_FG);
         canvas.drawString(FileServer::getStatus(), DISPLAY_W / 2, 60);
     } else if (FileServer::isRunning() && FileServer::isConnected()) {
         // Show IP address
-        canvas.drawString("Connected! Browse to:", DISPLAY_W / 2, 30);
+        canvas.drawString("CONNECTED! BROWSE TO:", DISPLAY_W / 2, 30);
         
         canvas.setTextColor(COLOR_SUCCESS);
         String url = "http://" + FileServer::getIP();
@@ -987,26 +987,26 @@ void Display::drawFileTransferScreen(M5Canvas& canvas) {
         canvas.drawString("or http://porkchop.local", DISPLAY_W / 2, 60);
     } else if (FileServer::isRunning()) {
         // Server running but WiFi lost
-        canvas.drawString("link dead.", DISPLAY_W / 2, 35);
+        canvas.drawString("LINK DEAD.", DISPLAY_W / 2, 35);
         canvas.setTextColor(COLOR_ACCENT);
-        canvas.drawString("retry hack.", DISPLAY_W / 2, 50);
+        canvas.drawString("RETRY HACK.", DISPLAY_W / 2, 50);
     } else {
         // Not running - check why
         canvas.setTextColor(COLOR_ACCENT);
         String ssid = Config::wifi().otaSSID;
         if (ssid.length() > 0) {
-            canvas.drawString("Connection failed", DISPLAY_W / 2, 35);
+            canvas.drawString("CONNECTION FAILED", DISPLAY_W / 2, 35);
             canvas.drawString("SSID: " + ssid, DISPLAY_W / 2, 50);
             canvas.setTextColor(COLOR_FG);
             canvas.drawString(FileServer::getStatus(), DISPLAY_W / 2, 65);
         } else {
-            canvas.drawString("no creds lol.", DISPLAY_W / 2, 35);
-            canvas.drawString("Set SSID in Settings", DISPLAY_W / 2, 50);
+            canvas.drawString("NO CREDS LOL.", DISPLAY_W / 2, 35);
+            canvas.drawString("SET SSID IN SETTINGS", DISPLAY_W / 2, 50);
         }
     }
     
     canvas.setTextColor(COLOR_ACCENT);
-    canvas.drawString("[Bksp] to stop", DISPLAY_W / 2, MAIN_H - 12);
+    canvas.drawString("[BKSP] TO STOP", DISPLAY_W / 2, MAIN_H - 12);
 }
 
 void Display::resetDimTimer() {
@@ -1069,7 +1069,7 @@ bool Display::takeScreenshot() {
     
     // Check SD availability
     if (!Config::isSDAvailable()) {
-        showToast("No SD card!");
+        showToast("NO SD CARD!");
         return false;
     }
     
@@ -1097,7 +1097,7 @@ bool Display::takeScreenshot() {
     
     if (!file) {
         Serial.println("[DISPLAY] Failed to open screenshot file");
-        showToast("SD write failed!");
+        showToast("SD WRITE FAILED!");
         snapping = false;
         return false;
     }
