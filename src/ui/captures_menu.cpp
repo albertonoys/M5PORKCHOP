@@ -308,13 +308,13 @@ void CapturesMenu::draw(M5Canvas& canvas) {
         String displaySSID = cap.isPMKID ? "[P]" : "";
         displaySSID += cap.ssid;
         displaySSID.toUpperCase();
-        if (displaySSID.length() > 10) {
-            displaySSID = displaySSID.substring(0, 8) + "..";
+        if (displaySSID.length() > 16) {
+            displaySSID = displaySSID.substring(0, 14) + "..";
         }
         canvas.print(displaySSID);
         
         // Status indicator
-        canvas.setCursor(75, y);
+        canvas.setCursor(105, y);
         if (cap.status == CaptureStatus::CRACKED) {
             canvas.print("[OK]");
         } else if (cap.status == CaptureStatus::UPLOADED) {
@@ -324,11 +324,11 @@ void CapturesMenu::draw(M5Canvas& canvas) {
         }
         
         // Date/time
-        canvas.setCursor(105, y);
+        canvas.setCursor(135, y);
         canvas.print(formatTime(cap.captureTime));
         
         // File size (KB)
-        canvas.setCursor(180, y);
+        canvas.setCursor(210, y);
         canvas.printf("%dK", cap.fileSize / 1024);
         
         y += lineHeight;

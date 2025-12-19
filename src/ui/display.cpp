@@ -431,9 +431,9 @@ void Display::drawBottomBar() {
         } else if (passive) {
             // DO NO HAM: no D: counter (we don't deauth)
             if (broCount > 0) {
-                snprintf(buf, sizeof(buf), "N:%d HS:%d CH:%d BRO:%d DOIN NO HAM", netCount, hsCount, channel, broCount);
+                snprintf(buf, sizeof(buf), "N:%d HS:%d CH:%2d BRO:%d DOIN NO HAM", netCount, hsCount, channel, broCount);
             } else {
-                snprintf(buf, sizeof(buf), "N:%d HS:%d CH:%d DOIN NO HAM", netCount, hsCount, channel);
+                snprintf(buf, sizeof(buf), "N:%d HS:%d CH:%2d DOIN NO HAM", netCount, hsCount, channel);
             }
         } else {
             // Attack mode: show D: counter
