@@ -351,23 +351,75 @@ void DoNoHamMode::ageOutStaleNetworks() {
 }
 
 void DoNoHamMode::saveAllPMKIDs() {
-    // TODO: Implement PMKID saving to SD card
-    // Format: hashcat 22000 WPA*01 format
+    // Save PMKIDs in hashcat 22000 format
     for (auto& p : pmkids) {
         if (p.saved) continue;
+        
+        // Try to backfill SSID if missing
         if (p.ssid[0] == 0) {
-            // Try to backfill SSID
             int netIdx = findNetwork(p.bssid);
             if (netIdx >= 0 && networks[netIdx].ssid[0] != 0) {
                 strncpy(p.ssid, networks[netIdx].ssid, 32);
                 p.ssid[32] = 0;
             }
         }
-        if (p.ssid[0] != 0 && !p.saved) {
-            // Mark as saved (actual save code from OINK will be ported later)
-            p.saved = true;
-            Serial.printf("[DNH] Would save PMKID for %s\n", p.ssid);
+        
+        // Can only save if we have SSID
+        if (p.ssid[0] == 0) continue;
+        
+        // Check for all-zero PMKID (invalid)
+        bool allZeros = true;
+        for (int i = 0; i < 16; i++) {
+            if (p.pmkid[i] != 0) { allZeros = false; break; }
         }
+        if (allZeros) continue;
+        
+        // Build filename: /handshakes/BSSID.22000
+        char filename[64];
+        snprintf(filename, sizeof(filename), "/handshakes/%02X%02X%02X%02X%02X%02X.22000",
+            p.bssid[0], p.bssid[1], p.bssid[2], p.bssid[3], p.bssid[4], p.bssid[5]);
+        
+        // Ensure directory exists
+        if (!SD.exists("/handshakes")) {
+            SD.mkdir("/handshakes");
+        }
+        
+        File f = SD.open(filename, FILE_WRITE);
+        if (!f) {
+            Serial.printf("[DNH] Failed to create PMKID file: %s\n", filename);
+            continue;
+        }
+        
+        // Build hex strings
+        char pmkidHex[33];
+        for (int i = 0; i < 16; i++) {
+            sprintf(pmkidHex + i*2, "%02x", p.pmkid[i]);
+        }
+        
+        char macAP[13];
+        sprintf(macAP, "%02x%02x%02x%02x%02x%02x",
+            p.bssid[0], p.bssid[1], p.bssid[2], 
+            p.bssid[3], p.bssid[4], p.bssid[5]);
+        
+        char macClient[13];
+        sprintf(macClient, "%02x%02x%02x%02x%02x%02x",
+            p.station[0], p.station[1], p.station[2], 
+            p.station[3], p.station[4], p.station[5]);
+        
+        char essidHex[65];
+        int ssidLen = strlen(p.ssid);
+        for (int i = 0; i < ssidLen && i < 32; i++) {
+            sprintf(essidHex + i*2, "%02x", (uint8_t)p.ssid[i]);
+        }
+        essidHex[ssidLen * 2] = 0;
+        
+        // WPA*01*PMKID*MAC_AP*MAC_CLIENT*ESSID***01
+        f.printf("WPA*01*%s*%s*%s*%s***01\n", pmkidHex, macAP, macClient, essidHex);
+        f.close();
+        
+        p.saved = true;
+        Serial.printf("[DNH] PMKID saved: %s\n", filename);
+        SDLog::log("DNH", "PMKID saved: %s (%s)", p.ssid, filename);
     }
 }
 
@@ -462,9 +514,151 @@ void DoNoHamMode::handleEAPOL(const uint8_t* frame, uint16_t len, int8_t rssi) {
     if (!running) return;
     if (dnhBusy) return;  // Skip if update() is processing vectors
     
-    // TODO: Implement EAPOL parsing for PMKID extraction
-    // This will be ported from OINK in Phase 3
+    // Parse 802.11 data frame to find EAPOL
+    // Frame: FC(2) + Duration(2) + Addr1(6) + Addr2(6) + Addr3(6) + Seq(2) = 24 bytes
+    // Then QoS(2) if present, then LLC/SNAP(8), then EAPOL payload
     
-    // For now, just log that we saw EAPOL
-    Serial.println("[DNH] EAPOL frame detected");
+    if (len < 24) return;
+    
+    // Check To/From DS flags
+    uint8_t toDs = (frame[1] & 0x01);
+    uint8_t fromDs = (frame[1] & 0x02) >> 1;
+    
+    // Extract MACs based on To/From DS
+    const uint8_t* srcMac;
+    const uint8_t* dstMac;
+    const uint8_t* bssid;
+    
+    if (toDs && !fromDs) {
+        // To DS: RA=BSSID, TA=SA
+        dstMac = frame + 4;
+        srcMac = frame + 10;
+        bssid = frame + 4;
+    } else if (!toDs && fromDs) {
+        // From DS: RA=DA, TA=BSSID
+        dstMac = frame + 4;
+        srcMac = frame + 10;
+        bssid = frame + 10;
+    } else if (!toDs && !fromDs) {
+        // IBSS or Direct Link
+        dstMac = frame + 4;
+        srcMac = frame + 10;
+        bssid = frame + 16;
+    } else {
+        // WDS (both set) - skip
+        return;
+    }
+    
+    // Calculate data offset (after 802.11 header)
+    uint16_t offset = 24;
+    
+    // Check for QoS Data (subtype bit 3 set)
+    uint8_t subtype = (frame[0] >> 4) & 0x0F;
+    bool isQoS = (subtype & 0x08) != 0;
+    if (isQoS) offset += 2;
+    
+    // Check for HTC (QoS + Order bit)
+    if (isQoS && (frame[1] & 0x80)) offset += 4;
+    
+    if (offset + 8 > len) return;
+    
+    // Check LLC/SNAP for EAPOL: AA AA 03 00 00 00 88 8E
+    if (frame[offset] != 0xAA || frame[offset+1] != 0xAA ||
+        frame[offset+2] != 0x03 || frame[offset+3] != 0x00 ||
+        frame[offset+4] != 0x00 || frame[offset+5] != 0x00 ||
+        frame[offset+6] != 0x88 || frame[offset+7] != 0x8E) {
+        return;  // Not EAPOL
+    }
+    
+    // EAPOL payload starts after LLC/SNAP
+    const uint8_t* eapol = frame + offset + 8;
+    uint16_t eapolLen = len - offset - 8;
+    
+    if (eapolLen < 4) return;
+    
+    // EAPOL: version(1) + type(1) + length(2)
+    uint8_t eapolType = eapol[1];
+    if (eapolType != 3) return;  // EAPOL-Key only
+    
+    if (eapolLen < 99) return;  // Minimum for key frame
+    
+    // EAPOL-Key: descriptor_type(1) @ 4, key_info(2) @ 5-6
+    uint16_t keyInfo = (eapol[5] << 8) | eapol[6];
+    bool keyAck = (keyInfo & 0x0080) != 0;
+    bool keyMic = (keyInfo & 0x0100) != 0;
+    bool secure = (keyInfo & 0x0200) != 0;
+    
+    // Identify message: M1 = KeyAck, no MIC, no Secure
+    uint8_t messageNum = 0;
+    if (keyAck && !keyMic && !secure) messageNum = 1;
+    else if (!keyAck && keyMic && !secure) messageNum = 2;
+    else if (keyAck && keyMic && secure) messageNum = 3;
+    else if (!keyAck && keyMic && secure) messageNum = 4;
+    
+    // We only care about M1 for PMKID
+    if (messageNum != 1) return;
+    
+    // Determine BSSID and station from M1 (AP->Station)
+    uint8_t apBssid[6], station[6];
+    memcpy(apBssid, srcMac, 6);
+    memcpy(station, dstMac, 6);
+    
+    // ========== PMKID EXTRACTION FROM M1 ==========
+    // Descriptor type 0x02 = RSN (WPA2/WPA3), 0xFE = WPA1
+    uint8_t descriptorType = eapol[4];
+    if (descriptorType != 0x02) return;  // WPA1 doesn't have PMKID
+    
+    // Key data length at offset 97-98, key data at 99
+    if (eapolLen < 121) return;  // Need at least 99 + 22 bytes
+    
+    uint16_t keyDataLen = (eapol[97] << 8) | eapol[98];
+    if (keyDataLen < 22 || eapolLen < 99 + keyDataLen) return;
+    
+    const uint8_t* keyData = eapol + 99;
+    
+    // Search for PMKID KDE: dd 14 00 0f ac 04 [16-byte PMKID]
+    for (uint16_t i = 0; i + 22 <= keyDataLen; i++) {
+        if (keyData[i] == 0xdd && keyData[i+1] == 0x14 &&
+            keyData[i+2] == 0x00 && keyData[i+3] == 0x0f &&
+            keyData[i+4] == 0xac && keyData[i+5] == 0x04) {
+            
+            const uint8_t* pmkidData = keyData + i + 6;
+            
+            // Skip all-zero PMKIDs (invalid)
+            bool allZeros = true;
+            for (int z = 0; z < 16; z++) {
+                if (pmkidData[z] != 0) { allZeros = false; break; }
+            }
+            if (allZeros) {
+                Serial.println("[DNH] PMKID KDE found but all zeros (ignored)");
+                break;
+            }
+            
+            // Queue PMKID for creation in main thread
+            if (!pendingPMKIDCreateBusy && !pendingPMKIDCreateReady) {
+                memcpy(pendingPMKIDCreate.bssid, apBssid, 6);
+                memcpy(pendingPMKIDCreate.station, station, 6);
+                memcpy(pendingPMKIDCreate.pmkid, pmkidData, 16);
+                
+                // Try to get SSID from known networks
+                int netIdx = findNetwork(apBssid);
+                if (netIdx >= 0 && networks[netIdx].ssid[0] != 0) {
+                    strncpy(pendingPMKIDCreate.ssid, networks[netIdx].ssid, 32);
+                    pendingPMKIDCreate.ssid[32] = 0;
+                } else {
+                    // No SSID - trigger dwell to catch beacon
+                    pendingPMKIDCreate.ssid[0] = 0;
+                    state = DNHState::DWELLING;
+                    dwellStartTime = millis();
+                    dwellResolved = false;
+                    Serial.println("[DNH] PMKID needs SSID - dwelling for beacon");
+                }
+                
+                pendingPMKIDCreateReady = true;
+                Serial.printf("[DNH] PMKID queued from %02X:%02X:%02X:%02X:%02X:%02X\n",
+                    apBssid[0], apBssid[1], apBssid[2], apBssid[3], apBssid[4], apBssid[5]);
+            }
+            break;  // Found PMKID, stop searching
+        }
+    }
 }
