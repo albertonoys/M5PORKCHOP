@@ -872,28 +872,28 @@ void Display::drawSettingsScreen(M5Canvas& canvas) {
     canvas.drawString("[ENTER] TO GO BACK", DISPLAY_W / 2, MAIN_H - 12);
 }
 
-// Hacker culture quotes for About screen
+// Phrack quotes for About screen (yes we know, but script kiddos love em)
 static const char* ABOUT_QUOTES[] = {
-    "hack the planet",
-    "the gibson is ours",
-    "mess with the best",
-    "there is no spoon",
-    "i am invincible!",
-    "shall we play a game?",
-    "the only winning move",
-    "ph34r the piglet",
-    "0wn3d by 0ct0",
-    "root@porkchop:~#",
+    "HACK THE PLANET",
+    "SHALL WE PLAY A GAME",
     "sudo make me bacon",
-    "rm -rf /trust",
+    "root@porkchop:~#",
+    "WHILE(1) { PWN(); }",
     "#!/usr/bin/oink",
-    "while(1) { pwn(); }",
-    "segfault in the matrix",
-    "buffer overflow ur life",
-    "0xDEADBEEF",
-    "0xCAFEBABE",
-    "all your base",
-    "never gonna give u up"
+    "0WN3D BY 0ct0",
+    "CURIOSITY IS NOT A CRIME",
+    "MY CRIME IS CURIOSITY",
+    "INFORMATION WANTS TO BE FREE",
+    "SMASH THE STACK",
+    "THERE IS NO PATCH",
+    "TRUST NO AP",
+    "PROMISCUOUS BY NATURE",
+    "802.11 WARL0RD",
+    "0xDEADP0RK",
+    "SEGFAULT IN THE MATRIX",
+    "PACKET OR GTFO",
+    "THE CONSCIENCE OF A HACKER",
+    "EXPLOIT ADAPT OVERCOME"
 };
 static const int ABOUT_QUOTES_COUNT = sizeof(ABOUT_QUOTES) / sizeof(ABOUT_QUOTES[0]);
 static int aboutQuoteIndex = 0;
@@ -936,16 +936,20 @@ void Display::drawAboutScreen(M5Canvas& canvas) {
     canvas.setTextSize(1);
     canvas.drawString("V" BUILD_VERSION, DISPLAY_W / 2, 25);
     
-    // Author
+    // Author (0ct0 stays lowercase - it's the handle)
     canvas.setTextColor(COLOR_FG);
-    canvas.drawString("BY 0CT0", DISPLAY_W / 2, 38);
+    canvas.drawString("BY 0ct0", DISPLAY_W / 2, 38);
     
     // GitHub (single line)
     canvas.drawString("GITHUB.COM/0CT0SEC/M5PORKCHOP", DISPLAY_W / 2, 50);
     
-    // Commit hash
+    // Commit hash (uppercase the value)
     canvas.setTextColor(COLOR_ACCENT);
-    canvas.drawString("COMMIT: " BUILD_COMMIT, DISPLAY_W / 2, 64);
+    char commitBuf[32];
+    String commitStr = BUILD_COMMIT;
+    commitStr.toUpperCase();
+    snprintf(commitBuf, sizeof(commitBuf), "COMMIT: %s", commitStr.c_str());
+    canvas.drawString(commitBuf, DISPLAY_W / 2, 64);
     
     // Random quote
     canvas.setTextColor(COLOR_FG);
