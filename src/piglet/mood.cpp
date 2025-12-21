@@ -452,32 +452,35 @@ const char* PHRASES_BORED[] = {
     "barn too quiet"
 };
 
-// WARHOG wardriving phrases - GPS recon style
+// WARHOG wardriving phrases - US Army Sergeant on recon patrol
 const char* PHRASES_WARHOG[] = {
-    "mobile n hostile",
-    "wardrive n thrive",
-    "gps lock n stalk",
-    "coordz on deck",
-    "wigle submission",
-    "kismet vibes",
-    "lat/lon huntin",
-    "ssid cartography",
-    "loggin the ether",
-    "nmea flowin",
-    "ap geolocation",
-    "drive-by recon",
-    "mobile pcap unit"
+    "boots on ground",
+    "patrol route active",
+    "recon in progress sir",
+    "moving through sector",
+    "surveying AO",
+    "oscar mike",
+    "maintaining bearing",
+    "grid coordinates logged",
+    "securing perimeter data",
+    "tactical recon mode",
+    "sitrep: mobile",
+    "foot patrol logged",
+    "area survey continuous"
 };
 
 const char* PHRASES_WARHOG_FOUND[] = {
-    "truffle logged",
-    "coords acquired",
-    "ap triangulated",
-    "wigle fodder",
-    "geotagged loot",
-    "lat/lon banked",
-    "another pin dropped",
-    "ssid catalogued"
+    "contact logged sir",
+    "target acquired n logged",
+    "AP marked on grid",
+    "hostile network tagged",
+    "coordinates confirmed",
+    "intel gathered sir",
+    "objective documented",
+    "waypoint established",
+    "tango located",
+    "enemy network catalogued",
+    "position marked sir"
 };
 
 // Piggy Blues BLE spam phrases - BLE attack style
