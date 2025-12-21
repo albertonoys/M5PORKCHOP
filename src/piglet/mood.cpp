@@ -134,20 +134,46 @@ static bool processQueue() {
 // Templates with $VAR tokens replaced with live data
 
 const char* PHRASES_DYNAMIC[] = {
-    "$NET truffles found",
-    "$HS handshakes ez",
-    "lvl $LVL piggy",
-    "$DEAUTH kicks today",
-    "$NET and counting",
-    "rank $LVL unlocked",
-    "$HS pwnage counter",
-    "$KM km of mud",
-    "$NET sniffs so far",
-    "bacon lvl $LVL",
-    "$DEAUTH boot party"
+    "$NET truffles clocked innit",
+    "$HS blessed realness captured",
+    "lvl $LVL boots on progression sir",
+    "$DEAUTH eleganza violence",
+    "$NET irie contacts logged",
+    "rank $LVL snatched mate",
+    "$HS tactical blessings",
+    "$KM km death dropped on foot",
+    "$NET networks serving sir",
+    "bacon lvl $LVL blessed innit",
+    "$DEAUTH proper frames hunty"
 };
 
 static const int PHRASES_DYNAMIC_COUNT = sizeof(PHRASES_DYNAMIC) / sizeof(PHRASES_DYNAMIC[0]);
+
+// Rare meta-commentary phrases - cryptic PROJECT M5PORKSOUP lore
+const char* PHRASES_RARE_LORE[] = {
+    "soup recipe avoided",
+    "4 lines between shame and glory",
+    "found nothing. suspicious.",
+    "horse = barn (proven)",
+    "malloc speaks russian",
+    "underwater. still compiling.",
+    "spice must flow. pig agrees.",
+    "samurai ronin without context",
+    "git log remembers everything",
+    "optometrist > ketamine",
+    "k found horse again",
+    "barn structural integrity: ???",
+    "embarrassment persists in commits",
+    "identity crisis: API edition",
+    "codepath paranoia justified",
+    "SGT boot commit c7cc6db",
+    "eleganza commit b74f661",
+    "horse status: unknown",
+    "sleep deprivation: features",
+    "pig silent. pig sees all."
+};
+
+static const int PHRASES_RARE_LORE_COUNT = sizeof(PHRASES_RARE_LORE) / sizeof(PHRASES_RARE_LORE[0]);
 
 // Buffer for formatted dynamic phrase
 static char dynamicPhraseBuf[48];
@@ -195,7 +221,7 @@ static const char* formatDynamicPhrase(const char* templ) {
 enum class PhraseCategory : uint8_t {
     HAPPY, EXCITED, HUNTING, SLEEPY, SAD, WARHOG, WARHOG_FOUND,
     PIGGYBLUES_TARGETED, PIGGYBLUES_STATUS, PIGGYBLUES_IDLE,
-    DEAUTH, DEAUTH_SUCCESS, PMKID, SNIFFING, PASSIVE_RECON, MENU_IDLE, RARE, DYNAMIC,
+    DEAUTH, DEAUTH_SUCCESS, PMKID, SNIFFING, PASSIVE_RECON, MENU_IDLE, RARE, RARE_LORE, DYNAMIC,
     BORED,  // No valid targets available
     COUNT  // Must be last
 };
@@ -1105,7 +1131,13 @@ void Mood::selectPhrase() {
     
     // Phase 3: 5% chance for rare phrase (surprise variety)
     int specialRoll = random(0, 100);
-    if (specialRoll < 5) {
+    if (specialRoll < 3) {
+        // 3% chance for cryptic lore (PROJECT M5PORKSOUP breadcrumbs)
+        int idx = pickPhraseIdx(PhraseCategory::RARE_LORE, PHRASES_RARE_LORE_COUNT);
+        currentPhrase = PHRASES_RARE_LORE[idx];
+        return;
+    } else if (specialRoll < 5) {
+        // 2% chance for regular rare phrases
         phrases = PHRASES_RARE;
         count = sizeof(PHRASES_RARE) / sizeof(PHRASES_RARE[0]);
         cat = PhraseCategory::RARE;
