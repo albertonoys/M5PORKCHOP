@@ -500,41 +500,23 @@ uint16_t DoNoHamMode::getAdaptiveHopDelay() {
     // Adjust based on local activity
     uint16_t hopDelay;
     if (stats.beaconCount >= BUSY_THRESHOLD) {
-        hopDelay = baseTime * 1.5;  // Busy channel
+        hopDelay = (baseTime * 3) / 2;  // Busy channel (1.5x)
     } else if (stats.beaconCount >= 2) {
         hopDelay = baseTime;  // Normal activity
     } else if (stats.deadStreak >= DEAD_STREAK_LIMIT) {
         hopDelay = HOP_MIN;  // Dead channel, minimum time
     } else {
-        hopDelay = baseTime * 0.7;  // Light activity
+        hopDelay = (baseTime * 7) / 10;  // Light activity (0.7x)
     }
     
     // Global activity adjustment
     if (lastCycleActivity < 5) {
-        hopDelay *= 0.6;  // Quiet spectrum, speed up
+        hopDelay = (hopDelay * 3) / 5;  // Quiet spectrum (0.6x)
     } else if (lastCycleActivity > 40) {
-        hopDelay *= 1.2;  // Busy spectrum, slow down
+        hopDelay = (hopDelay * 6) / 5;  // Busy spectrum (1.2x)
     }
     
     return hopDelay;
-}
-
-// Update channel stats after visiting
-void DoNoHamMode::updateChannelStats(uint8_t beacons, uint8_t eapols) {
-    ChannelStats& stats = channelStats[channelIndex];
-    
-    stats.beaconCount = beacons;
-    stats.eapolCount = eapols;
-    stats.lifetimeBeacons += beacons;
-    
-    if (beacons > 0 || eapols > 0) {
-        stats.lastActivity = millis();
-        stats.deadStreak = 0;
-        stats.priority = min(255, stats.priority + 5);  // Boost priority
-    } else {
-        stats.deadStreak++;
-        stats.priority = max(50, stats.priority - 3);  // Reduce priority
-    }
 }
 
 // Decay channel stats every 2 minutes
@@ -575,7 +557,7 @@ bool DoNoHamMode::checkHuntingTrigger() {
 void DoNoHamMode::checkIdleSweep() {
     // If just completed full cycle
     if (channelIndex == 0) {
-        uint8_t totalActivity = 0;
+        uint16_t totalActivity = 0;
         for (int i = 0; i < 13; i++) {
             totalActivity += channelStats[i].beaconCount;
         }

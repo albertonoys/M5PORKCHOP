@@ -106,7 +106,6 @@ private:
     static void hopToNextChannel();
     static void startDwell();
     static uint16_t getAdaptiveHopDelay();
-    static void updateChannelStats(uint8_t beacons, uint8_t eapols);
     static void decayChannelStats();
     static bool isPrimaryChannel(uint8_t ch);
     static bool checkHuntingTrigger();     // Returns true if entered HUNTING
