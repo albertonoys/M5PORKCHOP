@@ -164,7 +164,7 @@ static uint32_t attackStartTime = 0;
 static const uint32_t SCAN_TIME = 5000;         // 5 sec initial scan
 // LOCK_TIME now uses SwineStats::getLockTime() for class buff support
 static const uint32_t ATTACK_TIMEOUT = 15000;   // 15 sec per target
-static const uint32_t WAIT_TIME = 8000;         // 8 sec between targets (allows late EAPOL M3/M4, extended for debugging)
+static const uint32_t WAIT_TIME = 4500;         // 4.5 sec between targets (allows late EAPOL M3/M4)
 static const uint32_t BORED_RETRY_TIME = 30000; // 30 sec between retry scans when bored
 static const uint32_t BORED_THRESHOLD = 3;      // Failed target attempts before bored
 
