@@ -706,6 +706,15 @@ void OinkMode::update() {
                 // Found a target - reset failed scan counter
                 consecutiveFailedScans = 0;
                 
+                // Revalidate: Network might have been removed between getNextTarget() and here
+                if (nextIdx >= (int)networks.size()) {
+                    Serial.println("[OINK] Target index out of bounds after selection (race with cleanup), rescanning");
+                    autoState = AutoState::SCANNING;
+                    stateStartTime = now;
+                    channelHopping = true;
+                    break;
+                }
+                
                 selectionIndex = nextIdx;
                 
                 // Select this target (locks to channel, stops hopping)
@@ -718,9 +727,10 @@ void OinkMode::update() {
                 deauthing = false;  // Don't deauth yet, just listen
                 channelHopping = false;  // Ensure channel stays locked during capture phase
                 
-                Serial.printf("[OINK] Locking to %s (ch%d) - discovering clients (12s window)...\n", 
-                             networks[selectionIndex].ssid,
-                             networks[selectionIndex].channel);
+                Serial.printf("[OINK] Locking to %s (ch%d) - discovering clients (%dms window)...\n", 
+                             networks[targetIndex].ssid,
+                             networks[targetIndex].channel,
+                             SwineStats::getLockTime());
                 Mood::setStatusMessage("sniffin clients");
                 Avatar::sniff();  // Nose twitch when sniffing for auths
             }
@@ -744,6 +754,16 @@ void OinkMode::update() {
                     attackStartTime = now;
                     deauthCount = 0;
                     deauthing = true;
+                } else {
+                    // Target vanished during LOCKING (aged out by cleanup)
+                    // Abort lock and find new target
+                    Serial.println("[OINK] Target network expired during LOCKING, moving to next");
+                    autoState = AutoState::NEXT_TARGET;
+                    stateStartTime = now;
+                    deauthing = false;
+                    channelHopping = true;
+                    targetIndex = -1;
+                    memset(targetBssid, 0, 6);
                 }
             }
             break;
