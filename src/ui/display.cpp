@@ -639,8 +639,17 @@ void Display::showToast(const String& message) {
 
 // M5Cardputer NeoPixel LED on GPIO 21
 #define LED_PIN 21
+#define SIREN_COOLDOWN_MS 2000
 
 void Display::flashSiren(uint8_t cycles) {
+    // Guard: prevent rapid consecutive sirens (2 second cooldown)
+    static uint32_t lastSirenTime = 0;
+    uint32_t now = millis();
+    if (now - lastSirenTime < SIREN_COOLDOWN_MS) {
+        return;  // Too soon, skip this siren
+    }
+    lastSirenTime = now;
+    
     // Police siren effect - red/blue alternating flash
     // Uses ESP32-S3 built-in neopixelWrite() - no library needed!
     // Non-blocking timing would require a state machine, so we do quick blocking flashes
