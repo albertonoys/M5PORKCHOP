@@ -482,6 +482,12 @@ static bool warhogCapWarned = false;
 static const uint16_t BLE_XP_CAP = 500;      // ~250 bursts worth
 static const uint16_t WARHOG_XP_CAP = 300;   // ~150 geotagged networks
 
+// ============ DOPAMINE HOOKS ============
+// the pig giveth, sometimes generously
+static uint8_t captureStreak = 0;            // consecutive captures without 5min gap
+static uint32_t lastCaptureTime = 0;         // for streak timeout
+static const uint32_t STREAK_TIMEOUT_MS = 300000;  // 5 minutes to maintain streak
+
 void XP::startSession() {
     memset(&session, 0, sizeof(session));
     session.startTime = millis();
@@ -492,6 +498,10 @@ void XP::startSession() {
     sessionWarhogXP = 0;
     bleCapWarned = false;
     warhogCapWarned = false;
+    
+    // Reset dopamine hooks
+    captureStreak = 0;
+    lastCaptureTime = 0;
     
     data.sessions++;
     
@@ -541,6 +551,12 @@ void XP::addXP(XPEvent event) {
         case XPEvent::HANDSHAKE_CAPTURED:
             data.lifetimeHS++;
             session.handshakes++;
+            // Capture streak: maintain if <5min since last, reset otherwise
+            if (lastCaptureTime > 0 && (millis() - lastCaptureTime) > STREAK_TIMEOUT_MS) {
+                captureStreak = 0;  // Streak broken
+            }
+            captureStreak = (captureStreak < 255) ? captureStreak + 1 : 255;
+            lastCaptureTime = millis();
             // Check for clutch capture (handshake at <10% battery)
             if (M5.Power.getBatteryLevel() < 10 && !hasAchievement(ACH_CLUTCH_CAPTURE)) {
                 unlockAchievement(ACH_CLUTCH_CAPTURE);
@@ -550,6 +566,12 @@ void XP::addXP(XPEvent event) {
             data.lifetimeHS++;
             data.lifetimePMKID++;
             session.handshakes++;
+            // Capture streak: maintain if <5min since last, reset otherwise
+            if (lastCaptureTime > 0 && (millis() - lastCaptureTime) > STREAK_TIMEOUT_MS) {
+                captureStreak = 0;  // Streak broken
+            }
+            captureStreak = (captureStreak < 255) ? captureStreak + 1 : 255;
+            lastCaptureTime = millis();
             // Check for clutch capture (PMKID at <10% battery)
             if (M5.Power.getBatteryLevel() < 10 && !hasAchievement(ACH_CLUTCH_CAPTURE)) {
                 unlockAchievement(ACH_CLUTCH_CAPTURE);
@@ -704,6 +726,34 @@ void XP::addXP(XPEvent event) {
 }
 
 void XP::addXP(uint16_t amount) {
+    // ============ DOPAMINE HOOK: XP CRITS ============
+    // 90% normal, 8% = 2x bonus, 2% = 5x JACKPOT
+    // Only applies to base amounts > 5 (skip small spam events)
+    if (amount > 5) {
+        uint8_t roll = random(0, 100);
+        if (roll >= 98) {
+            // JACKPOT! 2% chance for 5x
+            amount *= 5;
+            Display::showToast("JACKPOT!");
+        } else if (roll >= 90) {
+            // Bonus! 8% chance for 2x
+            amount *= 2;
+        }
+    }
+    
+    // ============ DOPAMINE HOOK: STREAK BONUS ============
+    // Apply multiplier if we have an active capture streak
+    // 3 = +10%, 5 = +25%, 10 = +50%, 20 = +100%
+    if (captureStreak >= 20) {
+        amount = (uint16_t)((amount * 200) / 100);  // +100%
+    } else if (captureStreak >= 10) {
+        amount = (uint16_t)((amount * 150) / 100);  // +50%
+    } else if (captureStreak >= 5) {
+        amount = (uint16_t)((amount * 125) / 100);  // +25%
+    } else if (captureStreak >= 3) {
+        amount = (uint16_t)((amount * 110) / 100);  // +10%
+    }
+    
     // Apply buff/debuff XP multiplier (SNOUT$HARP +25%, F0GSNOUT -15%)
     float mult = SwineStats::getXPMultiplier();
     uint16_t modifiedAmount = (uint16_t)(amount * mult);
