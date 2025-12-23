@@ -241,6 +241,14 @@ void DoNoHamMode::stop() {
     saveAllPMKIDs();
     saveAllHandshakes();
     
+    // Free per-handshake beacon memory to prevent leaks
+    for (auto& hs : handshakes) {
+        if (hs.beaconData) {
+            free(hs.beaconData);
+            hs.beaconData = nullptr;
+        }
+    }
+    
     // Clear vectors
     dnhBusy = true;
     networks.clear();
@@ -277,6 +285,14 @@ void DoNoHamMode::stopSeamless() {
     // Save any unsaved data
     saveAllPMKIDs();
     saveAllHandshakes();
+    
+    // Free beacon memory since OINK will recapture its own
+    for (auto& hs : handshakes) {
+        if (hs.beaconData) {
+            free(hs.beaconData);
+            hs.beaconData = nullptr;
+        }
+    }
 }
 
 void DoNoHamMode::update() {
@@ -683,6 +699,12 @@ void DoNoHamMode::saveAllPMKIDs() {
     // Save PMKIDs in hashcat 22000 format
     for (auto& p : pmkids) {
         if (p.saved) continue;
+        if (p.saveAttempts >= 3) continue;  // Give up after 3 failures
+        
+        // Exponential backoff: 0s, 2s, 5s
+        static const uint32_t backoffMs[] = {0, 2000, 5000};
+        uint32_t timeSinceCapture = millis() - p.timestamp;
+        if (timeSinceCapture < backoffMs[p.saveAttempts]) continue;
         
         // Try to backfill SSID if missing
         if (p.ssid[0] == 0) {
@@ -706,22 +728,28 @@ void DoNoHamMode::saveAllPMKIDs() {
                     if (ssid.length() > 0) {
                         strncpy(p.ssid, ssid.c_str(), 32);
                         p.ssid[32] = 0;
-                        Serial.printf("[DNH] PMKID SSID backfilled from txt: %s\n", p.ssid);
+                        Serial.printf("[DNH] PMKID SSID backfilled from txt: %s\\n", p.ssid);
                     }
                     txtFile.close();
                 }
             }
         }
         
-        // Can only save if we have SSID
+        // Can only save if we have SSID (don't count as attempt - will retry when SSID arrives)
         if (p.ssid[0] == 0) continue;
         
-        // Check for all-zero PMKID (invalid)
+        // Check for all-zero PMKID (invalid - don't count as attempt)
         bool allZeros = true;
         for (int i = 0; i < 16; i++) {
             if (p.pmkid[i] != 0) { allZeros = false; break; }
         }
-        if (allZeros) continue;
+        if (allZeros) {
+            p.saved = true;  // Mark invalid PMKID as done
+            continue;
+        }
+        
+        // Now we actually attempt to save - increment counter
+        p.saveAttempts++;
         
         // Build filename: /handshakes/BSSID.22000
         char filename[64];
@@ -735,7 +763,10 @@ void DoNoHamMode::saveAllPMKIDs() {
         
         File f = SD.open(filename, FILE_WRITE);
         if (!f) {
-            Serial.printf("[DNH] Failed to create PMKID file: %s\n", filename);
+            Serial.printf("[DNH] Failed to create PMKID file: %s (attempt %d)\\n", filename, p.saveAttempts);
+            if (p.saveAttempts >= 3) {
+                p.saved = true;  // Give up
+            }
             continue;
         }
         
@@ -764,7 +795,7 @@ void DoNoHamMode::saveAllPMKIDs() {
         essidHex[ssidLen * 2] = 0;
         
         // WPA*01*PMKID*MAC_AP*MAC_CLIENT*ESSID***01
-        f.printf("WPA*01*%s*%s*%s*%s***01\n", pmkidHex, macAP, macClient, essidHex);
+        f.printf("WPA*01*%s*%s*%s*%s***01\\n", pmkidHex, macAP, macClient, essidHex);
         f.close();
         
         // Save SSID to companion txt file (matches OINK pattern)
@@ -782,7 +813,7 @@ void DoNoHamMode::saveAllPMKIDs() {
         }
         
         p.saved = true;
-        Serial.printf("[DNH] PMKID saved: %s\n", filename);
+        Serial.printf("[DNH] PMKID saved: %s\\n", filename);
         SDLog::log("DNH", "PMKID saved: %s (%s)", p.ssid, filename);
     }
 }
@@ -792,6 +823,12 @@ void DoNoHamMode::saveAllHandshakes() {
     for (auto& hs : handshakes) {
         if (hs.saved) continue;
         if (!hs.hasValidPair()) continue;  // Need M1+M2 or M2+M3
+        if (hs.saveAttempts >= 3) continue;  // Give up after 3 failures
+        
+        // Exponential backoff: 0s, 2s, 5s
+        static const uint32_t backoffMs[] = {0, 2000, 5000};
+        uint32_t timeSinceCapture = millis() - hs.lastSeen;
+        if (timeSinceCapture < backoffMs[hs.saveAttempts]) continue;
         
         // Try to backfill SSID if missing
         if (hs.ssid[0] == 0) {
@@ -815,14 +852,14 @@ void DoNoHamMode::saveAllHandshakes() {
                     if (ssid.length() > 0) {
                         strncpy(hs.ssid, ssid.c_str(), 32);
                         hs.ssid[32] = 0;
-                        Serial.printf("[DNH] Handshake SSID backfilled from txt: %s\n", hs.ssid);
+                        Serial.printf("[DNH] Handshake SSID backfilled from txt: %s\\n", hs.ssid);
                     }
                     txtFile.close();
                 }
             }
         }
         
-        // Can only save if we have SSID
+        // Can only save if we have SSID (don't count as attempt - will retry when SSID arrives)
         if (hs.ssid[0] == 0) continue;
         
         // Determine message pair
@@ -841,7 +878,11 @@ void DoNoHamMode::saveAllHandshakes() {
             eapolFrame = &hs.frames[1];  // M2
         }
         
-        if (nonceFrame->len < 51 || eapolFrame->len < 97) continue;  // MIC at offset 81-96, need len >= 97
+        // Frame length validation (don't count as attempt if malformed)
+        if (nonceFrame->len < 51 || eapolFrame->len < 97) continue;
+        
+        // Now we actually attempt to save - increment counter
+        hs.saveAttempts++;
         
         // Build filename: /handshakes/BSSID_hs.22000
         char filename[64];
@@ -855,7 +896,10 @@ void DoNoHamMode::saveAllHandshakes() {
         
         File f = SD.open(filename, FILE_WRITE);
         if (!f) {
-            Serial.printf("[DNH] Failed to create handshake file: %s\n", filename);
+            Serial.printf("[DNH] Failed to create handshake file: %s (attempt %d)\\n", filename, hs.saveAttempts);
+            if (hs.saveAttempts >= 3) {
+                hs.saved = true;  // Give up
+            }
             continue;
         }
         
@@ -993,7 +1037,7 @@ void DoNoHamMode::saveAllHandshakes() {
         }
         
         hs.saved = true;
-        Serial.printf("[DNH] Handshake saved: %s\n", filename);
+        Serial.printf("[DNH] Handshake saved: %s\\n", filename);
         SDLog::log("DNH", "Handshake saved: %s (%s)", hs.ssid, filename);
     }
 }
@@ -1204,15 +1248,16 @@ void DoNoHamMode::handleEAPOL(const uint8_t* frame, uint16_t len, int8_t rssi) {
     
     // EAPOL-Key: descriptor_type(1) @ 4, key_info(2) @ 5-6
     uint16_t keyInfo = (eapol[5] << 8) | eapol[6];
-    bool keyAck = (keyInfo & 0x0080) != 0;
-    bool keyMic = (keyInfo & 0x0100) != 0;
-    bool secure = (keyInfo & 0x0200) != 0;
+    uint8_t install = (keyInfo >> 6) & 0x01;
+    uint8_t keyAck = (keyInfo >> 7) & 0x01;
+    uint8_t keyMic = (keyInfo >> 8) & 0x01;
+    uint8_t secure = (keyInfo >> 9) & 0x01;
     
-    // Identify message: M1 = KeyAck, no MIC, no Secure
+    // Identify message: M1 = KeyAck, no MIC; M2 = MIC, not secure; M3 = KeyAck+MIC+Install; M4 = MIC+Secure
     uint8_t messageNum = 0;
-    if (keyAck && !keyMic && !secure) messageNum = 1;
+    if (keyAck && !keyMic) messageNum = 1;
     else if (!keyAck && keyMic && !secure) messageNum = 2;
-    else if (keyAck && keyMic && secure) messageNum = 3;
+    else if (keyAck && keyMic && install) messageNum = 3;
     else if (!keyAck && keyMic && secure) messageNum = 4;
     
     if (messageNum == 0) return;  // Unknown message type
