@@ -452,6 +452,10 @@ void Porkchop::handleInput() {
                 case 'D':
                     setMode(PorkchopMode::DNH_MODE);
                     break;
+                case 'f': // File transfer (PORKCHOP COMMANDER)
+                case 'F':
+                    setMode(PorkchopMode::FILE_TRANSFER);
+                    break;
                 case '1': // Reveal session challenges to Serial
                     Challenges::printToSerial();
                     break;
