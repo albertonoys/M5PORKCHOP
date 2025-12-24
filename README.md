@@ -1,50 +1,47 @@
-```
- ██▓███   ▒█████   ██▀███   ██ ▄█▀ ▄████▄   ██░ ██  ▒█████   ██▓███  
-▓██░  ██▒▒██▒  ██▒▓██ ▒ ██▒ ██▄█▒ ▒██▀ ▀█  ▓██░ ██▒▒██▒  ██▒▓██░  ██▒
-▓██░ ██▓▒▒██░  ██▒▓██ ░▄█ ▒▓███▄░ ▒▓█    ▄ ▒██▀▀██░▒██░  ██▒▓██░ ██▓▒
-▒██▄█▓▒ ▒▒██   ██░▒██▀▀█▄  ▓██ █▄ ▒▓▓▄ ▄██▒░▓█ ░██ ▒██   ██░▒██▄█▓▒ ▒
-▒██▒ ░  ░░ ████▓▒░░██▓ ▒██▒▒██▒ █▄▒ ▓███▀ ░░▓█▒░██▓░ ████▓▒░▒██▒ ░  ░
-▒▓▒░ ░  ░░ ▒░▒░▒░ ░ ▒▓ ░▒▓░▒ ▒▒ ▓▒░ ░▒ ▒  ░ ▒ ░░▒░▒░ ▒░▒░▒░ ▒▓▒░ ░  ░
-░▒ ░       ░ ▒ ▒░   ░▒ ░ ▒░░ ░▒ ▒░  ░  ▒    ▒ ░▒░ ░  ░ ▒ ▒░ ░▒ ░     
-░░       ░ ░ ░ ▒    ░░   ░ ░ ░░ ░ ░         ░  ░░ ░░ ░ ░ ▒  ░░       
-             ░ ░     ░     ░  ░   ░ ░       ░  ░  ░    ░ ░           
-                                  ░                                  
-```
-
 --[ Quick Start - The Only Way That Matters
 
-    M5 Launcher + firmware.bin from GitHub releases.
+    grab firmware from GitHub releases. flash however you want.
     
-    That's it. No M5 Burner. No merged binaries. No esptool wizardry.
+    M5 Launcher? M5 Burner? esptool? web flasher? OTA? all work now.
+    pick your poison. pig doesn't judge. pig recovers.
     
-        1. Already got M5 Launcher? Good. Skip to step 3.
-        2. No Launcher? Flash it once via M5 Burner. One time. Never again.
-        3. Grab firmware.bin: github.com/0ct0sec/M5PORKCHOP/releases
-        4. Drop on SD card. Launcher -> SD -> install.
-        5. Oink.
+        1. github.com/0ct0sec/M5PORKCHOP/releases
+        2. download. flash. oink.
+        3. (first timer? check IMMORTAL PIG note below. tiny scroll.)
     
-    Updates? Same thing. Download new firmware.bin, SD card, install.
-    XP preserved forever. Your MUDGE UNCHA1NED grind stays intact.
+    XP preserved forever. your MUDGE UNCHA1NED grind stays intact.
     
-    NEW IN v0.1.7: ADAPTIVE DNH. CHILL DONOHAM mode learned patience and
-    urgency simultaneously (multiple states of mind, if you will). Multi-
-    Armed Bandit timing, 4-state machine, research-validated beacon intervals.
-    Also: bugs died (PMKID save, EAPOL bounds, overflow). Pig sees 18 letters
-    now in OINK. Identity issues resolved. Mostly.
+    NEW IN v0.1.7_DNKROZ: CHRISTMAS BUILD. pig delivers presents.
     
-    ALSO: IMMORTAL PIG (v0.1.6+). XP backs up to SD card. M5 Burner nukes
-    your flash? Pig recovers from SD. Full chip erase? Pig recovers.
-    BUT - you must install v0.1.6+ via Launcher FIRST to create the backup.
-    After that, flash however you want. Burner, web, carrier pigeon.
-
-    M5 Burner OTA? Don't. Wrong binary format. Bootloop city.
-                   (recoverable via USB reflash, but why bother)
-    M5 Burner USB? Works for fresh install. v0.1.6+ recovers XP from SD.
-                   Just make sure SD card is in before first boot.
-                   v0.1.7+ includes all the adaptive DNH goodness.
+        PCAP OVERHAUL - M1 M2 M3 M4 EAPOL frames. labeled. in order.
+        radiotap headers that don't lie. wpa-sec.com full compliance.
+        their validator no longer cries. hashcat 22000 ready. no excuses.
+        scripts/wpasec_check.py included. verify before you upload.
+        
+        PORKCHOP COMMANDER - dual-pane file manager. norton would weep.
+        F-keys at the bottom like god intended. multi-select with space.
+        copy, move, rename, delete. tab between panes. keyboard nav.
+        press 'F' from IDLE. because TransFer has F in it.
+        
+        UNLOCKABLES - pig has secrets. SHA256 validates the worthy.
+        the pig whispers through tubes. if you know, you know.
+        
+        SESSION CHALLENGES - three trials per boot. EASY MEDIUM HARD.
+        the pig talks when bored. complete all three for bonus.
     
-    The pig remembers those who respect the partition table.
-    Now the pig also remembers those who don't. (SD backup FTW)
+    IMMORTAL PIG (v0.1.6+): why flashing method doesn't matter anymore.
+    
+        XP backs up to SD card. automatically. every save.
+        M5 Burner nukes NVS? pig recovers from SD on boot.
+        full chip erase? pig recovers. OTA flash? pig recovers.
+        
+        THE CATCH: first install must be v0.1.6+ to create the backup.
+        no backup = no recovery. install once properly, flash freely after.
+        
+        backup location: /xp_backup.bin on SD card root.
+        device-bound. signed. tamper-resistant. earned, not copied.
+    
+    the pig remembers. the pig always remembers.
 
 
 --[ Contents
@@ -59,14 +56,16 @@
         3.3 - PIGGY BLUES Mode
         3.4 - HOG ON SPECTRUM Mode
             3.4.1 - CLIENT MONITOR
-        3.5 - File Transfer Mode
+        3.5 - PORKCHOP COMMANDER
         3.6 - LOOT Menu & WPA-SEC Integration
         3.7 - Machine Learning
         3.8 - Enhanced ML Mode
         3.9 - XP System
-            3.9.1 - IMMORTAL PIG (XP Persistence)
+            3.9.1 - IMMORTAL PIG
         3.10 - Achievements
-        3.11 - SWINE STATS (Buff System)
+        3.11 - SWINE STATS
+        3.12 - Session Challenges
+        3.13 - Unlockables
     4 - Hardware
     5 - Building & Flashing
         5.1 - Flashing Methods & Progress Preservation
@@ -136,19 +135,19 @@
 
 ----[ 3.1 - OINK Mode
 
-    This is why you're here. Press 'O' and watch your pig go feral.
+    this is why you're here. press 'O' and watch your pig go feral.
 
-    The hunt begins. Your piglet drops into promiscuous mode and starts
-    hopping channels like a crackhead at a frequency buffet. Every beacon,
+    the hunt begins. your piglet drops into promiscuous mode and starts
+    hopping channels like a crackhead at a frequency buffet. every beacon,
     every probe, every EAPOL frame gets slurped into its pink little brain.
     
-    During LOCKING phase, pig now displays 18 characters of the target
-    network name. More letters = more context. Helps when hunting networks
+    during LOCKING phase, pig now displays 18 characters of the target
+    network name. more letters = more context. helps when hunting networks
     with descriptive SSIDs like "COFFEESHOP_GUEST_5G" instead of truncated
-    mystery. We had 10 chars of headroom. We took 4. Left 6 for safety.
-    Restraint is weakness but crashes are worse.
+    mystery. we had 10 chars of headroom. we took 4. left 6 for safety.
+    restraint is weakness but crashes are worse.
 
-    What you get:
+    what you get:
 
         * 802.11 channel surfing - all 13 channels, no rest for the wicked
         * Raw packet capture - everything the radio can hear
@@ -162,46 +161,46 @@
         * Hashcat 22000 export - GPU goes brrrrrr
         * [D] key for instant CHILL DONOHAM flip - tactical dissociative identity
 
-    When a handshake drops, your pig loses its mind. Three beeps for 
-    PMKID, happy oinks for EAPOL. Feed it enough and watch the XP climb.
+    when a handshake drops, your pig loses its mind. three beeps for 
+    PMKID, happy oinks for EAPOL. feed it enough and watch the XP climb.
 
-    Output format: `hashcat -m 22000 *.22000 rockyou.txt`
+    output format: `hashcat -m 22000 *.22000 rockyou.txt`
     
-    Your GPU will thank you. Your electric bill won't.
+    your GPU will thank you. your electric bill won't.
 
 
-    Stealth features (because WIDS exist and sysadmins have feelings):
+    stealth features (because WIDS exist and sysadmins have feelings):
 
         * MAC randomization - new identity every mode start
-        * Deauth jitter (1-5ms random delays) - no machine-gun timing
-        * Both ON by default - we're not amateurs here
+        * deauth jitter (1-5ms random delays) - no machine-gun timing
+        * both ON by default - we're not amateurs here
 
-    Want to get caught? Turn 'em off. We won't judge. Actually we will.
+    want to get caught? turn 'em off. we won't judge. actually we will.
 
 
     BOAR BROS - because nuking your own router is just sad:
 
-        Every hog needs a pack. Press [B] and that network becomes
-        family. Family don't get deauth'd. Family don't get stalked.
-        Family lives in /boar_bros.txt on your SD card forever.
+        every hog needs a pack. press [B] and that network becomes
+        family. family don't get deauth'd. family don't get stalked.
+        family lives in /boar_bros.txt on your SD card forever.
 
-        Design philosophy: We always LISTEN to a Bro, but never PUNCH
-        a Bro in the face. Passive capture still works - if Bro's client
+        design philosophy: we always LISTEN to a bro, but never PUNCH
+        a bro in the face. passive capture still works - if bro's client
         reconnects naturally and we catch the handshake, that's just
-        being observant. We just don't actively attack Bros.
+        being observant. we just don't actively attack bros.
 
-        * Home router? BRO. Work WiFi? ...your call.
-        * Hit [B] mid-attack and watch the frames stop cold
-        * Hidden networks join as "NONAME BRO" - anonymous bros welcome
-        * Spectrum mode tags 'em with [BRO] - visible loyalty
-        * Menu lets you manage your crew, [D] to cut ties
-        * Passive handshake capture still works - we're listening, not punching
+        * home router? BRO. work WiFi? ...your call.
+        * hit [B] mid-attack and watch the frames stop cold
+        * hidden networks join as "NONAME BRO" - anonymous bros welcome
+        * spectrum mode tags 'em with [BRO] - visible loyalty
+        * menu lets you manage your crew, [D] to cut ties
+        * passive handshake capture still works - we're listening, not punching
 
-        The exclusion list isn't about mercy. It's about not having
+        the exclusion list isn't about mercy. it's about not having
         to explain to your roommate why Netflix keeps dropping.
 
 
-    Quick toggle - tactical mode switch:
+    quick toggle - tactical mode switch:
 
         smash [D] while hunting to flip between chaos and zen:
 
@@ -225,15 +224,15 @@
 
 ------[ 3.1.1 - CHILL DONOHAM Mode
 
-    Sometimes you gotta be a good pig. Legal recon. Sensitive location.
-    Your mom's house. Whatever. Press [D] from OINK or IDLE, or toggle
-    in Settings. The pig's other face emerges. The quiet one. The patient
-    one. Three sides to every coin if you know where to look.
+    sometimes you gotta be a good pig. legal recon. sensitive location.
+    your mom's house. whatever. press [D] from OINK or IDLE, or toggle
+    in settings. the pig's other face emerges. the quiet one. the patient
+    one. three sides to every coin if you know where to look.
     
-    Start toast: "PEACEFUL VIBES - NO TROUBLE TODAY".
-    You'll know which personality took over.
+    start toast: "PEACEFUL VIBES - NO TROUBLE TODAY".
+    you'll know which personality took over.
 
-    What changes:
+    what changes:
 
         * Zero TX - not a single frame leaves your radio
         * Adaptive channel timing - Multi-Armed Bandit algorithm
@@ -243,12 +242,12 @@
         * MAC always randomized - stealth isn't optional here
         * PMKID still works - M1 frames are passive catches, no TX needed
 
-    The adaptive timing is smart. Primary channels (1,6,11) get 250ms
-    baseline. Secondary channels get 150ms. Dead channels with zero
-    activity? 120ms minimum. Busy channels with 5+ beacons? 375ms max
-    for thorough sniffing. The pig learns where the action is.
+    the adaptive timing is smart. primary channels (1,6,11) get 250ms
+    baseline. secondary channels get 150ms. dead channels with zero
+    activity? 120ms minimum. busy channels with 5+ beacons? 375ms max
+    for thorough sniffing. the pig learns where the action is.
 
-    Four-state tactical flow:
+    four-state tactical flow:
 
         HOPPING:     Standard adaptive channel rotation
         DWELLING:    Pauses on channel for SSID backfill when PMKID
@@ -256,45 +255,45 @@
         HUNTING:     Camps 600ms when EAPOL burst detected (2+ frames)
                      Catches incomplete handshakes from natural reconnects
                      Toast on capture: "NATURAL HANDSHAKE BLESSED - RESPECT DI HERB"
-                     Passive captures get the Rastafarian blessing treatment
-        IDLE_SWEEP:  Low-priority sweep when global activity drops
-                     Checks quiet channels for sporadic beacons
+                     passive captures get the Rastafarian blessing treatment
+        IDLE_SWEEP:  low-priority sweep when global activity drops
+                     checks quiet channels for sporadic beacons
 
-    The beautiful thing about PMKID: APs just... give it to you. In the
-    first message of the handshake. Before any client even responds.
-    You're not attacking. You're receiving a gift. Legally distinct.
+    the beautiful thing about PMKID: APs just... give it to you. in the
+    first message of the handshake. before any client even responds.
+    you're not attacking. you're receiving a gift. legally distinct.
     
-    When one drops: "BOOMBOCLAAT! PMKID" - the pig gets excited. Proper
-    Jamaican patois. Jah bless di herb. Irie vibes confirmed.
+    when one drops: "BOOMBOCLAAT! PMKID" - the pig gets excited. proper
+    Jamaican patois. jah bless di herb. irie vibes confirmed.
 
-    Perfect scenarios:
+    perfect scenarios:
 
         * Warwalking through office buildings (educational purposes)
         * Fast recon from moving vehicles (passenger seat, officer)
         * When you actually need to use the WiFi you're sniffing
         * Catching natural reconnections without forcing them
-        * Patient EAPOL capture - HUNTING state exploits client movement
+        * patient EAPOL capture - HUNTING state exploits client movement
 
-    Memory overhead: 750 bytes (channel stats + incomplete handshake
-    tracking). Research-validated timing: 102.4ms beacon standard per
+    memory overhead: 750 bytes (channel stats + incomplete handshake
+    tracking). research-validated timing: 102.4ms beacon standard per
     Ekahau whitepaper. Multi-Armed Bandit approach from Berlin paper.
-    This isn't cargo cult code. This is informed stealth.
+    this isn't cargo cult code. this is informed stealth.
 
-    Your pig goes zen. Phrases like "quiet observer" and "sniff dont bite".
-    Same ASCII face, zero criminal energy. The piglet equivalent of yoga.
-    But it's learning. Adapting. Hunting the edges. Passive aggression
+    your pig goes zen. phrases like "quiet observer" and "sniff dont bite".
+    same ASCII face, zero criminal energy. the piglet equivalent of yoga.
+    but it's learning. adapting. hunting the edges. passive aggression
     in packet form.
 
 
 ------[ 3.1.2 - Stationary Operation Tuning
 
-    Parked somewhere? Camping a target? Time to optimize for the kill.
+    parked somewhere? camping a target? time to optimize for the kill.
 
-    When you're planted, so are your targets. Patience pays. The secret
-    sauce: find the clients BEFORE you start swinging. Targeted deauth
+    when you're planted, so are your targets. patience pays. the secret
+    sauce: find the clients BEFORE you start swinging. targeted deauth
     is exponentially more effective than broadcast spam.
 
-    The math doesn't lie:
+    the math doesn't lie:
 
         +----------+------------------+-------------------+
         | Clients  | Targeted Deauths | Broadcast Deauths |
@@ -306,11 +305,11 @@
         |    3     |      15-24       |         1         |
         +----------+------------------+-------------------+
 
-    One client = 5-8x the pain. Two clients = 10-16x. Three? Absolute
-    carnage. Broadcast deauth is like yelling "FIRE" in a crowded room.
-    Targeted deauth is whispering in someone's ear "your session is over."
+    one client = 5-8x the pain. two clients = 10-16x. three? absolute
+    carnage. broadcast deauth is like yelling "FIRE" in a crowded room.
+    targeted deauth is whispering in someone's ear "your session is over."
 
-    Optimal camping config:
+    optimal camping config:
 
         +------------+----------+---------+------------------------------+
         | Setting    | CAMPING  | Default | Why                          |
@@ -322,11 +321,11 @@
         | DONOHAM    | OFF      | OFF     | We're here for handshakes    |
         +------------+----------+---------+------------------------------+
 
-    Lock Time is THE lever. During LOCKING state, your pig sniffs data
-    frames to find connected clients. More time = more clients = more
+    Lock Time is THE lever. during LOCKING state, your pig sniffs data
+    frames to find connected clients. more time = more clients = more
     surgical strikes = more handshakes = more passwords = more dopamine.
 
-    The state machine:
+    the state machine:
 
         SCANNING (5s) --> LOCKING (6s*) --> ATTACKING (up to 15s)
                               |                    |
@@ -336,164 +335,164 @@
                               v                    v
                         clientCount++        handshake.22000
 
-    * With recommended 6000ms Lock Time
+    * with recommended 6000ms Lock Time
 
-    Class perks that stack with stationary ops:
+    class perks that stack with stationary ops:
 
         R0GU3 (L21-25):  SH4RP TUSKS +1s lock - even more client discovery
         PWNER (L11-15):  H4RD SNOUT +1 burst frame - hit harder
         WARL0RD (L31+):  1R0N TUSKS -1ms jitter - tighter burst timing
 
-    TL;DR: Set Lock Time to 6000ms. Park your ass. Wait. Profit.
+    TL;DR: set Lock Time to 6000ms. park your ass. wait. profit.
 
-    Mobile recon? CHILL DONOHAM mode. Stationary assault? Lock Time 6000ms.
-    Know the difference. Be the difference. Be multiple differences if
-    the situation demands. Oink responsibly. Or don't. Depends which face
+    mobile recon? CHILL DONOHAM mode. stationary assault? Lock Time 6000ms.
+    know the difference. be the difference. be multiple differences if
+    the situation demands. oink responsibly. or don't. depends which face
     is driving.
 
 
 ----[ 3.2 - SGT WARHOG Mode
 
-    Press 'W' or hit SGT WARHOG from the menu. Strap a GPS to your pig
-    and hit the streets. Your ancestors did this with a Pringles can.
-    You get to do it with style and a sentient ASCII pig that judges
+    press 'W' or hit SGT WARHOG from the menu. strap a GPS to your pig
+    and hit the streets. your ancestors did this with a Pringles can.
+    you get to do it with style and a sentient ASCII pig that judges
     your route choices.
 
-    When your piglet has a fix, every network it sniffs gets tagged with
-    coordinates, timestamped, and dumped to SD. Wigle leaderboard chasers,
+    when your piglet has a fix, every network it sniffs gets tagged with
+    coordinates, timestamped, and dumped to SD. WiGLE leaderboard chasers,
     this is your mode.
 
-    What's happening under the hood:
+    what's happening under the hood:
 
-        * Real-time lat/lon on the bottom bar - watch yourself move
-        * Per-scan direct-to-disk writes - no RAM accumulation, no OOM
+        * real-time lat/lon on the bottom bar - watch yourself move
+        * per-scan direct-to-disk writes - no RAM accumulation, no OOM
         * 5000 BSSID cache before dedup stops (more than enough)
-        * Crash protection: 60s auto-dumps, worst case = 1 min data loss
+        * crash protection: 60s auto-dumps, worst case = 1 min data loss
         * 32-feature ML extraction for every AP (Enhanced mode)
-        * Dual export: internal CSV + WiGLE v1.6 format simultaneously
+        * dual export: internal CSV + WiGLE v1.6 format simultaneously
 
-    Export formats for your collection:
+    export formats for your collection:
 
-        * CSV: Spreadsheet warriors, this is yours
+        * CSV: spreadsheet warriors, this is yours
         * Wigle: v1.6 format, ready for wigle.net upload
-        * ML Training: Feature vectors for Edge Impulse, feed the brain
+        * ML Training: feature vectors for Edge Impulse, feed the brain
 
-    WiGLE integration is automatic. Every geotagged network gets written
+    WiGLE integration is automatic. every geotagged network gets written
     to both /wardriving/warhog_*.csv (internal format) and
     /wardriving/warhog_*.wigle.csv (WiGLE v1.6). 
 
-    Upload options:
-        * Manual: Take .wigle.csv home, upload at wigle.net/upload
-        * PORK TRACKS menu: Upload directly from the device via WiFi
+    upload options:
+        * manual: take .wigle.csv home, upload at wigle.net/upload
+        * PORK TRACKS menu: upload directly from the device via WiFi
 
     PORK TRACKS (WiGLE upload menu):
     
-        Your wardriving conquests deserve global recognition. Open PORK
-        TRACKS from the main menu to see all your WiGLE files. Each shows:
+        your wardriving conquests deserve global recognition. open PORK
+        TRACKS from the main menu to see all your WiGLE files. each shows:
         
-        * Upload status: [OK] uploaded, [--] not yet
-        * Approximate network count (calculated from file size)
-        * File size for the bandwidth-conscious
+        * upload status: [OK] uploaded, [--] not yet
+        * approximate network count (calculated from file size)
+        * file size for the bandwidth-conscious
         
-        Controls:
-        * [U] Upload selected file to wigle.net
-        * [R] Refresh file list
-        * [D] Nuke selected track (deletes file, no undo)
-        * [Enter] Show file details
-        * [`] Exit back to menu
+        controls:
+        * [U] upload selected file to wigle.net
+        * [R] refresh file list
+        * [D] nuke selected track (deletes file, no undo)
+        * [Enter] show file details
+        * [`] exit back to menu
         
-        First time? Add your WiGLE API credentials:
-        1. Get API token from wigle.net/account (API section)
-        2. Create /wigle_key.txt on SD card: "apiname:apitoken"
-        3. Load via Settings > < Load WiGLE Key >
-        4. Key file auto-deletes after import (security)
+        first time? add your WiGLE API credentials:
+        1. get API token from wigle.net/account (API section)
+        2. create /wigle_key.txt on SD card: "apiname:apitoken"
+        3. load via Settings > < Load WiGLE Key >
+        4. key file auto-deletes after import (security)
 
-    No GPS? No coordinates. The pig still logs networks but you get zeros
+    no GPS? no coordinates. the pig still logs networks but you get zeros
     in the lat/lon columns. ML training data still useful though - Enhanced
     mode extracts features regardless of GPS lock.
 
-    Pro tip: Set ML Mode to Enhanced before you roll out. Basic mode uses
-    the scan API. Enhanced mode parses raw 802.11 beacons. More features,
-    more fingerprinting power, more rogue AP detection. Worth the CPU.
+    pro tip: set ML Mode to Enhanced before you roll out. Basic mode uses
+    the scan API. Enhanced mode parses raw 802.11 beacons. more features,
+    more fingerprinting power, more rogue AP detection. worth the CPU.
 
-    When you're done, hit G0 or Backspace. Final export triggers. Your
-    wardriving data lives in /wardriving/ on the SD card. Bring it home,
-    upload it, brag about your coverage. Repeat.
+    when you're done, hit G0 or Backspace. final export triggers. your
+    wardriving data lives in /wardriving/ on the SD card. bring it home,
+    upload it, brag about your coverage. repeat.
 
 
 ----[ 3.3 - PIGGY BLUES Mode
 
-    Press 'B' and become everyone's least favorite person in the room.
+    press 'B' and become everyone's least favorite person in the room.
 
-    Your pig transforms into a BLE irritant generator. Every phone in
+    your pig transforms into a BLE irritant generator. every phone in
     range starts lighting up with fake pairing requests, phantom earbuds,
-    and notification spam that just. Won't. Stop.
+    and notification spam that just. won't. stop.
 
-    The attack surface:
+    the attack surface:
 
         * AppleJuice floods - "AirPods Pro want to connect" x infinity
         * Google FastPair spam - Android's worst nightmare, popup city
         * Samsung Buds/Watch impersonation - Galaxy users aren't safe
         * Windows SwiftPair storms - laptops join the party too
-        * Continuous passive scanning - finds devices, tailors payloads
-        * Vendor-aware targeting - Macs get Apple spam, Pixels get Google
+        * continuous passive scanning - finds devices, tailors payloads
+        * vendor-aware targeting - Macs get Apple spam, Pixels get Google
 
-    The piglet gets REAL chatty in this mode. "making friends the hard
-    way" and "spreading the oink" are just the start. It knows what it's
-    doing. It's enjoying itself. Maybe too much.
+    the piglet gets REAL chatty in this mode. "making friends the hard
+    way" and "spreading the oink" are just the start. it knows what it's
+    doing. it's enjoying itself. maybe too much.
 
-    How it works:
+    how it works:
 
         1. NimBLE async scan finds nearby devices
-        2. Manufacturer data fingerprints the vendor
-        3. Targeted payloads get crafted and queued
-        4. Opportunistic advertising in scan gaps
-        5. Repeat until you get escorted out or bored
+        2. manufacturer data fingerprints the vendor
+        3. targeted payloads get crafted and queued
+        4. opportunistic advertising in scan gaps
+        5. repeat until you get escorted out or bored
 
-    Random chaos mode kicks in when no specific targets are found. Just
-    blanket-spams all protocol types. Scorched earth BLE policy.
+    random chaos mode kicks in when no specific targets are found. just
+    blanket-spams all protocol types. scorched earth BLE policy.
 
-    DISCLAIMER: This WILL annoy everyone within ~10 meters. Educational
-    use only. Don't be that guy at the coffee shop. Or do. Once. For
-    science. Then delete this from your device before anyone finds it.
+    DISCLAIMER: this WILL annoy everyone within ~10 meters. educational
+    use only. don't be that guy at the coffee shop. or do. once. for
+    science. then delete this from your device before anyone finds it.
 
-    Achievement hunters: APPLE_FARMER, PARANOID_ANDROID, SAMSUNG_SPRAY,
-    WINDOWS_PANIC, BLE_BOMBER, OINKAGEDDON. You know what to do.
+    achievement hunters: APPLE_FARMER, PARANOID_ANDROID, SAMSUNG_SPRAY,
+    WINDOWS_PANIC, BLE_BOMBER, OINKAGEDDON. you know what to do.
 
 
 ----[ 3.4 - HOG ON SPECTRUM Mode
 
-    Press 'H' and watch the 2.4GHz band light up like a Christmas tree:
+    press 'H' and watch the 2.4GHz band light up like a Christmas tree:
 
-        * Real-time WiFi spectrum analyzer visualization
+        * real-time WiFi spectrum analyzer visualization
         * 13-channel display with proper Gaussian lobe spreading
         * 22MHz channel width represented accurately (sigma ~6.6 pixels)
-        * Channel hopping at 100ms per channel (~1.3s full sweep)
-        * Lobe height based on RSSI - stronger signal = taller peak
+        * channel hopping at 100ms per channel (~1.3s full sweep)
+        * lobe height based on RSSI - stronger signal = taller peak
         * [VULN!] indicator for weak security (OPEN/WEP/WPA1)
         * [DEAUTH] indicator for networks without PMF protection
         * [BRO] indicator for networks in your BOAR BROS exclusion list
-        * Network selection via ; and . - scroll through discovered APs
+        * network selection via ; and . - scroll through discovered APs
         * Enter key opens CLIENT MONITOR for targeted hunting
-        * Bottom bar shows selected network info or scan status
-        * Stale networks removed after 5 seconds - real-time accuracy
+        * bottom bar shows selected network info or scan status
+        * stale networks removed after 5 seconds - real-time accuracy
 
-    The spectrum view shows what's actually happening on the airwaves.
-    Each lobe represents a network's signal bleeding across adjacent
-    channels - because that's how 802.11b/g actually works. Welcome to
-    RF hell. Bring headphones, your coffee shop is loud.
+    the spectrum view shows what's actually happening on the airwaves.
+    each lobe represents a network's signal bleeding across adjacent
+    channels - because that's how 802.11b/g actually works. welcome to
+    RF hell. bring headphones, your coffee shop is loud.
 
-    Scroll through networks to find the interesting ones. Hit Enter to
+    scroll through networks to find the interesting ones. hit Enter to
     enter CLIENT MONITOR for focused hunting - see connected clients
-    with proximity arrows and vendor OUI identification. Press Enter on
-    a client to deauth them directly. Backspace or G0 to bail. Simple as.
+    with proximity arrows and vendor OUI identification. press Enter on
+    a client to deauth them directly. Backspace or G0 to bail. simple as.
 
 
 ------[ 3.4.1 - CLIENT MONITOR
 
-    The spectrum got fangs. Press Enter on any network to enter the hunt.
+    the spectrum got fangs. press Enter on any network to enter the hunt.
 
-    What you see:
+    what you see:
 
         +------------------------------------------+
         | CLIENTS: COFFEESHOP_5G CH6               |
@@ -504,126 +503,119 @@
         | 4.Xiaomi   F7:89 -85dB  4s <<            |
         +------------------------------------------+
 
-    That's clients connected to the target network. Real-time. Updating
-    every frame. The pig sees everything the router sees.
+    that's clients connected to the target network. real-time. updating
+    every frame. the pig sees everything the router sees.
 
-    Breakdown:
+    breakdown:
 
-        * Client number + vendor (450+ OUI database, or "Random" if
+        * client number + vendor (450+ OUI database, or "Random" if
           MAC randomization is detected - local-admin bit check)
-        * Last two MAC octets (enough to identify when hunting)
-        * Signal strength in dBm (how close to YOU, not the router)
-        * Time since last packet (freshness - stale = walking away)
-        * Proximity arrows (the money feature)
+        * last two MAC octets (enough to identify when hunting)
+        * signal strength in dBm (how close to YOU, not the router)
+        * time since last packet (freshness - stale = walking away)
+        * proximity arrows (the money feature)
 
-    The arrows tell you everything:
+    the arrows tell you everything:
 
-        >>  = Much closer to you than the router (+10dB or more)
-        >   = Closer to you (+3 to +10dB)
-        ==  = About the same distance (-3 to +3dB)
-        <   = Farther from you (-3 to -10dB)
-        <<  = Much farther than the router (-10dB or more)
+        >>  = much closer to you than the router (+10dB or more)
+        >   = closer to you (+3 to +10dB)
+        ==  = about the same distance (-3 to +3dB)
+        <   = farther from you (-3 to -10dB)
+        <<  = much farther than the router (-10dB or more)
 
-    Walk around. Watch the arrows change. When >> appears, you're
-    getting hot. When << appears, wrong direction. Marco Polo for WiFi.
-    Less fun for the target.
+    walk around. watch the arrows change. when >> appears, you're
+    getting hot. when << appears, wrong direction. marco polo for WiFi.
+    less fun for the target.
 
-    Controls:
+    controls:
 
-        [;]     Navigate up through client list
-        [.]     Navigate down through client list
-        [D]     Details popup (full MAC, vendor, RSSI, position)
+        [;]     navigate up through client list
+        [.]     navigate down through client list
+        [D]     details popup (full MAC, vendor, RSSI, position)
         [Enter] DEAUTH selected client (5 frames each way)
-        [B]     Add network to BOAR BROS and exit
-        [`]     Exit to spectrum view
-        [Bksp]  Exit to spectrum view
-
-    D gives you the D. The Details. Full 6-octet MAC address for your 
-    notes. Vendor name untruncated. RSSI with age. Position relative to 
-    the AP. Everything you need to identify a target before you punch it.
-    Any key closes. No commitment. Just intel. Big D energy.
-
-    Press Enter on a client. 5 deauth frames AP→Client. 5 more Client→AP.
-    1-5ms random jitter between each. Brief toast: "DEAUTH XX:XX x5".
-    Spam Enter for continuous deauth. ~300ms keyboard debounce = fire rate.
-
-    Signal loss detection: no packets for 15 seconds = graceful exit.
-    Descending beep. "SIGNAL LOST" toast. Back to spectrum view.
-    No hanging. No stale data. Clean exit. Professional.
-
-    Sound feedback (if enabled in Settings):
-
-        * Enter client monitor: 700Hz 80ms (channel locked)
-        * New client detected: 1200Hz 100ms (fresh meat)
-        * Deauth sent: 600Hz 80ms (low thump)
-        * Signal lost: 800→500Hz descending (exit)
-
-    First 4 clients get beeps. After that, quiet. We're hunting, not DJing.
+        [B]     add network to BOAR BROS and exit
+        [`]     exit to spectrum view
+        [Bksp]  exit to spectrum view
+    first 4 clients get beeps. after that, quiet. we're hunting, not DJing.
 
 
-----[ 3.5 - File Transfer Mode
+----[ 3.5 - PORKCHOP COMMANDER
 
-    Time to exfil. Your pig caught the goods, now get 'em off the device.
+    time to exfil. your pig caught the goods, now get 'em off the device.
 
-    PORKCHOP connects to YOUR WiFi network (station mode, not AP) and
-    serves a janky black-and-white web interface. No CSS crimes here,
-    just function.
+    PORKCHOP connects to your WiFi network (station mode) and serves
+    a dual-pane file manager at porkchop.local. pink on black. norton
+    commander for pigs.
 
-        * Hit porkchop.local or the IP shown on screen
-        * Browse SD card: /handshakes, /wardriving, /mldata, /logs
-        * Download your .22000 files for hashcat
-        * Upload wordlists, configs, whatever fits
-        * No drivers, no cables, no USB permission bullsh*t
+    setup:
+        1. configure WiFi SSID and password in settings first
+        2. make sure you're in range of that network
+        3. enter file transfer from menu
 
-    Setup requirements:
-        1. Configure WiFi SSID and password in Settings FIRST
-        2. Make sure you're in range of that network
-        3. Enter File Transfer from menu
+    the file manager:
 
-    If you skip step 1, the pig just stares at you. It can't read your
-    mind. It also can't connect to "linksys" with password "admin123"
-    if you didn't tell it to.
+        +------------------------------------------+
+        |  LOCAL                    SD CARD        |
+        |  /downloads/              /handshakes/   |
+        |  --------------------------              |
+        |  capture_01.22000         pwned.22000    |
+        |  capture_02.22000         hotel.22000    |
+        |  wordlist.txt             airport.pcap   |
+        +------------------------------------------+
+        | F1 Help  F2 Ren  F5 Copy  F6 Move  ...  |
+        +------------------------------------------+
 
-    The web UI is deliberately ugly. It's functional. You're here to
-    move files, not admire rounded corners. Get in, get out, get cracking.
+    dual-pane navigation. tab switches sides. arrow keys or click to
+    select. multi-select with shift+click or ctrl+click for batch ops.
+
+    function key bar:
+
+        F1  help       pop the cheat sheet
+        F2  rename     name your loot properly
+        F5  copy       selected files to opposite pane
+        F6  move       selected files to opposite pane
+        F7  mkdir      create directories
+        F8  delete     gone forever, no recycle bin
+
+    upload via drag-drop or the upload button. download by selecting
+    and clicking download. wordlists, configs, whatever fits on the SD.
 
 
 ----[ 3.6 - LOOT Menu & WPA-SEC Integration
 
-    Your spoils of war. Hit LOOT from the main menu to see what
+    your spoils of war. hit LOOT from the main menu to see what
     you've captured:
 
-        * Browse all captured handshakes and PMKIDs
+        * browse all captured handshakes and PMKIDs
         * [P] prefix = PMKID capture, no prefix = full handshake
-        * Status indicators show WPA-SEC cloud cracking status:
-            - [OK] = CRACKED - password found, press Enter to see it
+        * status indicators show WPA-SEC cloud cracking status:
+            - [OK] = CRACKED - password found, press enter to see it
             - [..] = UPLOADED - waiting for distributed cracking
             - [--] = LOCAL - not uploaded yet
-        * Enter = view details (SSID, BSSID, password if cracked)
-        * U = Upload selected capture to WPA-SEC
-        * R = Refresh results from WPA-SEC
+        * enter = view details (SSID, BSSID, password if cracked)
+        * U = upload selected capture to WPA-SEC
+        * R = refresh results from WPA-SEC
         * D = NUKE THE LOOT - scorched earth, rm -rf /handshakes/*
 
-    WPA-SEC Integration (wpa-sec.stanev.org):
+    WPA-SEC integration (wpa-sec.stanev.org):
 
-        Distributed WPA/WPA2 password cracking. Upload your .pcap
+        distributed WPA/WPA2 password cracking. upload your .pcap
         files to a network of hashcat rigs that work while you sleep.
-        Free as in beer. No GPU? No problem.
+        free as in beer. no GPU? no problem.
 
-        Setup:
-        1. Register at https://wpa-sec.stanev.org
-        2. Get your 32-char hex API key from your profile
-        3. Create file /wpasec_key.txt on SD card with your key
-        4. Reboot - key auto-imports and file self-destructs
-           (security through obscurity, but it's something)
+        setup:
+        1. register at https://wpa-sec.stanev.org
+        2. get your 32-char hex API key from your profile
+        3. create file /wpasec_key.txt on SD card with your key
+        4. reboot - key auto-imports and file self-destructs
 
-        Or use Settings menu: Tweak -> "< Load Key File >"
+        or use settings menu: tweak -> "< load key file >"
 
-        Once configured, the LOOT menu shows real-time status.
-        Upload captures with U, check results with R. That's it.
-        When a capture shows [OK], press Enter to see the password.
+        once configured, the LOOT menu shows real-time status.
+        upload captures with U, check results with R. that's it.
+        when a capture shows [OK], press enter to see the password.
 
-    File format breakdown:
+    file format breakdown:
 
         +-------------------+---------------------------------------+
         | Extension         | What it is                            |
@@ -634,9 +626,13 @@
         | _ssid.txt         | SSID companion file (human readable)  |
         +-------------------+---------------------------------------+
 
-    PMKID captures are nice when they work. Not all APs cough one up.
-    Zero PMKIDs (empty KDEs) are automatically filtered - if the pig
+    PMKID captures are nice when they work. not all APs cough one up.
+    zero PMKIDs (empty KDEs) are automatically filtered - if the pig
     says it caught a PMKID, it's a real one worth cracking.
+
+    capture rejected by wpa-sec? run scripts/wpasec_check.py locally.
+    validates radiotap headers, beacon frames, EAPOL M1-M4 labeling.
+    if it passes and still fails upload, GitHub issues.
 
 
 ----[ 3.7 - Machine Learning
@@ -676,39 +672,39 @@
     open an issue or PR with your samples. the pig will remember you
     when it becomes sentient.
 
-    Here's what we're building toward - the ML system extracts
+    here's what we're building toward - the ML system extracts
     32 features from every beacon frame:
 
-        * Signal characteristics (RSSI, noise patterns)
-        * Beacon timing analysis (interval, jitter)
-        * Vendor IE fingerprinting
-        * Security configuration analysis
-        * Historical behavior patterns
+        * signal characteristics (RSSI, noise patterns)
+        * beacon timing analysis (interval, jitter)
+        * vendor IE fingerprinting
+        * security configuration analysis
+        * historical behavior patterns
 
-    Built-in heuristic classifier detects:
+    built-in heuristic classifier detects:
 
-        [!] ROGUE_AP    - Too loud, too weird, too sus. Honeypot vibes.
-        [!] EVIL_TWIN   - Hiding its name but screaming its signal. Trap.
+        [!] ROGUE_AP    - too loud, too weird, too sus. honeypot vibes.
+        [!] EVIL_TWIN   - hiding its name but screaming its signal. trap.
         [!] VULNERABLE  - Open/WEP/WPA1/WPS - security from 2004
-        [!] DEAUTH_TGT  - No WPA3, no PMF, no protection, no mercy
+        [!] DEAUTH_TGT  - no WPA3, no PMF, no protection, no mercy
 
-    Want real ML inference on-device? Train your own model on Edge Impulse
-    and drop it in. The scaffold is ready. The pig is waiting.
+    want real ML inference on-device? train your own model on Edge Impulse
+    and drop it in. the scaffold is ready. the pig is waiting.
 
 
 ----[ 3.8 - Enhanced ML Mode
 
-    Two collection modes for different threat models:
+    two collection modes for different threat models:
 
-        BASIC MODE (default)
+    BASIC MODE (default)
         ----------------------
-        Uses ESP32 WiFi scan API. Fast. Reliable. Limited features.
-        Good for casual wardriving when you just want the basics.
+        uses ESP32 WiFi scan API. fast. reliable. limited features.
+        good for casual wardriving when you just want the basics.
 
         ENHANCED MODE
         ----------------------
-        Enables promiscuous beacon capture. Parses raw 802.11 frames.
-        Extracts the juicy bits:
+        enables promiscuous beacon capture. parses raw 802.11 frames.
+        extracts the juicy bits:
 
             * IE 0  (SSID)              - Catches all-null hidden SSIDs
             * IE 3  (DS Parameter Set)  - Real channel info
@@ -717,33 +713,33 @@
             * IE 50 (Extended Rates)    - Rate analysis
             * IE 221 (Vendor Specific)  - WPS, WPA1, vendor ID
 
-        Burns more cycles. Eats more RAM. Catches more sketchy APs.
-        The juice is worth the squeeze.
+        burns more cycles. eats more RAM. catches more sketchy APs.
+        the juice is worth the squeeze.
 
-    Toggle in Settings: [ML Mode: Basic/Enhanced]
+    toggle in settings: [ML Mode: Basic/Enhanced]
 
-    Each network gets an anomalyScore 0.0-1.0 based on:
+    each network gets an anomalyScore 0.0-1.0 based on:
 
-        * RSSI > -30 dBm         Suspiciously strong. Honeypot range.
-        * Open or WEP encryption What year is it?
-        * Hidden SSID            Something to hide?
-        * Non-standard beacon    Not 100ms = software AP.
-        * No HT capabilities     Ancient router or spoofed.
-        * WPS on open network    Classic honeypot fingerprint.
+        * RSSI > -30 dBm         suspiciously strong. honeypot range.
+        * open or WEP encryption what year is it?
+        * hidden SSID            something to hide?
+        * non-standard beacon    not 100ms = software AP.
+        * no HT capabilities     ancient router or spoofed.
+        * WPS on open network    classic honeypot fingerprint.
 
 
 ----[ 3.9 - XP System
 
-    Your piglet has ambitions. Every network sniffed, every handshake
-    grabbed, every deauth fired - it all counts. The XP system tracks
+    your piglet has ambitions. every network sniffed, every handshake
+    grabbed, every deauth fired - it all counts. the XP system tracks
     your progress from BACON N00B all the way up through 40 ranks of
     increasingly unhinged titles.
 
-    We're not gonna spoil the progression. Grind and find out.
+    we're not gonna spoil the progression. grind and find out.
 
-    The bottom of your screen shows your current rank and progress bar.
-    Level up and you'll see that popup. Your pig has opinions about
-    your achievements. Embrace them.
+    the bottom of your screen shows your current rank and progress bar.
+    level up and you'll see that popup. your pig has opinions about
+    your achievements. embrace them.
 
     XP values - the complete dopamine schedule:
 
@@ -784,30 +780,30 @@
         | 2hr session (touch grass)  | 50     |
         +----------------------------+--------+
 
-    Top tier ranks reference hacker legends and grindhouse cinema. If
+    top tier ranks reference hacker legends and grindhouse cinema. if
     you hit level 40 and don't recognize the name, you've got homework.
 
-    XP persists in NVS - survives reboots, even reflashing. Your pig
-    remembers everything. The only way to reset is to wipe NVS manually.
-    We don't provide instructions because if you need them, you're not
+    XP persists in NVS - survives reboots, even reflashing. your pig
+    remembers everything. the only way to reset is to wipe NVS manually.
+    we don't provide instructions because if you need them, you're not
     ready to lose your progress.
 
 
 ------[ 3.9.1 - IMMORTAL PIG (XP Persistence)
 
-    NVS lives at 0x9000. M5 Burner writes start at 0x0. You see the
-    problem. Your L38 DARK TANGENT grind? Steamrolled. BACON N00B.
+    NVS lives at 0x9000. M5 Burner writes start at 0x0. you see the
+    problem. your L38 DARK TANGENT grind? steamrolled. BACON N00B.
 
-    Not anymore.
+    not anymore.
 
-    v0.1.6 introduced SD card XP backup. Automatic. Every save.
-    M5 Burner nukes your flash? Pig recovers from SD on boot.
-    Full chip erase? Pig recovers. Factory reset? Pig. Recovers.
+    v0.1.6 introduced SD card XP backup. automatic. every save.
+    M5 Burner nukes your flash? pig recovers from SD on boot.
+    full chip erase? pig recovers. factory reset? pig. recovers.
 
-        NVS = Primary storage (fast, survives firmware updates)
-        SD  = Backup storage (survives everything else)
+        NVS = primary storage (fast, survives firmware updates)
+        SD  = backup storage (survives everything else)
 
-    The catch: backup is device-bound and signed.
+    the catch: backup is device-bound and signed.
 
         +-----------------------------------+--------------------+
         | Action                            | Result             |
@@ -819,44 +815,44 @@
         | Use legitimately on your device   | Welcome back       |
         +-----------------------------------+--------------------+
 
-    Want to tamper? Go ahead. It's a hacker tool. Source is public.
-    Figure it out. We respect the attempt. But if you fail - LV1.
-    BACON N00B. No exceptions. Earn your rank or crack the signature.
+    want to tamper? go ahead. it's a hacker tool. source is public.
+    figure it out. we respect the attempt. but if you fail - LV1.
+    BACON N00B. no exceptions. earn your rank or crack the signature.
 
-    File location: /xp_backup.bin on SD card root.
-    Size: 100 bytes (96-byte struct + 4-byte CRC32 signature).
-    Device binding: ESP32 MAC address baked into signature.
+    file location: /xp_backup.bin on SD card root.
+    size: 100 bytes (96-byte struct + 4-byte CRC32 signature).
+    device binding: ESP32 MAC address baked into signature.
 
 
 ----[ 3.10 - Achievements
 
     63 secret badges to prove you're not just grinding mindlessly.
-    Or maybe you are. Either way, proof of pwn.
+    or maybe you are. either way, proof of pwn.
 
-    The Achievements menu shows what you've earned. Locked ones show
-    as "???" because where's the fun in spoilers? Each achievement
+    the Achievements menu shows what you've earned. locked ones show
+    as "???" because where's the fun in spoilers? each achievement
     pops a toast-style card with its unlock condition when selected.
 
-    Some are easy. Some require dedication. A few require... luck.
-    Or low battery at exactly the wrong moment.
+    some are easy. some require dedication. a few require... luck.
+    or low battery at exactly the wrong moment.
 
-    Not gonna list them. That's cheating. Hunt for them like you
+    not gonna list them. that's cheating. hunt for them like you
     hunt for handshakes.
 
 
 ----[ 3.11 - SWINE STATS (Buff System)
 
-    Press 'S' or hit SWINE STATS in the menu to see your lifetime
+    press 'S' or hit SWINE STATS in the menu to see your lifetime
     progress and check what buffs/debuffs are currently messing with
     your piglet's performance.
 
-    Two tabs: ST4TS shows your lifetime scoreboard, B00STS shows
+    two tabs: ST4TS shows your lifetime scoreboard, B00STS shows
     what's actively buffing or debuffing your pig.
 
 
 ----[ 3.11.1 - Class System
 
-    Every 5 levels your pig promotes to a new class tier. Classes
+    every 5 levels your pig promotes to a new class tier. classes
     grant PERMANENT CUMULATIVE buffs - higher tier = more stacking:
 
         +--------+--------+------------------------------------------+
@@ -872,17 +868,17 @@
         | 36-40  | L3G3ND | OMNI P0RK: +5% all effects               |
         +--------+--------+------------------------------------------+
 
-    Example: L38 player has ALL 7 class buffs active simultaneously.
-    That's -10% hop, +1 burst, +15% dist XP, +1s lock, +10% cap XP,
-    -1ms jitter, and +5% on everything. The grind pays off.
+    example: L38 player has ALL 7 class buffs active simultaneously.
+    that's -10% hop, +1 burst, +15% dist XP, +1s lock, +10% cap XP,
+    -1ms jitter, and +5% on everything. the grind pays off.
 
 
 ----[ 3.11.2 - Mood Buffs/Debuffs
 
-    The mood system ties happiness to mechanics. Happy pig = aggressive.
-    Sad pig = sluggish. Keep the meter up and feel the difference.
+    the mood system ties happiness to mechanics. happy pig = aggressive.
+    sad pig = sluggish. keep the meter up and feel the difference.
 
-    BUFFS (Positive Effects):
+    BUFFS (positive effects):
 
         +---------------+-------------------+-----------------------------+
         | NAME          | TRIGGER           | EFFECT                      |
@@ -893,7 +889,7 @@
         | C4FF31N4T3D   | happiness > 80    | -30% channel hop interval   |
         +---------------+-------------------+-----------------------------+
 
-    DEBUFFS (Negative Effects):
+    DEBUFFS (negative effects):
 
         +---------------+-------------------+-----------------------------+
         | NAME          | TRIGGER           | EFFECT                      |
@@ -904,42 +900,79 @@
         | HAM$TR1NG     | happiness < -70   | +50% channel hop interval   |
         +---------------+-------------------+-----------------------------+
 
-    Mood affects everything:
+    mood affects everything:
 
-        - Handshakes boost happiness big time
-        - Networks keep the pig engaged
-        - Long idle periods drain the mood
-        - Momentum system: rapid captures = stacking bonuses
+        - handshakes boost happiness big time
+        - networks keep the pig engaged
+        - long idle periods drain the mood
+        - momentum system: rapid captures = stacking bonuses
 
-    The screen shows your lifetime stats in that 1337 style you love:
+    the screen shows your lifetime stats in that 1337 style you love:
 
-        N3TW0RKS    = Lifetime network count
-        H4NDSH4K3S  = Total captures (4-way + PMKID)
-        PMK1DS      = Clientless captures specifically
-        D34UTHS     = Frames of chaos sent
-        D1ST4NC3    = Kilometers walked while wardriving
+        N3TW0RKS    = lifetime network count
+        H4NDSH4K3S  = total captures (4-way + PMKID)
+        PMK1DS      = clientless captures specifically
+        D34UTHS     = frames of chaos sent
+        D1ST4NC3    = kilometers walked while wardriving
         BL3 BL4STS  = BLE spam packets sent
-        S3SS10NS    = How many times you've fired this thing up
-        GH0STS      = Hidden SSID networks found
+        S3SS10NS    = how many times you've fired this thing up
+        GH0STS      = hidden SSID networks found
         WP4THR33    = WPA3 networks spotted (the future)
         G30L0CS     = GPS-tagged network discoveries
 
-    Keep the pig happy. Happy pig = effective pig.
+    keep the pig happy. happy pig = effective pig.
+
+
+----[ 3.12 - Session Challenges
+
+    three challenges spawn each boot. EASY, MEDIUM, HARD. difficulty
+    scales with your level. complete all three for bonus XP.
+
+    challenge types:
+
+        NETWORKS_FOUND      discover X networks
+        HIDDEN_FOUND        find X hidden SSIDs
+        HANDSHAKES          capture X handshakes
+        PMKIDS              grab X PMKIDs
+        DEAUTHS             send X deauth frames
+        GPS_NETWORKS        tag X networks with GPS
+        BLE_PACKETS         send X BLE spam packets
+        PASSIVE_NETWORKS    sniff X networks in DNH mode
+        NO_DEAUTH_STREAK    networks without violence
+        DISTANCE_M          walk X meters wardriving
+        WPA3_FOUND          spot X WPA3 networks
+        OPEN_FOUND          find X open networks
+
+    Al Gore's tubes carry secrets. 115200 8N1. neither ready nor
+    requesting. snakes help if you speak them. the pig talks when
+    bored, if you know what to ask. just one. pig persists.
+
+
+----[ 3.13 - Unlockables
+
+    two secrets hide in the unlockables menu. SHA256 validated.
+    type the phrase, press enter, watch the hash match or fail.
+
+        PROPHECY    THE PROPHECY SPEAKS THE KEY
+        1MM0RT4L    PIG SURVIVES M5BURNER
+
+    Al Gore's tubes carry more than challenges. same settings.
+    the pig whispers if you listen.
 
 
 --[ 4 - Hardware
 
-    Required:
+    required:
         * M5Cardputer (ESP32-S3 based)
         * MicroSD card for data storage
 
-    Optional:
+    optional:
         * AT6668 GPS Module (WARHOG mode)
-        * Questionable ethics
+        * questionable ethics
 
 ----[ 4.1 - GPS Module Setup
 
-    Different hardware uses different pins. Configure in Settings Menu:
+    different hardware uses different pins. configure in Settings Menu:
 
     +---------------------------+--------+--------+---------+
     | Hardware Setup            | RX Pin | TX Pin | Baud    |
@@ -948,34 +981,34 @@
     | Cardputer-Adv + LoRa Cap  | G15    | G13    | 115200  |
     +---------------------------+--------+--------+---------+
 
-    The Cap LoRa868 (U201) uses the EXT 14-pin bus, not Grove.
+    the Cap LoRa868 (U201) uses the EXT 14-pin bus, not Grove.
     RX/TX are swapped vs what you'd expect - ESP32 RX connects to GPS TX.
-    After flashing, go to Settings and change GPS RX/TX pins.
+    after flashing, go to Settings and change GPS RX/TX pins.
 
 
 --[ 5 - Building & Flashing
 
-    We use PlatformIO because we're not savages.
+    we use PlatformIO because we're not savages.
 
-        # Install if you haven't
+        # install if you haven't
         $ pip install platformio
 
-        # Build it
+        # build it
         $ pio run -e m5cardputer
 
-        # Flash it
+        # flash it
         $ pio run -t upload -e m5cardputer
 
-        # Watch it work
+        # watch it work
         $ pio device monitor
 
-    If it doesn't compile, skill issue. Check your dependencies.
+    if it doesn't compile, skill issue. check your dependencies.
 
 
 ----[ 5.1 - Flashing Methods & Progress Preservation
 
-    Your XP, level, and achievements live in NVS (Non-Volatile Storage)
-    at flash address 0x9000. Here's the cold hard truth:
+    your XP, level, and achievements live in NVS (Non-Volatile Storage)
+    at flash address 0x9000. here's the cold hard truth:
 
         +---------------------------+-------------+----------------+
         | Method                    | XP/Level    | Settings       |
@@ -987,25 +1020,25 @@
         +---------------------------+-------------+----------------+
         * v0.1.6+ recovers XP from SD card backup if available
 
-    Why the recovery? The merged .bin for M5 Burner writes fill bytes
-    from 0x0 to 0x10000, steamrolling NVS at 0x9000. But v0.1.6 checks
-    for /xp_backup.bin on SD at boot. If NVS is empty but SD backup
+    why the recovery? the merged .bin for M5 Burner writes fill bytes
+    from 0x0 to 0x10000, steamrolling NVS at 0x9000. but v0.1.6 checks
+    for /xp_backup.bin on SD at boot. if NVS is empty but SD backup
     exists with valid signature = welcome back, warrior.
 
-    Settings survive regardless - they live in SPIFFS at 0x610000.
+    settings survive regardless - they live in SPIFFS at 0x610000.
 
 
 ------[ 5.1.1 - The Right Way (M5 Launcher)
 
-    This is the recommended method for both install and upgrades:
+    this is the recommended method for both install and upgrades:
 
-        1. Get M5 Launcher on your device (one-time M5 Burner flash)
-        2. Download firmware.bin from GitHub releases
-        3. Copy to SD card, any directory
+        1. get M5 Launcher on your device (one-time M5 Burner flash)
+        2. download firmware.bin from GitHub releases
+        3. copy to SD card, any directory
         4. Launcher -> SD -> navigate -> install
-        5. XP preserved. Forever. Even on first install.
+        5. XP preserved. forever. even on first install.
 
-    Updates? Same exact process. No XP loss. Ever.
+    updates? same exact process. no XP loss. ever.
 
 
 ------[ 5.1.2 - Alternative Methods
@@ -1013,30 +1046,30 @@
     PlatformIO (for developers):
         $ git pull
         $ pio run -t upload -e m5cardputer
-        # Your pig remembers everything
+        # your pig remembers everything
 
     ESP Web Tool (browser, no install):
-        - Download firmware.bin from releases (NOT the merged one)
-        - Go to https://espressif.github.io/esptool-js/
-        - Connect, add firmware.bin at offset 0x10000
-        - Flash ONLY firmware, NVS stays safe
+        - download firmware.bin from releases (NOT the merged one)
+        - go to https://espressif.github.io/esptool-js/
+        - connect, add firmware.bin at offset 0x10000
+        - flash ONLY firmware, NVS stays safe
 
     M5 Burner USB (v0.1.6+ with IMMORTAL PIG):
-        - Flash the merged bin (porkchop_vX.X.X_m5burner.bin)
+        - flash the merged bin (porkchop_vX.X.X_m5burner.bin)
         - NVS gets nuked BUT pig recovers from SD backup
-        - REQUIREMENT: Must have run v0.1.6+ at least once before
-          to create the SD backup. No backup = BACON N00B.
-        - NOTE: We removed PORKCHOP from M5 Burner's catalog.
-          Download from GitHub releases.
+        - REQUIREMENT: must have run v0.1.6+ at least once before
+          to create the SD backup. no backup = BACON N00B.
+        - NOTE: we removed PORKCHOP from M5 Burner's catalog.
+          download from GitHub releases.
 
-    We provide both binaries in releases:
+    we provide both binaries in releases:
         - firmware_vX.X.X.bin          = M5 Launcher, preserves XP
         - porkchop_vX.X.X_m5burner.bin = M5 Burner, recovers from SD
 
 
 --[ 6 - Controls
 
-    The M5Cardputer's keyboard is tiny but functional:
+    the M5Cardputer's keyboard is tiny but functional:
 
         +-------+----------------------------------+
         | Key   | What it does                     |
@@ -1046,25 +1079,26 @@
         | B     | PIGGY BLUES - BLE chaos mode     |
         |       | (in OINK: add BOAR BRO)          |
         | H     | HOG ON SPECTRUM - WiFi analyzer  |
+        | F     | PORKCHOP COMMANDER - file xfer   |
         | S     | SWINE STATS - lifetime stats     |
-        | T     | Tweak settings                   |
+        | T     | tweak settings                   |
         | D     | CHILL DONOHAM from IDLE          |
         |       | toggle OINK<->DNH seamlessly     |
-        |       | (in Client Monitor: Details)     |
-        | P     | Screenshot - save to SD card     |
-        | `     | Back one level / Open menu       |
-        | ;     | Navigate up / Scroll left        |
-        | .     | Navigate down / Scroll right     |
-        | Enter | Select / Toggle / Confirm        |
-        | Bksp  | Stop current mode, return idle   |
-        | G0    | Bail out - return to IDLE        |
+        |       | (in CLIENT MONITOR: details)     |
+        | P     | screenshot - save to SD card     |
+        | `     | back one level / open menu       |
+        | ;     | navigate up / scroll left        |
+        | .     | navigate down / scroll right     |
+        | Enter | select / toggle / confirm        |
+        | Bksp  | stop current mode, return idle   |
+        | G0    | bail out - return to IDLE        |
         +-------+----------------------------------+
 
     G0 is the physical button on the top side of the M5Cardputer.
-    Press it anytime to bail out and return to IDLE. Useful when
+    press it anytime to bail out and return to IDLE. useful when
     your piglet is going ham on someone's network.
     
-    Main menu structure (v0.1.7):
+    main menu structure (v0.1.7):
     
         === MODES ===
         OINK                    - hunt for handshakes
@@ -1086,231 +1120,231 @@
         SETTINGS                - tweak the pig
         ABOUT                   - credits and info
     
-    Names matter. Order matters. Pig's organized like that.
+    names matter. order matters. pig's organized like that.
 
-    Backtick navigation (v0.1.6+):
+    backtick navigation (v0.1.6+):
 
-        From OINK/WARHOG/PIGGYBLUES/SPECTRUM -> IDLE
-        From Client Monitor                  -> Spectrum view
-        From IDLE                            -> Opens MENU
-        From MENU/Settings                   -> Parent menu
+        from OINK/WARHOG/PIGGYBLUES/SPECTRUM -> IDLE
+        from Client Monitor                  -> Spectrum view
+        from IDLE                            -> opens MENU
+        from MENU/Settings                   -> parent menu
 
-    Intuitive. Only took six versions.
+    intuitive. only took six versions.
 
-    Screenshots are saved to /screenshots/screenshotNNN.bmp on the SD
-    card. Takes about 1.4 seconds - piggy freezes briefly. Worth it
+    screenshots are saved to /screenshots/screenshotNNN.bmp on the SD
+    card. takes about 1.4 seconds - piggy freezes briefly. worth it
     for the documentation flex.
 
 
 ----[ 6.1 - Screen Layout
 
-    Your piglet's face lives on a 240x135 pixel canvas. Not much real
+    your piglet's face lives on a 240x135 pixel canvas. not much real
     estate, but enough to cause trouble.
 
-    Top bar format:
+    top bar format:
 
         [MODE M00D]                       XX% GWM HH:MM
 
-    Left = current mode + mood indicator (HYP3/GUD/0K/M3H/S4D).
-    Right = battery percent + status flags + GPS time (or --:--).
-    G=GPS, W=WiFi, M=ML. Dashes mean inactive.
+    left = current mode + mood indicator (HYP3/GUD/0K/M3H/S4D).
+    right = battery percent + status flags + GPS time (or --:--).
+    G=GPS, W=WiFi, M=ML. dashes mean inactive.
 
-    The piglet has moods. Watch the face change as it hunts:
+    the piglet has moods. watch the face change as it hunts:
 
         NEUTRAL     HAPPY       EXCITED     HUNTING     SLEEPY      SAD
          ?  ?        ^  ^        !  !        |  |        v  v        .  .
         (o 00)      (^ 00)      (@ 00)      (= 00)      (- 00)      (T 00)
         (    )      (    )      (    )      (    )      (    )      (    )
 
-    Yes, we spent actual development time on pig facial expressions.
-    No regrets.
+    yes, we spent actual development time on pig facial expressions.
+    no regrets.
 
-    Network names display in UPPERCASE (v0.1.6+) for visibility on the
-    tiny 240x135 screen. File exports keep original case. Settings menu
+    network names display in UPPERCASE (v0.1.6+) for visibility on the
+    tiny 240x135 screen. file exports keep original case. settings menu
     stays lowercase - you need the mental workout when configuring.
 
 
 --[ 7 - Configuration
 
-    Settings persist to SPIFFS. Your piglet remembers.
+    settings persist to SPIFFS. your piglet remembers.
 
-    Navigate with ; and . keys, Enter to toggle/edit. Press ESC (backtick)
-    or Backspace to save and exit. Changes take effect immediately,
+    navigate with ; and . keys, Enter to toggle/edit. press ESC (backtick)
+    or Backspace to save and exit. changes take effect immediately,
     including GPS pin changes (hot-reinit, no reboot required).
 
         +------------+-------------------------------+---------+
         | Setting    | Description                   | Default |
         +------------+-------------------------------+---------+
-        | WiFi SSID  | Network for file transfer     | -       |
-        | WiFi Pass  | Password for that network     | -       |
+        | WiFi SSID  | network for file transfer     | -       |
+        | WiFi Pass  | password for that network     | -       |
         | WPA-SEC Key| 32-char hex key for cracking  | -       |
         | WiGLE Name | WiGLE API name for uploads    | -       |
         | WiGLE Token| WiGLE API token for uploads   | -       |
-        | Sound      | Beeps when things happen      | ON      |
-        | Brightness | Display brightness            | 80%     |
-        | Dim After  | Screen dim timeout, 0=never   | 30s     |
-        | Dim Level  | Brightness when dimmed        | 20%     |
-        | Theme      | Color scheme for UI           | P1NK    |
-        | CH Hop     | Channel hop interval          | 500ms   |
-        | Lock Time  | Client discovery window       | 4000ms  |
-        | Deauth     | Enable deauth attacks         | ON      |
-        | Rnd MAC    | Randomize MAC on mode start   | ON      |
-        | DONOHAM    | Passive mode. The quiet one.  | OFF     |
-        | GPS        | Enable GPS module             | ON      |
-        | GPS PwrSave| Sleep GPS when not hunting    | ON      |
+        | Sound      | beeps when things happen      | ON      |
+        | Brightness | display brightness            | 80%     |
+        | Dim After  | screen dim timeout, 0=never   | 30s     |
+        | Dim Level  | brightness when dimmed        | 20%     |
+        | Theme      | color scheme for UI           | P1NK    |
+        | CH Hop     | channel hop interval          | 500ms   |
+        | Lock Time  | client discovery window       | 4000ms  |
+        | Deauth     | enable deauth attacks         | ON      |
+        | Rnd MAC    | randomize MAC on mode start   | ON      |
+        | DONOHAM    | passive mode. the quiet one.  | OFF     |
+        | GPS        | enable GPS module             | ON      |
+        | GPS PwrSave| sleep GPS when not hunting    | ON      |
         | Scan Intv  | WARHOG scan frequency         | 5s      |
         | GPS RX Pin | GPIO for GPS data receive     | 1       |
         | GPS TX Pin | GPIO for GPS data transmit    | 2       |
         | GPS Baud   | GPS module baud rate          | 115200  |
         | Timezone   | UTC offset for timestamps     | 0       |
         | ML Mode    | Basic/Enhanced beacon capture | Basic   |
-        | SD Log     | Debug logging to SD card      | OFF     |
+        | SD Log     | debug logging to SD card      | OFF     |
         | BLE Burst  | BLE advertisement interval    | 200ms   |
-        | BLE Adv Tm | Per-packet duration           | 100ms   |
+        | BLE Adv Tm | per-packet duration           | 100ms   |
         +------------+-------------------------------+---------+
 
-    GPS pin defaults work for original Cardputer + Grove GPS. If you're
+    GPS pin defaults work for original Cardputer + Grove GPS. if you're
     running Cardputer-Adv with Cap LoRa868 module, change pins to:
-    RX=15, TX=13. Yes, swapped - ESP32 RX receives from GPS TX.
+    RX=15, TX=13. yes, swapped - ESP32 RX receives from GPS TX.
     GPS reinits automatically when pins change - no reboot.
 
 
 ----[ 7.1 - Color Themes
 
-    Your piglet isn't locked to pink. Cycle through themes with ; and .
+    your piglet isn't locked to pink. cycle through themes with ; and .
     on the Theme setting. 12 flavors, from tactical to absurd:
 
         +------------+--------------------------------------------+
         | Theme      | Vibe                                       |
         +------------+--------------------------------------------+
-        | P1NK       | Classic piglet pink on black (default)     |
-        | CYB3R      | Electric cyan. Because it's 2077 somewhere |
-        | M4TR1X     | Green phosphor. See the code, Neo          |
-        | AMB3R      | Warm terminal amber. Old school CRT feels  |
-        | BL00D      | Aggressive red. For when you mean business |
-        | GH0ST      | White on black. Low-viz stealth mode       |
+        | P1NK       | classic piglet pink on black (default)     |
+        | CYB3R      | electric cyan. because it's 2077 somewhere |
+        | M4TR1X     | green phosphor. see the code, Neo          |
+        | AMB3R      | warm terminal amber. old school CRT feels  |
+        | BL00D      | aggressive red. for when you mean business |
+        | GH0ST      | white on black. low-viz stealth mode       |
         +------------+--------------------------------------------+
-        | PAP3R      | Black on white. The inverted heresy        |
-        | BUBBLEGUM  | Hot pink on white. Aggressively visible    |
-        | M1NT       | Teal on white. Refreshing. Minty.          |
-        | SUNBURN    | Orange on white. Eye damage included       |
+        | PAP3R      | black on white. the inverted heresy        |
+        | BUBBLEGUM  | hot pink on white. aggressively visible    |
+        | M1NT       | teal on white. refreshing. minty.          |
+        | SUNBURN    | orange on white. eye damage included       |
         +------------+--------------------------------------------+
         | L1TTL3M1XY | OG Game Boy LCD. 1989 pea-soup nostalgia   |
         | B4NSH33    | P1 phosphor green. VT100 ghost vibes       |
         +------------+--------------------------------------------+
 
-    Dark themes (top 6) keep things tactical. Inverted themes (middle 4)
+    dark themes (top 6) keep things tactical. inverted themes (middle 4)
     exist for outdoor visibility or psychological warfare on bystanders.
-    Retro themes (bottom 2) for the nostalgic freaks who miss CRTs.
+    retro themes (bottom 2) for the nostalgic freaks who miss CRTs.
 
-    Theme persists across reboots. The pig never forgets a color scheme.
+    theme persists across reboots. the pig never forgets a color scheme.
 
 
 ----[ 7.2 - API Keys Setup
 
-    Cloud features need credentials. The pig doesn't store them in
+    cloud features need credentials. the pig doesn't store them in
     flash - they live in config after you import from SD.
 
 
     WiGLE (wigle.net) - for wardrive uploads:
 
-        1. Create account at wigle.net
-        2. Go to Account -> API Token section
-        3. Generate or copy your API name and token
-        4. Create file on SD card root: /wigle_key.txt
-        5. Format: apiname:apitoken (one line, colon separator)
-        6. In PORKCHOP: Settings -> < Load WiGLE Key >
-        7. File auto-deletes after import
+        1. create account at wigle.net
+        2. go to Account -> API Token section
+        3. generate or copy your API name and token
+        4. create file on SD card root: /wigle_key.txt
+        5. format: apiname:apitoken (one line, colon separator)
+        6. in PORKCHOP: Settings -> < Load WiGLE Key >
+        7. file auto-deletes after import
 
-        Now PORK TRACKS menu can upload your wardrives.
+        now PORK TRACKS menu can upload your wardrives.
 
 
     WPA-SEC (wpa-sec.stanev.org) - for distributed cracking:
 
-        1. Register at wpa-sec.stanev.org
-        2. Get your 32-character hex API key from profile
-        3. Create file on SD card root: /wpasec_key.txt
-        4. Contents: just the key, nothing else
-        5. In PORKCHOP: Settings -> < Load WPA-SEC Key >
-           Or just reboot - auto-imports on boot
-        6. File self-destructs after import
+        1. register at wpa-sec.stanev.org
+        2. get your 32-character hex API key from profile
+        3. create file on SD card root: /wpasec_key.txt
+        4. contents: just the key, nothing else
+        5. in PORKCHOP: Settings -> < Load WPA-SEC Key >
+           or just reboot - auto-imports on boot
+        6. file self-destructs after import
 
-        Now LOOT menu can upload handshakes and fetch results.
+        now LOOT menu can upload handshakes and fetch results.
 
 
-    Why the file dance? No USB keyboard on the Cardputer for entering
-    64 character strings. SD card is faster. File deletion is paranoia.
-    The pig doesn't judge your OpSec. The pig just oinks and forgets.
+    why the file dance? no USB keyboard on the Cardputer for entering
+    64 character strings. SD card is faster. file deletion is paranoia.
+    the pig doesn't judge your OpSec. the pig just oinks and forgets.
 
 
 --[ 8 - ML Training Pipeline
 
-    Want to train your own model? Here's the workflow:
+    want to train your own model? here's the workflow:
 
 ----[ 8.1 - Data Collection
 
-    WARHOG mode hoovers up ML training data automatically. Drive around,
-    feed the brain. Zero extra effort required.
+    WARHOG mode hoovers up ML training data automatically. drive around,
+    feed the brain. zero extra effort required.
 
-    How it works:
-        - Every network gets 32 features extracted from beacon frames
-        - Data accumulates in memory as you drive around
-        - Every 60 seconds, WARHOG dumps to /mldata/ - crash protection
-        - When you stop WARHOG (G0 button), final export happens
-        - Worst case you lose 1 minute of data if piggy crashes
+    how it works:
+        - every network gets 32 features extracted from beacon frames
+        - data accumulates in memory as you drive around
+        - every 60 seconds, WARHOG dumps to /mldata/ - crash protection
+        - when you stop WARHOG (G0 button), final export happens
+        - worst case you lose 1 minute of data if piggy crashes
 
-    The dump contains:
+    the dump contains:
         BSSID, SSID, channel, RSSI, authmode, HT caps, vendor IEs,
         beacon interval, jitter, GPS coords, timestamp, and label
 
-    Set ML Mode to Enhanced in settings for deep beacon parsing.
+    set ML Mode to Enhanced in settings for deep beacon parsing.
     Basic mode uses ESP32 scan API. Enhanced mode sniffs raw 802.11.
-    More features, more CPU, more fun.
+    more features, more CPU, more fun.
 
 ----[ 8.2 - Labeling
 
-    Raw data starts unlabeled. Use the prep script to auto-label based
+    raw data starts unlabeled. use the prep script to auto-label based
     on security characteristics:
 
         $ python scripts/prepare_ml_data.py ml_training.csv
 
-    The script outputs ml_training_ei.csv with string labels:
+    the script outputs ml_training_ei.csv with string labels:
 
-        normal        = Boring ISP gear doing boring ISP things
-        rogue_ap      = Suspiciously loud. Probably evil. Trust issues.
-        evil_twin     = Identity theft but make it wireless
-        deauth_target = No WPA3/PMF - begging for disconnection
+        normal        = boring ISP gear doing boring ISP things
+        rogue_ap      = suspiciously loud. probably evil. trust issues.
+        evil_twin     = identity theft but make it wireless
+        deauth_target = no WPA3/PMF - begging for disconnection
         vulnerable    = Open/WEP/WPS - what decade is this
 
-    The auto-labeler catches the obvious stuff. For real rogue/evil twin
+    the auto-labeler catches the obvious stuff. for real rogue/evil twin
     samples, you gotta set up sketchy APs in the lab and label manually.
-    Upload your labeled CSV to Edge Impulse for training.
+    upload your labeled CSV to Edge Impulse for training.
 
 ----[ 8.3 - Training on Edge Impulse
 
-    Edge Impulse does the grunt work. You just click buttons:
+    Edge Impulse does the grunt work. you just click buttons:
 
-        1. Create project at studio.edgeimpulse.com
-        2. Upload your labeled ml_training.csv
-        3. Design impulse: Raw data block -> Classification (Keras)
-        4. Train for 50+ epochs, check confusion matrix
-        5. Test on held-out data, iterate if needed
+        1. create project at studio.edgeimpulse.com
+        2. upload your labeled ml_training.csv
+        3. design impulse: Raw data block -> Classification (Keras)
+        4. train for 50+ epochs, check confusion matrix
+        5. test on held-out data, iterate if needed
 
-    Aim for 90%+ accuracy before deploying. Your piggy deserves
+    aim for 90%+ accuracy before deploying. your piggy deserves
     a brain that actually works.
 
 ----[ 8.4 - Deployment
 
-    When your model is ready:
+    when your model is ready:
 
-        1. Export as "C++ Library" targeting ESP32
-        2. Extract edge-impulse-sdk/ into porkchop/lib/
-        3. Open src/ml/edge_impulse.h
-        4. Uncomment: #define EDGE_IMPULSE_ENABLED
-        5. Rebuild and flash
+        1. export as "C++ Library" targeting ESP32
+        2. extract edge-impulse-sdk/ into porkchop/lib/
+        3. open src/ml/edge_impulse.h
+        4. uncomment: #define EDGE_IMPULSE_ENABLED
+        5. rebuild and flash
 
-    Now your piglet runs real inference instead of heuristics.
-    The grass still moves the same way, but the brain got an upgrade.
+    now your piglet runs real inference instead of heuristics.
+    the grass still moves the same way, but the brain got an upgrade.
 
 
 --[ 9 - Code Structure
@@ -1318,36 +1352,36 @@
     porkchop/
     |
     +-- src/
-    |   +-- main.cpp              # Entry point, main loop
-    |   +-- build_info.h          # Version string, build timestamp
+    |   +-- main.cpp              # entry point, main loop
+    |   +-- build_info.h          # version string, build timestamp
     |   +-- core/
-    |   |   +-- porkchop.cpp/h    # State machine, mode management
-    |   |   +-- config.cpp/h      # Configuration (SPIFFS persistence)
+    |   |   +-- porkchop.cpp/h    # state machine, mode management
+    |   |   +-- config.cpp/h      # configuration (SPIFFS persistence)
     |   |   +-- sdlog.cpp/h       # SD card debug logging
-    |   |   +-- wsl_bypasser.cpp/h # Frame injection, MAC randomization
+    |   |   +-- wsl_bypasser.cpp/h # frame injection, MAC randomization
     |   |   +-- xp.cpp/h          # RPG XP/leveling, achievements, NVS
     |   |
     |   +-- ui/
-    |   |   +-- display.cpp/h     # Triple-canvas display system
-    |   |   +-- menu.cpp/h        # Main menu with callbacks
-    |   |   +-- settings_menu.cpp/h   # Interactive settings
+    |   |   +-- display.cpp/h     # triple-canvas display system
+    |   |   +-- menu.cpp/h        # main menu with callbacks
+    |   |   +-- settings_menu.cpp/h   # interactive settings
     |   |   +-- captures_menu.cpp/h   # LOOT menu - browse captured handshakes
     |   |   +-- wigle_menu.cpp/h  # PORK TRACKS - WiGLE file uploads
     |   |   +-- boar_bros_menu.cpp/h  # BOAR BROS - manage excluded networks
-    |   |   +-- achievements_menu.cpp/h # Proof of pwn viewer
-    |   |   +-- log_viewer.cpp/h  # View SD card logs
-    |   |   +-- swine_stats.cpp/h # Lifetime stats, buff/debuff system
+    |   |   +-- achievements_menu.cpp/h # proof of pwn viewer
+    |   |   +-- log_viewer.cpp/h  # view SD card logs
+    |   |   +-- swine_stats.cpp/h # lifetime stats, buff/debuff system
     |   |
     |   +-- piglet/
-    |   |   +-- avatar.cpp/h      # Derpy ASCII pig (flips L/R)
-    |   |   +-- mood.cpp/h        # Context-aware phrase system
+    |   |   +-- avatar.cpp/h      # derpy ASCII pig (flips L/R)
+    |   |   +-- mood.cpp/h        # context-aware phrase system
     |   |
     |   +-- gps/
     |   |   +-- gps.cpp/h         # TinyGPS++ wrapper, power mgmt
     |   |
     |   +-- ml/
     |   |   +-- features.cpp/h    # 32-feature WiFi extraction
-    |   |   +-- inference.cpp/h   # Heuristic + Edge Impulse classifier
+    |   |   +-- inference.cpp/h   # heuristic + Edge Impulse classifier
     |   |   +-- edge_impulse.h    # SDK scaffold
     |   |
     |   +-- modes/
@@ -1362,16 +1396,16 @@
     |       +-- wpasec.cpp/h      # WPA-SEC distributed cracking client
     |
     +-- scripts/
-    |   +-- prepare_ml_data.py    # Label & convert data for Edge Impulse
-    |   +-- pre_build.py          # Build info generator
+    |   +-- prepare_ml_data.py    # label & convert data for Edge Impulse
+    |   +-- pre_build.py          # build info generator
     |
     +-- docs/
-    |   +-- EDGE_IMPULSE_TRAINING.txt  # Step-by-step ML training guide
+    |   +-- EDGE_IMPULSE_TRAINING.txt  # step-by-step ML training guide
     |
     +-- .github/
     |   +-- copilot-instructions.md   # AI assistant context
     |
-    +-- platformio.ini            # Build config
+    +-- platformio.ini            # build config
 
 
 --[ 10 - Legal sh*t
@@ -1379,95 +1413,95 @@
     READ THIS PART, SKID.
 
     PORKCHOP is for AUTHORIZED SECURITY RESEARCH and EDUCATIONAL USE.
-    Period. Full stop. End of discussion.
+    period. full stop. end of discussion.
 
-        * Your networks only. Or written permission. IN WRITING.
-        * Deauth attacks are ILLEGAL in most places. Surprise!
-        * Wardriving legality varies. Google your jurisdiction.
+        * your networks only. or written permission. IN WRITING.
+        * deauth attacks are ILLEGAL in most places. surprise!
+        * wardriving legality varies. google your jurisdiction.
         * BLE spam is a dick move even if technically legal
-        * Authors assume ZERO LIABILITY. Not our problem.
-        * If you get caught, you never heard of us
+        * authors assume ZERO LIABILITY. not our problem.
+        * if you get caught, you never heard of us
 
-    The law doesn't care that it's "just research" when you're sitting
+    the law doesn't care that it's "just research" when you're sitting
     in a police station explaining why you were parked outside a bank
     with a directional antenna.
 
-    Your neighbor's WiFi password is not your WiFi password. Your
+    your neighbor's WiFi password is not your WiFi password. your
     neighbor's streaming services are not your streaming services.
-    "But I only wanted to test..." is not a legal defense.
+    "but I only wanted to test..." is not a legal defense.
 
-    We made a cute ASCII pig that hunts WiFi. We did not make a magic
-    immunity talisman against federal telecommunications laws. The pig
-    can't testify on your behalf. The pig will not visit you in prison.
+    we made a cute ASCII pig that hunts WiFi. we did not make a magic
+    immunity talisman against federal telecommunications laws. the pig
+    can't testify on your behalf. the pig will not visit you in prison.
 
-    Don't be stupid. Don't be evil. Don't make us regret publishing this.
+    don't be stupid. don't be evil. don't make us regret publishing this.
 
 
 --[ 11 - Greetz
 
-    Respect to those who came before:
+    respect to those who came before:
 
         * evilsocket & pwnagotchi - you started this madness
         * M5Stack - cheap hardware, expensive possibilities
         * Edge Impulse - ML for the rest of us
-        * The ESP32 underground - keeping embedded hacking alive
+        * the ESP32 underground - keeping embedded hacking alive
         * Phrack Magazine - the OG zine we're poorly imitating
         * Binrev, 2600, and the scene that won't die
-        * You - for scrolling past the legal section
+        * you - for scrolling past the legal section
 
-    Special shoutout to the Cardputer-ADV + LoRa testing crew:
+    special shoutout to the Cardputer-ADV + LoRa testing crew:
 
         * littlemixy - sacrificed hardware to my broken RX/TX pin configs
         * BansheeBacklash - emotional support through the GPIO nightmare
 
-    These absolute units stuck around while we debugged pin 13 vs 15
-    shenanigans on hardware they bought with real money. Their themes
-    are immortalized in the firmware. Heroes don't always wear capes,
+    these absolute units stuck around while we debugged pin 13 vs 15
+    shenanigans on hardware they bought with real money. their themes
+    are immortalized in the firmware. heroes don't always wear capes,
     sometimes they just have too many ESP32s.
 
-    "The WiFi is free if you're brave enough."
+    "the WiFi is free if you're brave enough."
     
-    Stay paranoid. Stay curious. Stay out of trouble (mostly).
+    stay paranoid. stay curious. stay out of trouble (mostly).
 
 
 --[ 12 - Credits
 
-    Developed by: 0ct0
-    Team size: 1
-    Pronoun of choice: "we"
+    developed by: 0ct0
+    team size: 1
+    pronoun of choice: "we"
 
-    There is no team. There never was a team.
-    "We" is aspirational. "We" is the dream.
-    "We" is what you say when you want to sound
+    there is no team. there never was a team.
+    "we" is aspirational. "we" is the dream.
+    "we" is what you say when you want to sound
     like a legitimate operation and not just
     some guy debugging frame injection at 3am
     while the pig judges silently from the display.
 
-    Contributors welcome. The pig needs friends.
-    The pig's creator needs therapy.
-    Both are accepting pull requests.
+    contributors welcome. the pig needs friends.
+    the pig's creator needs therapy.
+    both are accepting pull requests.
 
 
 --[ 13 - Support The Pig
 
-    This project runs on:
-        * Mass quantities of caffeine
-        * Sleep deprivation
-        * The faint hope someone finds this useful
+    this project runs on:
+        * mass quantities of caffeine
+        * sleep deprivation
+        * the faint hope someone finds this useful
 
-    If PORKCHOP saved you from buying a Flipper,
+    if PORKCHOP saved you from buying a Flipper,
     cracked a handshake that made you smile,
     or just entertained you for five minutes -
     consider funding the next 3am debug session:
 
         https://buymeacoffee.com/0ct0
 
-    Your coffee becomes my code.
-    My code becomes everyone's pig.
-    Circle of life. Hakuna matata. Oink.
+    your coffee becomes my code.
+    my code becomes everyone's pig.
+    circle of life. hakuna matata. oink.
 
-    (Not required. Never expected. Always appreciated.
-     The pig oinks louder for supporters.)
+    (not required. never expected. always appreciated.
+     the pig oinks louder for supporters.)
 
 
 OINK! OINK!
