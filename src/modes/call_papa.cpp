@@ -264,13 +264,7 @@ void ctrlNotifyCallback(NimBLERemoteCharacteristic* pChar,
             if (length >= 2) {
                 Serial.printf("[SON-OF-PIG] Purged %d captures\n", pData[1]);
             }
-            // Ensure dialogue progresses reliably when purge completes
-            if (dialogueState == DialogueState::GOODBYE_PAPA) {
-                Serial.println("[SON-OF-PIG] RSP_PURGED received - advancing dialogue to GOODBYE_SON");
-                dialogueTimer = millis();
-                __asm__ __volatile__("" ::: "memory");
-                dialogueState = DialogueState::GOODBYE_SON;
-            }
+            // Let update() dialogue state machine handle transitions - don't manipulate state in callback
             break;
     }
 }
@@ -566,9 +560,13 @@ class ClientCallbacks : public NimBLEClientCallbacks {
         CallPapaMode::pStatusChar = nullptr;
         CallPapaMode::progress.inProgress = false;
         
-        // Reset dialogue state to prevent stale state on reconnect
-        dialogueState = DialogueState::IDLE;
-        dialogueTimer = 0;
+        // Don't reset dialogue if in GOODBYE phase - let it complete gracefully
+        if (dialogueState != DialogueState::GOODBYE_PAPA && 
+            dialogueState != DialogueState::GOODBYE_SON &&
+            dialogueState != DialogueState::DONE) {
+            dialogueState = DialogueState::IDLE;
+            dialogueTimer = 0;
+        }
         
         // Reset pending flags (with mutex protection)
         taskENTER_CRITICAL(&pendingMux);
