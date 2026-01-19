@@ -79,7 +79,9 @@ private:
     // API endpoints
     static constexpr const char* API_HOST = "wpa-sec.stanev.org";
     static constexpr const char* RESULTS_PATH = "/?api&dl=1";  // Download potfile
-    static constexpr const char* SUBMIT_PATH = "/?submit";
+    // Uploads are accepted at the root path. Some clients use /?submit,
+    // but / is the most compatible and avoids redirect edge cases.
+    static constexpr const char* SUBMIT_PATH = "/";
     
     // Helpers
     static String normalizeBSSID(const char* bssid);  // Remove colons, uppercase

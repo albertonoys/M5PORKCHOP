@@ -16,20 +16,22 @@ uint32_t SwineStats::lastBuffUpdate = 0;
 StatsTab SwineStats::currentTab = StatsTab::STATS;
 
 // Buff names and descriptions (leet one-word style)
+// Buff names and descriptions (vNext Neon Operator)
 static const char* BUFF_NAMES[] = {
-    "R4G3",
-    "SNOUT$HARP",
-    "H0TSTR3AK",
-    "C4FF31N4T3D"
+    "NE0N H1GH",    // happiness >80: faster sweep, faster decay
+    "SNOUT$HARP",   // happiness >50: global XP boost
+    "H0TSTR3AK",    // 2+ captures: capture XP boost
+    "C0LD F0CU5"    // happiness 60–75: balanced focus
 };
 
 static const char* BUFF_DESCS[] = {
-    "+50% deauth pwr",
-    "+25% XP gain",
-    "+10% deauth eff",
-    "-30% hop delay"
+    "Street Sweep -18%",               // NE0N H1GH: faster band sweep
+    "Signal Drip +18%",                // SNOUT$HARP: global XP weight
+    "Capture XP +6%",                  // H0TSTR3AK: capture streak bonus
+    "Glass Stare +10% / Street Sweep +5%"  // C0LD F0CU5: longer locks & slower sweep
 };
 
+// Debuff names and descriptions (vNext Neon Operator)
 static const char* DEBUFF_NAMES[] = {
     "SLOP$LUG",
     "F0GSNOUT",
@@ -38,35 +40,36 @@ static const char* DEBUFF_NAMES[] = {
 };
 
 static const char* DEBUFF_DESCS[] = {
-    "-30% deauth pwr",
-    "-15% XP gain",
-    "+2ms jitter",
-    "+50% hop delay"
+    "Street Sweep +12%",   // SLOP$LUG: slower sweep
+    "Signal Drip -10%",    // F0GSNOUT: global XP penalty
+    "+1ms jitter",         // TR0UGHDR41N: extra jitter
+    "Street Sweep +35%"    // HAM$TR1NG: very slow sweep
 };
 
 // Class buff names and descriptions
+// Class buff names and descriptions (vNext Neon Operator)
 static const char* CLASS_BUFF_NAMES[] = {
-    "P4CK3T NOSE",   // SN1FF3R
-    "H4RD SNOUT",    // PWNER
-    "R04D H0G",      // R00T
-    "SH4RP TUSKS",   // R0GU3
-    "CR4CK NOSE",    // EXPL01T
-    "1R0N TUSKS",    // WARL0RD
-    "0MN1P0RK",      // L3G3ND
-    "K3RN3L H0G",    // L41+
-    "B4C0NM4NC3R"    // L46+
+    "A1R R34D3R",    // SN1FF3R (L6): Street Sweep -8%
+    "T4RG3T F0CU5",  // PWNER (L11): Glass Stare +0.6s
+    "R04M CR3D",     // R00T (L16): +12% distance XP
+    "GL4SS ST4R3+",  // R0GU3 (L21): Glass Stare +0.8s
+    "L00T M3M0RY",   // EXPL01T (L26): +10% capture XP
+    "CL0CK NERV3S",  // WARL0RD (L31): -10% jitter
+    "0MN1P0RK",      // L3G3ND (L36): +4% all
+    "PR0T0C0L 5EER", // K3RN3L H0G (L41): +6% cap/dist XP
+    "B4C0N 0V3RDR1V3" // B4C0NM4NC3R (L46): +8% cap/dist XP
 };
 
 static const char* CLASS_BUFF_DESCS[] = {
-    "-10% hop",
-    "+1 burst",
-    "+15% dist XP",
-    "+1s lock",
-    "+10% cap XP",
-    "-1ms jitter",
-    "+5% all",
-    "+10% cap/dist",
-    "+15% cap/dist"
+    "-8% Street Sweep",         // A1R R34D3R
+    "+0.6s Glass Stare",        // T4RG3T F0CU5
+    "+12% distance XP",         // R04M CR3D
+    "+0.8s Glass Stare",        // GL4SS ST4R3+
+    "+10% capture XP",          // L00T M3M0RY
+    "-10% Clock Nerves",        // CL0CK NERV3S
+    "+4% all",                  // 0MN1P0RK
+    "+6% cap/dist XP",          // PR0T0C0L 5EER
+    "+8% cap/dist XP"           // B4C0N 0V3RDR1V3
 };
 static const uint8_t CLASS_BUFF_COUNT = sizeof(CLASS_BUFF_NAMES) / sizeof(CLASS_BUFF_NAMES[0]);
 
@@ -170,34 +173,34 @@ BuffState SwineStats::calculateBuffs() {
     
     // === BUFFS ===
     
-    // R4G3: happiness > 70 = +50% deauth
-    if (happiness > 70) {
+    // NE0N H1GH: happiness > 80 = Street Sweep -18%
+    if (happiness > 80) {
         state.buffs |= (uint8_t)PorkBuff::R4G3;
     }
     
-    // SNOUT$HARP: happiness > 50 = +25% XP
+    // SNOUT$HARP: happiness > 50 = Signal Drip +18%
     if (happiness > 50) {
         state.buffs |= (uint8_t)PorkBuff::SNOUT_SHARP;
     }
     
-    // H0TSTR3AK: 2+ handshakes in session
+    // H0TSTR3AK: 2+ captures in session (handshakes)
     if (session.handshakes >= 2) {
         state.buffs |= (uint8_t)PorkBuff::H0TSTR3AK;
     }
     
-    // C4FF31N4T3D: happiness > 80 = faster hopping
-    if (happiness > 80) {
+    // C0LD F0CU5: happiness between 60 and 75 inclusive
+    if (happiness >= 60 && happiness <= 75) {
         state.buffs |= (uint8_t)PorkBuff::C4FF31N4T3D;
     }
     
     // === DEBUFFS ===
     
-    // SLOP$LUG: happiness < -50 = -30% deauth
+    // SLOP$LUG: happiness < -50 = Street Sweep +12%
     if (happiness < -50) {
         state.debuffs |= (uint8_t)PorkDebuff::SLOP_SLUG;
     }
     
-    // F0GSNOUT: happiness < -30 = -15% XP
+    // F0GSNOUT: happiness < -30 = Signal Drip -10%
     if (happiness < -30) {
         state.debuffs |= (uint8_t)PorkDebuff::F0GSNOUT;
     }
@@ -209,7 +212,7 @@ BuffState SwineStats::calculateBuffs() {
         state.debuffs |= (uint8_t)PorkDebuff::TR0UGHDR41N;
     }
     
-    // HAM$TR1NG: happiness < -70 = slow hopping
+    // HAM$TR1NG: happiness < -70 = Street Sweep +35%
     if (happiness < -70) {
         state.debuffs |= (uint8_t)PorkDebuff::HAM_STR1NG;
     }
@@ -243,54 +246,50 @@ bool SwineStats::hasClassBuff(ClassBuff cb) {
 }
 
 uint8_t SwineStats::getDeauthBurstCount() {
-    BuffState buffs = calculateBuffs();
+    // In vNext the deauth burst count is no longer significantly boosted by class or mood.
+    // Preserve a small global perk from 0MN1P0RK (+4%) but remove spammy stacking.
     uint16_t classBuffs = calculateClassBuffs();
-    uint8_t base = 4;  // Default burst count (quality over quantity)
-    
-    // Class buff: H4RD_SNOUT +1 burst (applied first)
-    if (classBuffs & (uint16_t)ClassBuff::H4RD_SNOUT) {
-        base = 6;
-    }
-    
-    // Class buff: OMNI_P0RK +5% (applied to base)
+    // Preserve the original baseline burst count (5 packets). vNext removes most stacking
+    // but does not nerf the base itself. The goal is precision, not reduced throughput.
+    uint8_t base = 5;
+
+    // Apply only the 0MN1P0RK perk: a small +4% bump (rounded) to reward mastery
     if (classBuffs & (uint16_t)ClassBuff::OMNI_P0RK) {
-        base = (base * 105 + 50) / 100;  // Round
+        base = (uint8_t)((base * 104 + 50) / 100);  // 4% boost with rounding
     }
-    
-    // Mood buff: R4G3 +50%
-    if (buffs.hasBuff(PorkBuff::R4G3)) {
-        base = (base * 15) / 10;  // 150%
-    }
-    // Mood buff: H0TSTR3AK +10% (only if no R4G3)
-    else if (buffs.hasBuff(PorkBuff::H0TSTR3AK)) {
-        base = (base * 11) / 10;  // 110%
-    }
-    
-    // Mood debuff: SLOP$LUG -30%
-    if (buffs.hasDebuff(PorkDebuff::SLOP_SLUG)) {
-        base = (base * 7) / 10;  // 70%
-        if (base < 2) base = 2;  // Minimum 2 frames
-    }
-    
+
+    // Do not modify burst count based on mood or other debuffs to emphasize restraint
     return base;
 }
 
 uint8_t SwineStats::getDeauthJitterMax() {
     BuffState buffs = calculateBuffs();
     uint16_t classBuffs = calculateClassBuffs();
-    uint8_t base = 5;  // Default 1-5ms jitter
+    // Base maximum jitter in milliseconds
+    const float base = 5.0f;
+    float mod = 0.0f;
+    uint8_t addMs = 0;
     
-    // Class buff: IR0N_TUSKS -1ms min jitter (1-5 -> 0-4)
+    // Class perk: CL0CK NERV3S (WARL0RD) -> -10% jitter
     if (classBuffs & (uint16_t)ClassBuff::IR0N_TUSKS) {
-        base = 4;
+        mod -= 0.10f;
     }
     
-    // Mood debuff: TR0UGHDR41N +2ms jitter
+    // Mood debuff: TR0UGHDR41N -> +1ms constant jitter
     if (buffs.hasDebuff(PorkDebuff::TR0UGHDR41N)) {
-        base += 2;
+        addMs += 1;
     }
     
-    return base;
+    // Compute multiplier and clamp to [0.75, 1.30]
+    float mult = 1.0f + mod;
+    if (mult < 0.75f) mult = 0.75f;
+    if (mult > 1.30f) mult = 1.30f;
+    
+    float jitter = base * mult;
+    uint8_t jitterMax = (uint8_t)jitter;
+    jitterMax += addMs;
+    if (jitterMax < 1) jitterMax = 1;
+    return jitterMax;
 }
 
 uint16_t SwineStats::getChannelHopInterval() {
@@ -298,114 +297,159 @@ uint16_t SwineStats::getChannelHopInterval() {
     uint16_t classBuffs = calculateClassBuffs();
     uint16_t base = Config::wifi().channelHopInterval;  // Default from config
     
-    // Class buff: P4CK3T_NOSE -10% interval
+    // Compute additive modifiers for Street Sweep (channel hop interval)
+    float mod = 0.0f;
+    // Class perk: A1R R34D3R (SN1FF3R) -> -8% interval
     if (classBuffs & (uint16_t)ClassBuff::P4CK3T_NOSE) {
-        base = (base * 9) / 10;
+        mod -= 0.08f;
     }
-    
-    // Class buff: OMNI_P0RK -5% interval
+    // Class perk: 0MN1P0RK (L3G3ND) -> +4% interval
     if (classBuffs & (uint16_t)ClassBuff::OMNI_P0RK) {
-        base = (base * 95) / 100;
+        mod += 0.04f;
     }
-    
-    // Mood buff: C4FF31N4T3D -30% interval (faster)
+    // Mood buff: NE0N H1GH -> -18% interval
+    if (buffs.hasBuff(PorkBuff::R4G3)) {
+        mod -= 0.18f;
+    }
+    // Mood buff: C0LD F0CU5 -> +5% interval
     if (buffs.hasBuff(PorkBuff::C4FF31N4T3D)) {
-        base = (base * 7) / 10;
+        mod += 0.05f;
     }
-    
-    // Mood debuff: HAM$TR1NG +50% interval (slower)
+    // Debuff: SLOP$LUG -> +12% interval
+    if (buffs.hasDebuff(PorkDebuff::SLOP_SLUG)) {
+        mod += 0.12f;
+    }
+    // Debuff: HAM$TR1NG -> +35% interval
     if (buffs.hasDebuff(PorkDebuff::HAM_STR1NG)) {
-        base = (base * 15) / 10;
+        mod += 0.35f;
     }
     
-    return base;
+    // Compute final multiplier and clamp to [0.65, 1.45]
+    float finalMult = 1.0f + mod;
+    if (finalMult < 0.65f) finalMult = 0.65f;
+    if (finalMult > 1.45f) finalMult = 1.45f;
+    
+    uint16_t interval = (uint16_t)((float)base * finalMult);
+    return interval;
 }
 
 float SwineStats::getXPMultiplier() {
     BuffState buffs = calculateBuffs();
     uint16_t classBuffs = calculateClassBuffs();
-    float mult = 1.0f;
-    
-    // Class buff: OMNI_P0RK +5% XP
+    // vNext Signal Drip (global XP multiplier)
+    float mod = 0.0f;
+    // Class perk: 0MN1P0RK -> +4% global XP
     if (classBuffs & (uint16_t)ClassBuff::OMNI_P0RK) {
-        mult += 0.05f;
+        mod += 0.04f;
     }
-    if (classBuffs & (uint16_t)ClassBuff::B4C0NM4NC3R) {
-        mult += 0.05f;  // +5% on top of OMNI_P0RK = +10% total
-    }
-    
-    // Mood buff: SNOUT$HARP +25% XP
+    // Mood buff: SNOUT$HARP -> +18% global XP
     if (buffs.hasBuff(PorkBuff::SNOUT_SHARP)) {
-        mult += 0.25f;
+        mod += 0.18f;
     }
-    
-    // Mood debuff: F0GSNOUT -15% XP
+    // Mood debuff: F0GSNOUT -> -10% global XP
     if (buffs.hasDebuff(PorkDebuff::F0GSNOUT)) {
-        mult -= 0.15f;
+        mod -= 0.10f;
     }
     
-    return mult;
+    float finalMult = 1.0f + mod;
+    // Clamp Signal Drip to [0.80, 1.60]
+    if (finalMult < 0.80f) finalMult = 0.80f;
+    if (finalMult > 1.60f) finalMult = 1.60f;
+    return finalMult;
 }
 
 uint32_t SwineStats::getLockTime() {
     uint16_t classBuffs = calculateClassBuffs();
-    uint32_t base = Config::wifi().lockTime;  // From settings (default 4000ms)
+    BuffState buffs = calculateBuffs();
+    uint32_t base = Config::wifi().lockTime;  // From settings
     
-    // Class buff: SH4RP_TUSKS +1s lock time (more time to discover clients)
+    // Constant additions (milliseconds) for Glass Stare
+    uint32_t addMs = 0;
+    float mod = 0.0f;
+    
+    // Class perk: T4RG3T F0CU5 -> +0.6s
+    if (classBuffs & (uint16_t)ClassBuff::H4RD_SNOUT) {
+        addMs += 600;
+    }
+    // Class perk: GL4SS ST4R3+ -> +0.8s
     if (classBuffs & (uint16_t)ClassBuff::SH4RP_TUSKS) {
-        base += 1000;
+        addMs += 800;
     }
-    
-    // Class buff: OMNI_P0RK +5% lock time
+    // Class perk: 0MN1P0RK -> +4% lock time
     if (classBuffs & (uint16_t)ClassBuff::OMNI_P0RK) {
-        base = (base * 105) / 100;
+        mod += 0.04f;
     }
     
-    return base;
+    // Mood buff: C0LD F0CU5 -> +10% lock time
+    if (buffs.hasBuff(PorkBuff::C4FF31N4T3D)) {
+        mod += 0.10f;
+    }
+    
+    // Apply clamp for Glass Stare multiplier [0.80, 1.50]
+    float mult = 1.0f + mod;
+    if (mult < 0.80f) mult = 0.80f;
+    if (mult > 1.50f) mult = 1.50f;
+    
+    uint32_t result = (uint32_t)((float)base * mult) + addMs;
+    return result;
 }
 
 float SwineStats::getDistanceXPMultiplier() {
     uint16_t classBuffs = calculateClassBuffs();
-    float mult = 1.0f;
-    
-    // Class buff: R04D_H0G +15% distance XP
+    // vNext R04M CR3D (distance XP multiplier)
+    float mod = 0.0f;
+    // Class perk: R04M CR3D (R00T) -> +12%
     if (classBuffs & (uint16_t)ClassBuff::R04D_H0G) {
-        mult += 0.15f;
+        mod += 0.12f;
     }
-    
-    // Class buff: OMNI_P0RK +5%
+    // Class perk: 0MN1P0RK -> +4%
     if (classBuffs & (uint16_t)ClassBuff::OMNI_P0RK) {
-        mult *= 1.05f;
+        mod += 0.04f;
     }
+    // Class perk: PR0T0C0L 5EER -> +6%
+    if ((classBuffs & (uint16_t)ClassBuff::K3RN3L_H0G) && !(classBuffs & (uint16_t)ClassBuff::B4C0NM4NC3R)) {
+        mod += 0.06f;
+    }
+    // Class perk: B4C0N 0V3RDR1V3 supersedes PR0T0C0L 5EER -> +8%
     if (classBuffs & (uint16_t)ClassBuff::B4C0NM4NC3R) {
-        mult += 0.15f;
-    } else if (classBuffs & (uint16_t)ClassBuff::K3RN3L_H0G) {
-        mult += 0.10f;
+        mod += 0.08f;
     }
     
-    return mult;
+    // Rig mode: SCOUT -> +5% distance XP (optional; only if implemented)
+    // (No rig mode implemented in this version)
+    
+    float finalMult = 1.0f + mod;
+    return finalMult;
 }
 
 float SwineStats::getCaptureXPMultiplier() {
     uint16_t classBuffs = calculateClassBuffs();
-    float mult = 1.0f;
-    
-    // Class buff: CR4CK_NOSE +10% capture XP
+    BuffState buffs = calculateBuffs();
+    // vNext L00T M3M0RY (capture XP multiplier)
+    float mod = 0.0f;
+    // Class perk: L00T M3M0RY (EXPL01T) -> +10%
     if (classBuffs & (uint16_t)ClassBuff::CR4CK_NOSE) {
-        mult += 0.10f;
+        mod += 0.10f;
     }
-    
-    // Class buff: OMNI_P0RK +5%
+    // Class perk: 0MN1P0RK -> +4%
     if (classBuffs & (uint16_t)ClassBuff::OMNI_P0RK) {
-        mult *= 1.05f;
+        mod += 0.04f;
     }
+    // Class perk: PR0T0C0L 5EER -> +6% (unless overridden by B4C0N)
+    if ((classBuffs & (uint16_t)ClassBuff::K3RN3L_H0G) && !(classBuffs & (uint16_t)ClassBuff::B4C0NM4NC3R)) {
+        mod += 0.06f;
+    }
+    // Class perk: B4C0N 0V3RDR1V3 -> +8%
     if (classBuffs & (uint16_t)ClassBuff::B4C0NM4NC3R) {
-        mult += 0.15f;
-    } else if (classBuffs & (uint16_t)ClassBuff::K3RN3L_H0G) {
-        mult += 0.10f;
+        mod += 0.08f;
     }
-    
-    return mult;
+    // Mood buff: H0TSTR3AK -> +6%
+    if (buffs.hasBuff(PorkBuff::H0TSTR3AK)) {
+        mod += 0.06f;
+    }
+    // Rig mode: HUNTER -> +5% capture XP (optional; not implemented)
+    float finalMult = 1.0f + mod;
+    return finalMult;
 }
 
 const char* SwineStats::getClassBuffName(ClassBuff cb) {
@@ -494,16 +538,13 @@ void SwineStats::draw(M5Canvas& canvas) {
         drawBuffsTab(canvas);
     }
     
-    // Footer hint - use MAIN_H since we're drawing on mainCanvas
-    canvas.setTextDatum(bottom_center);
-    canvas.setTextSize(1);
-    canvas.drawString("<  >", DISPLAY_W / 2, MAIN_H - 2);
+
 }
 
 void SwineStats::drawTabBar(M5Canvas& canvas) {
     canvas.setTextSize(1);
     const int tabY = 0;
-    const int tabH = 10;
+    const int tabH = 12;
     const int tabTextY = 6;  // Add 1px top padding to match bottom margin
 
     // Tab 1: ST4TS

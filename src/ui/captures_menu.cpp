@@ -707,6 +707,12 @@ void CapturesMenu::uploadSelected() {
         return;
     }
 
+    // Already uploaded? Hard-stop for messaging parity.
+    if (WPASec::isUploaded(cap.bssid.c_str())) {
+        Display::setTopBarMessage("ALREADY UPLOADED", 3000);
+        return;
+    }
+
     // PMKIDs can't be uploaded (WPA-SEC requires PCAP format)
     if (cap.isPMKID) {
         Display::setTopBarMessage("PMKID = LOCAL ONLY", 4000);

@@ -51,7 +51,8 @@ enum Event {
     PIGSYNC_BOOT,       // extended boot sequence for PIGSYNC
     
     // === SPECIAL ===
-    SIREN               // police siren effect (replaces flashSiren audio)
+    SIREN,              // police siren effect (replaces flashSiren audio)
+    YOU_DIED            // Dark Souls style death sound
 };
 
 // Initialize audio system (call once at startup)

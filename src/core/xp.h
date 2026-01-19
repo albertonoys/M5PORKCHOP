@@ -6,16 +6,16 @@
 
 // Class tiers (every 5 levels)
 enum class PorkClass : uint8_t {
-    SH0AT    = 0,   // L1-5   - Script kiddie
-    SN1FF3R  = 1,   // L6-10  - Packet capture
-    PWNER    = 2,   // L11-15 - Active attacks
-    R00T     = 3,   // L16-20 - Wardriving, root
-    R0GU3    = 4,   // L21-25 - Rogue APs
-    EXPL01T  = 5,   // L26-30 - Famous exploits
-    WARL0RD  = 6,   // L31-35 - WiFi mastery
-    L3G3ND   = 7,   // L36-40 - Legendary hackers
-    K3RN3L_H0G = 8, // L41-45 - Kernel tier
-    B4C0NM4NC3R = 9 // L46-50 - Baconmancer tier
+    SH0AT    = 0,   // L1–5  : fresh firmware, newbie
+    SN1FF3R  = 1,   // L6–10 : packet sniffer
+    PWNER    = 2,   // L11–15: PR0B3R archetype (probe/scout)
+    R00T     = 3,   // L16–20: PWN3R archetype (first real exploits)
+    R0GU3    = 4,   // L21–25: H4ND5H4K3R archetype (handshake hunter)
+    EXPL01T  = 5,   // L26–30: M1TM B0AR archetype (man‑in‑the‑middle)
+    WARL0RD  = 6,   // L31–35: R00T BR1STL3 archetype (root‑level bristles)
+    L3G3ND   = 7,   // L36–40: PMF W4RD3N archetype (PMF savvy)
+    K3RN3L_H0G = 8, // L41–45: MLO L3G3ND archetype (multi‑link legend)
+    B4C0NM4NC3R = 9 // L46–50: endgame myth (B4C0NM4NC3R)
 };
 
 // Title overrides - special playstyle-based titles
@@ -35,15 +35,15 @@ enum class XPEvent : uint8_t {
     NETWORK_WEP,            // +5 XP (rare find!)
     HANDSHAKE_CAPTURED,     // +50 XP
     PMKID_CAPTURED,         // +75 XP
-    DEAUTH_SENT,            // +2 XP
+    DEAUTH_SENT,            // +1 XP  (vNext: reward restraint)
     DEAUTH_SUCCESS,         // +15 XP
-    WARHOG_LOGGED,          // +2 XP
-    DISTANCE_KM,            // +25 XP
-    BLE_BURST,              // +2 XP
-    BLE_APPLE,              // +3 XP
-    BLE_ANDROID,            // +2 XP
-    BLE_SAMSUNG,            // +2 XP
-    BLE_WINDOWS,            // +2 XP
+    WARHOG_LOGGED,          // +1 XP  (vNext: passive drive nerf)
+    DISTANCE_KM,            // +30 XP (vNext: buff physical effort)
+    BLE_BURST,              // +1 XP  (vNext: nerfed spam)
+    BLE_APPLE,              // +2 XP  (vNext: nerfed spam)
+    BLE_ANDROID,            // +1 XP  (vNext: nerfed spam)
+    BLE_SAMSUNG,            // +1 XP  (vNext: nerfed spam)
+    BLE_WINDOWS,            // +1 XP  (vNext: nerfed spam)
     GPS_LOCK,               // +5 XP
     ML_ROGUE_DETECTED,      // +25 XP
     SESSION_30MIN,          // +10 XP
@@ -52,7 +52,7 @@ enum class XPEvent : uint8_t {
     LOW_BATTERY_CAPTURE,    // +20 XP bonus
     // DO NO HAM / BOAR BROS events (v0.1.4+)
     DNH_NETWORK_PASSIVE,    // +2 XP - network found in passive mode
-    DNH_PMKID_GHOST,        // +100 XP - PMKID captured passively (rare!)
+    DNH_PMKID_GHOST,        // +150 XP (vNext: very rare passive!)
     BOAR_BRO_ADDED,         // +5 XP - added network to BOAR BROS
     BOAR_BRO_MERCY,         // +15 XP - excluded mid-attack target
     SMOKED_BACON            // +15 XP - rare upload bonus

@@ -7,33 +7,35 @@
 enum class PorkBuff : uint8_t {
     NONE = 0,
     // Buffs (positive effects)
-    R4G3           = (1 << 0),  // +50% deauth burst when happiness > 70
-    SNOUT_SHARP    = (1 << 1),  // +25% XP when happiness > 50
-    H0TSTR3AK      = (1 << 2),  // +10% deauth when 2+ handshakes in session
-    C4FF31N4T3D    = (1 << 3),  // -30% channel hop interval when happiness > 80
+    // vNext Neon Operator buffs (see swine_stats.cpp for exact effects)
+    R4G3           = (1 << 0),  // NE0N H1GH: -18% Street Sweep; faster mood decay
+    SNOUT_SHARP    = (1 << 1),  // SNOUT$HARP: +18% global XP gain
+    H0TSTR3AK      = (1 << 2),  // H0TSTR3AK: +6% capture XP when on a streak
+    C4FF31N4T3D    = (1 << 3),  // C0LD F0CU5: +10% Glass Stare, +5% Street Sweep
 };
 
 enum class PorkDebuff : uint8_t {
     NONE = 0,
     // Debuffs (negative effects)
-    SLOP_SLUG      = (1 << 0),  // -30% deauth burst when happiness < -50
-    F0GSNOUT       = (1 << 1),  // -15% XP when happiness < -30
-    TR0UGHDR41N    = (1 << 2),  // +2ms deauth jitter when no activity 5min
-    HAM_STR1NG     = (1 << 3),  // +50% channel hop interval when happiness < -70
+    // vNext Neon Operator debuffs
+    SLOP_SLUG      = (1 << 0),  // SLOP$LUG: +12% Street Sweep (slower scans) when very unhappy
+    F0GSNOUT       = (1 << 1),  // F0GSNOUT: -10% XP gain when a bit unhappy
+    TR0UGHDR41N    = (1 << 2),  // TR0UGHDR41N: +1ms jitter after inactivity
+    HAM_STR1NG     = (1 << 3),  // HAM$TR1NG: +35% Street Sweep when extremely unhappy
 };
 
 // Class buff flags (permanent, cumulative based on level)
 enum class ClassBuff : uint16_t {
     NONE         = 0,
-    P4CK3T_NOSE  = (1 << 0),  // SN1FF3R L6+   -10% hop interval
-    H4RD_SNOUT   = (1 << 1),  // PWNER L11+    +1 deauth burst
-    R04D_H0G     = (1 << 2),  // R00T L16+     +15% distance XP
-    SH4RP_TUSKS  = (1 << 3),  // R0GU3 L21+    +1s lock time (better client discovery)
-    CR4CK_NOSE   = (1 << 4),  // EXPL01T L26+  +10% capture XP
-    IR0N_TUSKS   = (1 << 5),  // WARL0RD L31+  -1ms jitter min
-    OMNI_P0RK    = (1 << 6),  // L3G3ND L36+   +5% all stats
-    K3RN3L_H0G   = (1 << 7),  // L41+         +10% cap/dist, +5% XP
-    B4C0NM4NC3R  = (1 << 8)   // L46+         +15% cap/dist, +10% XP
+    P4CK3T_NOSE  = (1 << 0),  // A1R R34D3R (SN1FF3R L6+): -8% Street Sweep
+    H4RD_SNOUT   = (1 << 1),  // T4RG3T F0CU5 (PWNER L11+): +0.6s Glass Stare
+    R04D_H0G     = (1 << 2),  // R04M CR3D (R00T L16+): +12% distance XP
+    SH4RP_TUSKS  = (1 << 3),  // GL4SS ST4R3+ (R0GU3 L21+): +0.8s Glass Stare
+    CR4CK_NOSE   = (1 << 4),  // L00T M3M0RY (EXPL01T L26+): +10% capture XP
+    IR0N_TUSKS   = (1 << 5),  // CL0CK NERV3S (WARL0RD L31+): -10% jitter (Clock Nerves)
+    OMNI_P0RK    = (1 << 6),  // 0MN1P0RK (L3G3ND L36+): +4% to all modifiers
+    K3RN3L_H0G   = (1 << 7),  // PR0T0C0L 5EER (L41+): +6% cap/dist XP
+    B4C0NM4NC3R  = (1 << 8)   // B4C0N 0V3RDR1V3 (L46+): +8% cap/dist XP
 };
 
 // Active buff/debuff state

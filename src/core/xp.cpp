@@ -41,7 +41,8 @@ static uint8_t achQueueTail = 0;
 static uint32_t lastAchievementTime = 0;
 static const uint32_t ACH_COOLDOWN_MS = 600;  // Min time between achievement celebrations
 
-// XP values for each event type (v0.1.8 rebalanced - nerf spam, buff skill)
+// XP values for each event type (vNext Neon Operator)
+// We nerf spammy actions, buff physical effort and rare passive captures.
 static const uint16_t XP_VALUES[] = {
     1,      // NETWORK_FOUND
     3,      // NETWORK_HIDDEN
@@ -50,7 +51,7 @@ static const uint16_t XP_VALUES[] = {
     5,      // NETWORK_WEP (rare find!)
     50,     // HANDSHAKE_CAPTURED
     75,     // PMKID_CAPTURED
-    2,      // DEAUTH_SENT
+    1,      // DEAUTH_SENT (vNext nerf: reward restraint, no spam)
     15,     // DEAUTH_SUCCESS
     1,      // WARHOG_LOGGED (nerfed: passive driving)
     30,     // DISTANCE_KM (buffed: physical effort)
@@ -74,17 +75,20 @@ static const uint16_t XP_VALUES[] = {
 };
 
 // 10 class names (every 5 levels)
+// vNext Neon Operator: updated class names to emphasize
+// operator archetypes and reduce repetitiveness. Each name
+// corresponds to a 5‑level tier (see getClassForLevel()).
 static const char* CLASS_NAMES[] = {
-    "SH0AT",     // L1-5
-    "SN1FF3R",   // L6-10
-    "PWNER",     // L11-15
-    "R00T",      // L16-20
-    "R0GU3",     // L21-25
-    "EXPL01T",   // L26-30
-    "WARL0RD",   // L31-35
-    "L3G3ND",    // L36-40
-    "K3RN3L H0G",    // L41-45
-    "B4C0NM4NC3R"    // L46-50
+    "SH0AT",        // L1‑5 : freshly booted
+    "SN1FF3R",      // L6‑10: packet sniffer
+    "PR0B3R",       // L11‑15: probe and scout
+    "PWN3R",        // L16‑20: first real exploits
+    "H4ND5H4K3R",   // L21‑25: handshake hunter
+    "M1TM B0AR",    // L26‑30: man‑in‑the‑middle operator
+    "R00T BR1STL3", // L31‑35: root‑level bristles
+    "PMF W4RD3N",   // L36‑40: Protected Management Frame savvy
+    "MLO L3G3ND",   // L41‑45: multi‑link operator legend
+    "B4C0NM4NC3R"   // L46‑50: endgame myth
 };
 
 // Title override names (unlockable special titles)
@@ -96,67 +100,70 @@ static const char* TITLE_OVERRIDE_NAMES[] = {
 };
 
 // 50 rank titles - hacker/grindhouse/tarantino + pig flavor
+// vNext Neon Operator: completely refreshed rank titles. Each level has its own
+// short, leet‑flavoured moniker that implies progression without repetition. See
+// the design doc for the thematic progression (Scout → Hunter → Operator → Legend).
 static const char* RANK_TITLES[] = {
-    // Tier 1: Noob (1-5)
-    "BACON N00B",
-    "SCRIPT PIGG0",
-    "PIGLET 0DAY",
-    "SNOUT SCAN",
-    "SLOP NMAP",
-    // Tier 2: Beginner (6-10)
-    "BEACON BOAR",
-    "CHAN H4M",
-    "PROBE PORK",
-    "SSID SW1NE",
-    "PKT PIGLET",
-    // Tier 3: Intermediate (11-15)
-    "DEAUTH H0G",
-    "HANDSHAKE HAM",
-    "PMKID PORK",
-    "EAPOL B0AR",
-    "SAUSAGE SYNC",
-    // Tier 4: Skilled (16-20)
-    "WARDRIVE HOG",
-    "GPS L0CK PIG",
-    "BLE SPAM HAM",
-    "TRUFFLE R00T",
-    "INJECT P1G",
-    // Tier 5: Advanced (21-25)
-    "KARMA SW1NE",
-    "EVIL TWIN H0G",
-    "KERNEL BAC0N",
-    "MON1TOR BOAR",
-    "WPA3 WARTH0G",
-    // Tier 6: Expert (26-30)
-    "KRACK SW1NE",
-    "FR4G ATTACK",
-    "DRAGONBL00D",
-    "DEATH PR00F",
-    "PLANET ERR0R",
-    // Tier 7: Elite (31-35)
-    "P0RK FICTION",
-    "RESERVOIR H0G",
-    "HATEFUL 0INK",
-    "JACK1E B0AR",
-    "80211 WARL0RD",
-    // Tier 8: Legendary (36-40)
-    "MACHETE SW1NE",
-    "CRUNCH P1G",
-    "DARK TANGENT",
-    "PHIBER 0PT1K",
-    "MUDGE UNCHA1NED",
-    // Tier 9: Gibson grind (41-45)
-    "K3RN3L PAN1C H0G",
-    "SYSCALL SW1N3",
-    "R00TK1T R1ND3R",
-    "ICEBREAKER BOAR",
-    "SPRAWL P1GPR0XY",
-    // Tier 10: Gibson climax (46-50)
-    "D3CK J0CK3Y H0G",
-    "CYBERSP4CE SW1N3",
-    "NULL GR4V1TY BOAR",
-    "BL4CK 1C3 P1G",
-    "B4C0NM4NC3R"
+    // Tier 1 (Levels 1–5)
+    "BACON N00B",    // Lv1
+    "0INK Z3R0",     // Lv2
+    "SCRIP7 H4M",    // Lv3
+    "P1N6 P1GL3T",   // Lv4
+    "NMAP NIBBL3",   // Lv5
+    // Tier 2 (Levels 6–10)
+    "PR0B3 P0RK",    // Lv6
+    "CH4N CH0P",     // Lv7
+    "B34C0N B0AR",   // Lv8
+    "SS1D SN0UT",     // Lv9
+    "P4CK3T PR0D",    // Lv10
+    // Tier 3 (Levels 11–15)
+    "4SS0C SW1N3",    // Lv11
+    "EAP0L E4T3R",    // Lv12
+    "PMK1D P1CK3R",   // Lv13
+    "R5N R4Z0R",      // Lv14
+    "C4PTUR3 C00K",    // Lv15
+    // Tier 4 (Levels 16–20)
+    "D34UTH DU3L",    // Lv16
+    "0FFCH4N 0PS",    // Lv17
+    "M1TM MUDP1G",    // Lv18
+    "1NJ3CT J0K3",    // Lv19
+    "5P00F CH3F",     // Lv20
+    // Tier 5 (Levels 21–25)
+    "SAE S1ZZL3",     // Lv21
+    "PMF SH13LD",     // Lv22
+    "TR4NS1T TR0T",   // Lv23
+    "6GHZ GR1NT",      // Lv24
+    "0WE 0NK",        // Lv25
+    // Tier 6 (Levels 26–30)
+    "C3RT CH0MP",     // Lv26
+    "EAP-TLS TUSK",   // Lv27
+    "R4D10 R4NG3R",   // Lv28
+    "R04M M4ST3R",    // Lv29
+    "EHT BR15TL3",    // Lv30
+    // Tier 7 (Levels 31–35)
+    "FR4G 4TT4CK",    // Lv31
+    "KR4CK CRU5H",    // Lv32
+    "DR4G0NBL00D",    // Lv33
+    "C0R3DUMP P1G",    // Lv34
+    "R00TK1T R1ND",    // Lv35
+    // Tier 8 (Levels 36–40)
+    "PHR4CK P1G",     // Lv36
+    "2600 B0AR",      // Lv37
+    "BLU3B0X H4M",    // Lv38
+    "C0NS0L3 C0W",    // Lv39
+    "0xDE4D B4C0N",    // Lv40
+    // Tier 9 (Levels 41–45)
+    "SPRAWL PR0XY",   // Lv41
+    "N3UR0 N0S3",     // Lv42
+    "ICEBR34K B0AR",   // Lv43
+    "D3CK D1V3R",     // Lv44
+    "C0RP N3TW0RK",    // Lv45
+    // Tier 10 (Levels 46–50)
+    "K3RN3L H0G",     // Lv46
+    "SYSC4LL SW1N",    // Lv47
+    "NULL M4TR1X",     // Lv48
+    "R00T 0F R00T",    // Lv49
+    "B4C0NM4NC3R"      // Lv50
 };
 static const uint8_t MAX_LEVEL = 50;
 
@@ -543,6 +550,11 @@ static uint32_t lastCaptureTime = 0;         // for streak timeout
 static const uint32_t STREAK_TIMEOUT_MS = 300000;  // 5 minutes to maintain streak
 static bool ultraStreakAnnounced = false;    // one-time toast for streak 20
 
+// Indicates whether the capture streak bonus should be applied for the current XP event.
+// This flag is set in addXP(XPEvent) for capture-family events (handshakes, PMKIDs, passive PMKID ghosts)
+// and read/cleared in addXP(uint16_t) when applying the streak multiplier.
+static bool streakAppliesForCurrentEvent = false;
+
 void XP::startSession() {
     memset(&session, 0, sizeof(session));
     session.startTime = millis();
@@ -743,6 +755,20 @@ void XP::addXP(XPEvent event) {
             session.passivePMKIDs++;
             data.lifetimePMKID++;
             session.handshakes++;
+
+            // Treat passive PMKID captures as part of the capture streak (vNext: capture-only streak)
+            if (lastCaptureTime > 0 && (millis() - lastCaptureTime) > STREAK_TIMEOUT_MS) {
+                captureStreak = 0;  // streak broken
+            }
+            captureStreak = (captureStreak < 255) ? captureStreak + 1 : 255;
+            lastCaptureTime = millis();
+            // Announce ultra streak at 20 captures
+            if (captureStreak == 20 && !ultraStreakAnnounced) {
+                Display::showToast("ULTRA STREAK!");
+                SFX::play(SFX::ULTRA_STREAK);
+                ultraStreakAnnounced = true;
+            }
+
             // First passive PMKID achievement
             if (!hasAchievement(ACH_SILENT_ASSASSIN)) {
                 unlockAchievement(ACH_SILENT_ASSASSIN);
@@ -789,7 +815,14 @@ void XP::addXP(XPEvent event) {
         if (amount < 1) amount = 1;
     }
     
+    // Determine if streak bonus applies for this event (capture-only in vNext)
+    bool isCaptureEvt = (event == XPEvent::HANDSHAKE_CAPTURED ||
+                         event == XPEvent::PMKID_CAPTURED ||
+                         event == XPEvent::DNH_PMKID_GHOST);
+    streakAppliesForCurrentEvent = isCaptureEvt;
     addXP(amount);
+    // Reset flag immediately after awarding XP to avoid affecting subsequent events
+    streakAppliesForCurrentEvent = false;
     checkAchievements();
 }
 
@@ -811,19 +844,25 @@ void XP::addXP(uint16_t amount) {
     }
     
     // ============ DOPAMINE HOOK: STREAK BONUS ============
-    // Apply multiplier if we have an active capture streak
-    // 3 = +10%, 5 = +25%, 10 = +50%, 20 = +100%
-    if (captureStreak >= 20) {
-        amount = (uint16_t)((amount * 200) / 100);  // +100%
-    } else if (captureStreak >= 10) {
-        amount = (uint16_t)((amount * 150) / 100);  // +50%
-    } else if (captureStreak >= 5) {
-        amount = (uint16_t)((amount * 125) / 100);  // +25%
-    } else if (captureStreak >= 3) {
-        amount = (uint16_t)((amount * 110) / 100);  // +10%
+    // Apply multiplier only if this event is capture-related (handshake/PMKID) and we have an active streak
+    // vNext streak curve: 3–4 captures +10%, 5–9 +20%, 10–19 +35%, 20+ +50%
+    if (streakAppliesForCurrentEvent) {
+        if (captureStreak >= 20) {
+            // 20 or more captures -> +50%
+            amount = (uint16_t)((amount * 150) / 100);
+        } else if (captureStreak >= 10) {
+            // 10–19 captures -> +35%
+            amount = (uint16_t)((amount * 135) / 100);
+        } else if (captureStreak >= 5) {
+            // 5–9 captures -> +20%
+            amount = (uint16_t)((amount * 120) / 100);
+        } else if (captureStreak >= 3) {
+            // 3–4 captures -> +10%
+            amount = (uint16_t)((amount * 110) / 100);
+        }
     }
     
-    // Apply buff/debuff XP multiplier (SNOUT$HARP +25%, F0GSNOUT -15%)
+    // Apply buff/debuff XP multiplier (SNOUT$HARP +18%, F0GSNOUT -10%)
     float mult = SwineStats::getXPMultiplier();
     uint16_t modifiedAmount = (uint16_t)(amount * mult);
     if (modifiedAmount < 1) modifiedAmount = 1;  // Always at least 1 XP
@@ -857,7 +896,7 @@ void XP::addXPSilent(uint16_t amount) {
     // Silent XP add - no JACKPOT check, no toast, no sound
     // Used for bonus XP from challenges/achievements where celebration already shown
     
-    // Apply buff/debuff XP multiplier (SNOUT$HARP +25%, F0GSNOUT -15%)
+    // Apply buff/debuff XP multiplier (SNOUT$HARP +18%, F0GSNOUT -10%)
     float mult = SwineStats::getXPMultiplier();
     uint16_t modifiedAmount = (uint16_t)(amount * mult);
     if (modifiedAmount < 1) modifiedAmount = 1;

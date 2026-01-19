@@ -106,8 +106,8 @@ static const EntryData kIntegEntries[] = {
 };
 
 static const EntryData kRadioEntries[] = {
-    {SET_CH_HOP, "CH HOP", SettingType::VALUE, 100, 2000, 100, "MS", "FASTER = MORE COVERAGE"},
-    {SET_LOCK_TIME, "LOCK TIME", SettingType::VALUE, 1000, 10000, 500, "MS", "CLIENT SNIFF TIME"},
+    {SET_CH_HOP, "STREET SW33P", SettingType::VALUE, 100, 2000, 100, "MS", "HOW FAST YOU SWEEP THE BAND"},
+    {SET_LOCK_TIME, "GL4SS ST4R3", SettingType::VALUE, 1000, 10000, 500, "MS", "HOW LONG YOU HOLD A TARGET"},
     {SET_DEAUTH, "DEAUTH", SettingType::TOGGLE, 0, 1, 1, "", "KICK CLIENTS OFF APS"},
     {SET_RND_MAC, "RND MAC", SettingType::TOGGLE, 0, 1, 1, "", "NEW MAC EACH MODE START"}
 };
@@ -694,7 +694,7 @@ void SettingsMenu::saveIfDirty(bool showToast) {
     dirtyPersonality = false;
 
     if (showToast) {
-        Display::notify(NoticeKind::STATUS, "Saved");
+        Display::notify(NoticeKind::STATUS, "SAVED");
     }
 }
 void SettingsMenu::handleInput() {

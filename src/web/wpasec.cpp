@@ -46,6 +46,69 @@ private:
     bool& ref_;
 };
 
+// Read and parse HTTP status code from a client response.
+// Handles the occasional "HTTP/1.1 100 Continue" prelude.
+static int readHttpStatus(WiFiClientSecure& client) {
+    for (int guard = 0; guard < 6; ++guard) {
+        String line = client.readStringUntil('\n');
+        line.trim();
+        if (!line.startsWith("HTTP/")) {
+            continue;
+        }
+
+        // Parse: HTTP/1.1 200 OK
+        int sp1 = line.indexOf(' ');
+        if (sp1 < 0) return -1;
+        int sp2 = line.indexOf(' ', sp1 + 1);
+        String codeStr = (sp2 > sp1) ? line.substring(sp1 + 1, sp2) : line.substring(sp1 + 1);
+        int code = codeStr.toInt();
+
+        if (code == 100) {
+            // Consume remaining headers for the 100 response, then read next status.
+            while (client.connected()) {
+                String h = client.readStringUntil('\n');
+                if (h == "\r" || h.length() == 0) break;
+            }
+            continue;
+        }
+        return code;
+    }
+    return -1;
+}
+
+// Heap-safe file scan for a normalized BSSID key (upper, no separators).
+static bool fileContainsKey(const char* path, const String& normKey, size_t maxLines = 600) {
+    if (!SD.exists(path)) return false;
+    File f = SD.open(path, FILE_READ);
+    if (!f) return false;
+
+    size_t lines = 0;
+    while (f.available() && lines++ < maxLines) {
+        String line = f.readStringUntil('\n');
+        line.trim();
+        if (line.isEmpty()) continue;
+
+        // Uploaded list stores raw BSSID
+        if (line.equalsIgnoreCase(normKey)) {
+            f.close();
+            return true;
+        }
+
+        // Results store "BSSID:SSID:PASS"; match prefix before first ':'
+        int c = line.indexOf(':');
+        if (c > 0) {
+            String prefix = line.substring(0, c);
+            prefix.trim();
+            if (prefix.equalsIgnoreCase(normKey)) {
+                f.close();
+                return true;
+            }
+        }
+    }
+    f.close();
+    return false;
+}
+
 void WPASec::init() {
     cacheLoaded = false;
     crackedCache.clear();
@@ -82,13 +145,16 @@ bool WPASec::connect() {
     freeCacheMemory();
     Display::waitForSpritesSuspended(2000);
 
-    WiFi.disconnect(true);
+    // Cardputer w/ no PSRAM: never fully power WiFi off.
+    // This avoids RX buffer allocation failures and heap fragmentation.
+    WiFiUtils::hardReset();
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), password.c_str());
 
     // Wait for connection with timeout
     uint32_t startTime = millis();
-    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 15000) {
+    // Slightly longer timeout helps with phone tether / crowded 2.4GHz.
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 20000) {
         delay(100);
     }
 
@@ -103,15 +169,15 @@ bool WPASec::connect() {
     strcpy(lastError, "CONNECTION TIMEOUT");
     strcpy(statusMessage, "CONNECT FAILED");
     Serial.println("[WPASEC] Connection failed");
-    WiFi.disconnect(true);
+    WiFiUtils::shutdown();
     Display::requestResumeSprites();
     logHeap("connect fail");
     return false;
 }
 
 void WPASec::disconnect() {
-    WiFi.disconnect(true);
-    WiFi.mode(WIFI_OFF);
+    // Soft shutdown (keeps driver alive) for no-PSRAM stability.
+    WiFiUtils::shutdown();
     strcpy(statusMessage, "DISCONNECTED");
     Serial.println("[WPASEC] Disconnected");
 }
@@ -298,10 +364,22 @@ bool WPASec::isUploaded(const char* bssid) {
 }
 
 void WPASec::markUploaded(const char* bssid) {
-    loadCache();
     String key = normalizeBSSID(bssid);
-    uploadedCache[key] = true;
-    saveUploadedList();
+
+    // Update in-memory cache only if already loaded (avoid heap spikes).
+    if (cacheLoaded) {
+        uploadedCache[key] = true;
+    }
+
+    // Persist by appending to SD (cheap, streaming, no full rewrite).
+    // Guard against duplicates.
+    if (fileContainsKey(UPLOADED_FILE, key)) return;
+
+    File f = SD.open(UPLOADED_FILE, FILE_APPEND);
+    if (f) {
+        f.println(key);
+        f.close();
+    }
 }
 
 // ============================================================================
@@ -323,8 +401,11 @@ bool WPASec::fetchResults() {
     Serial.println("[WPASEC] Fetching results from WPA-SEC");
     BusyScope busyGuard(busy);
 
-    // Free caches for maximum heap before TLS (keep sprites active to avoid resume alloc)
+    // Free caches and suspend sprites for maximum heap before TLS.
     freeCacheMemory();
+    Display::requestSuspendSprites();
+    Display::waitForSpritesSuspended(2000);
+    ScopeResume resumeGuard;  // auto-resume on any exit
 
     // Guard: ensure enough contiguous heap for TLS (~16KB)
     if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) < 16000) {
@@ -333,12 +414,23 @@ bool WPASec::fetchResults() {
     }
     logHeap("fetch pre-TLS");
 
+    // Retry once on transient TLS/connect failures (phone tether, weak RSSI)
     WiFiClientSecure client;
     client.setInsecure();
-    client.setTimeout(30000);
+    client.setNoDelay(true);
+    client.setTimeout(45000);
 
-    if (!client.connect(API_HOST, 443)) {
+    bool connected = false;
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        if (client.connect(API_HOST, 443)) {
+            connected = true;
+            break;
+        }
+        delay(250);
+    }
+    if (!connected) {
         strcpy(lastError, "TLS CONNECT FAIL");
+        strcpy(statusMessage, "TLS FAIL");
         return false;
     }
 
@@ -353,11 +445,10 @@ bool WPASec::fetchResults() {
     client.println("Connection: close");
     client.println();
 
-    // Read status line
-    String statusLine = client.readStringUntil('\n');
-    statusLine.trim();
-    if (statusLine.indexOf("200") < 0) {
-        snprintf(lastError, sizeof(lastError), "HTTP BAD: %s", statusLine.c_str());
+    // Read status code (handle 100-Continue)
+    int code = readHttpStatus(client);
+    if (code != 200) {
+        snprintf(lastError, sizeof(lastError), "HTTP %d", code);
         strcpy(statusMessage, "HTTP FAIL");
         client.stop();
         return false;
@@ -381,7 +472,7 @@ bool WPASec::fetchResults() {
 
     char buf[256];
     uint32_t lastData = millis();
-    while (client.connected() && (millis() - lastData) < 30000) {
+    while (client.connected() && (millis() - lastData) < 60000) {
         size_t n = client.readBytesUntil('\n', buf, sizeof(buf) - 1);
         if (n == 0) {
             if (client.available()) continue;
@@ -448,8 +539,6 @@ bool WPASec::fetchResults() {
              crackedCache.size(), newCracks);
     Serial.printf("[WPASEC] Fetched: %d total, %d new\n", crackedCache.size(), newCracks);
     logHeap("fetch end");
-    // Resume sprites now that heap-heavy work is done
-    Display::requestResumeSprites();
     SDLog::log("WPASEC", "Fetched: %d cracked (%d new)", (int)crackedCache.size(), newCracks);
     return true;
 }
@@ -494,6 +583,22 @@ bool WPASec::uploadCapture(const char* pcapPath) {
     const char* fname = slash ? slash + 1 : pcapPath;
     String filename = fname;
 
+    // Derive BSSID key from filename and prevent duplicate uploads.
+    // (Messaging parity: always show "ALREADY UPLOADED" and hard-stop.)
+    String base = filename;
+    int dot = base.indexOf('.');
+    if (dot > 0) base = base.substring(0, dot);
+    if (base.endsWith("_hs")) base = base.substring(0, base.length() - 3);
+    String normKey = normalizeBSSID(base.c_str());
+
+    if (fileContainsKey(UPLOADED_FILE, normKey) || fileContainsKey(CACHE_FILE, normKey)) {
+        pcapFile.close();
+        strcpy(statusMessage, "ALREADY UPLOADED");
+        strcpy(lastError, "ALREADY UPLOADED");
+        SDLog::log("WPASEC", "Skip re-upload: %s", normKey.c_str());
+        return false;
+    }
+
     Serial.printf("[WPASEC] Uploading %s (%u bytes) to %s%s\n",
                   filename.c_str(), (unsigned int)fileSize, API_HOST, SUBMIT_PATH);
 
@@ -509,10 +614,11 @@ bool WPASec::uploadCapture(const char* pcapPath) {
         return false;
     }
 
-    // Setup TLS client
+    // Setup TLS client (longer timeout improves reliability on slow links)
     WiFiClientSecure client;
     client.setInsecure();
-    client.setTimeout(30000);
+    client.setNoDelay(true);
+    client.setTimeout(60000);
 
     String url = String("https://") + API_HOST + SUBMIT_PATH;
 
@@ -528,72 +634,91 @@ bool WPASec::uploadCapture(const char* pcapPath) {
     String cookie = String("key=") + key;
 
     // Send request manually over WiFiClientSecure
-    if (!client.connect(API_HOST, 443)) {
-        pcapFile.close();
-        strcpy(lastError, "TLS CONNECT FAIL");
-        return false;
-    }
+    bool success = false;
+    int lastCode = -1;
 
-    client.print("POST ");
-    client.print(SUBMIT_PATH);
-    client.println(" HTTP/1.1");
-    client.print("Host: ");
-    client.println(API_HOST);
-    client.print("Cookie: ");
-    client.println(cookie);
-    client.print("Content-Type: multipart/form-data; boundary=");
-    client.println(boundary);
-    client.print("Content-Length: ");
-    client.println((unsigned int)contentLength);
-    client.println("Connection: close");
-    client.println();
+    for (int attempt = 0; attempt < 2 && !success; ++attempt) {
+        // Reset file cursor for retry
+        pcapFile.seek(0);
 
-    client.print(bodyStart);
-
-    // Stream file
-    uint8_t buf[1024];
-    size_t remaining = fileSize;
-    while (remaining > 0) {
-        size_t toRead = remaining > sizeof(buf) ? sizeof(buf) : remaining;
-        size_t n = pcapFile.read(buf, toRead);
-        if (n == 0) {
-            strcpy(lastError, "READ ERROR");
+        if (!client.connect(API_HOST, 443)) {
+            lastCode = -1;
+            if (attempt == 0) {
+                delay(250);
+                continue;
+            }
             pcapFile.close();
-            client.stop();
+            strcpy(lastError, "TLS CONNECT FAIL");
+            strcpy(statusMessage, "TLS FAIL");
             return false;
         }
-        size_t written = client.write(buf, n);
-        if (written != n) {
-            strcpy(lastError, "WRITE ERROR");
-            pcapFile.close();
-            client.stop();
-            return false;
+
+        client.print("POST ");
+        client.print(SUBMIT_PATH);
+        client.println(" HTTP/1.1");
+        client.print("Host: ");
+        client.println(API_HOST);
+        client.print("Cookie: ");
+        client.println(cookie);
+        client.print("Content-Type: multipart/form-data; boundary=");
+        client.println(boundary);
+        client.print("Content-Length: ");
+        client.println((unsigned int)contentLength);
+        client.println("Connection: close");
+        client.println();
+
+        client.print(bodyStart);
+
+        // Stream file
+        uint8_t buf[1024];
+        size_t remaining = fileSize;
+        while (remaining > 0) {
+            size_t toRead = remaining > sizeof(buf) ? sizeof(buf) : remaining;
+            size_t n = pcapFile.read(buf, toRead);
+            if (n == 0) {
+                strcpy(lastError, "READ ERROR");
+                client.stop();
+                pcapFile.close();
+                return false;
+            }
+            size_t written = client.write(buf, n);
+            if (written != n) {
+                strcpy(lastError, "WRITE ERROR");
+                client.stop();
+                pcapFile.close();
+                return false;
+            }
+            remaining -= n;
         }
-        remaining -= n;
+
+        client.print(bodyEnd);
+        client.flush();
+
+        // Read response status
+        lastCode = readHttpStatus(client);
+        client.stop();
+
+        if (lastCode == 200 || lastCode == 302) {
+            success = true;
+            break;
+        }
+
+        // Retry once on transient server-side throttling/timeout
+        if (attempt == 0 && (lastCode == 408 || lastCode == 429 || lastCode >= 500)) {
+            delay(400);
+            continue;
+        }
     }
 
+    // Close capture file after attempts
     pcapFile.close();
-    client.print(bodyEnd);
-    client.flush();
 
-    // Read response status line
-    String statusLine = client.readStringUntil('\n');
-    statusLine.trim();
-
-    client.stop();
-
-    if (statusLine.indexOf("200") > 0 || statusLine.indexOf("302") > 0) {
+    if (success) {
         strcpy(statusMessage, "UPLOAD OK");
-        // Derive BSSID from filename (strip extension and optional _hs)
-        String base = filename;
-        int dot = base.indexOf('.');
-        if (dot > 0) base = base.substring(0, dot);
-        if (base.endsWith("_hs")) base = base.substring(0, base.length() - 3);
-        markUploaded(base.c_str());
+        markUploaded(normKey.c_str());
 
         Serial.printf("[WPASEC] Upload successful, marked %s as uploaded\n", base.c_str());
 
-        Display::requestResumeSprites();
         if (shouldAwardSmokedBacon()) {
             XP::addXP(XPEvent::SMOKED_BACON);
             char toast[32];
@@ -606,13 +731,11 @@ bool WPASec::uploadCapture(const char* pcapPath) {
         return true;
     }
 
-    snprintf(lastError, sizeof(lastError), "UPLOAD FAILED: %s", statusLine.c_str());
+    snprintf(lastError, sizeof(lastError), "UPLOAD HTTP %d", lastCode);
     strcpy(statusMessage, "UPLOAD FAILED");
-    Serial.printf("[WPASEC] Upload failed: %s\n", statusLine.c_str());
-
-    Display::requestResumeSprites();
+    Serial.printf("[WPASEC] Upload failed: HTTP %d\n", lastCode);
     logHeap("upload fail");
-    SDLog::log("WPASEC", "Upload failed: %s (%s)", filename.c_str(), statusLine.c_str());
+    SDLog::log("WPASEC", "Upload failed: %s (HTTP %d)", filename.c_str(), lastCode);
     return false;
 }
 

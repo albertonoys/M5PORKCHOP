@@ -7,6 +7,7 @@
 #include "../ui/display.h"
 #include "../piglet/mood.h"
 #include "../piglet/avatar.h"
+#include "../audio/sfx.h"
 #include <M5Cardputer.h>
 #include <NimBLEDevice.h>
 #include <WiFi.h>
@@ -411,6 +412,7 @@ static const size_t SAMSUNG_PAYLOAD_COUNT = sizeof(SAMSUNG_PAYLOADS) / sizeof(SA
 static NimBLEAdvertising* pAdvertising = nullptr;
 
 // Update timing state
+static uint32_t advertisingStartTime = 0;
 static uint32_t lastMoodUpdateTime = 0;
 
 // Last target info for mood display
@@ -448,6 +450,7 @@ void PiggyBluesMode::init() {
     
     // Reset timing state
     lastMoodUpdateTime = 0;
+    advertisingStartTime = 0;
 }
 
 bool PiggyBluesMode::showWarningDialog() {
@@ -596,9 +599,21 @@ void PiggyBluesMode::stop() {
     
     bool doReboot = (random(0, 100) < REBOOT_CHANCE_PERCENT);
     if (doReboot) {
-        // Show toast and reboot - BLE stack is nuked
-        Display::showToast("BLUES SLAYED.\nDEATH DROP.\nREBOOT.");
-        delay(2000);  // Hold toast so user sees it
+        // Death screen - take over display
+        M5.Display.fillScreen(TFT_BLACK);
+        M5.Display.setTextColor(TFT_RED);
+        M5.Display.setTextDatum(middle_center);
+        M5.Display.setTextSize(3);
+        M5.Display.drawString("YOU DIED", M5.Display.width() / 2, M5.Display.height() / 2);
+        
+        // Play death sound and wait 5 seconds (pumping audio engine)
+        SFX::play(SFX::YOU_DIED);
+        uint32_t start = millis();
+        while (millis() - start < 5000) {
+            SFX::update();
+            delay(10);
+        }
+        
         ESP.restart();
         return;
     }
@@ -607,7 +622,8 @@ void PiggyBluesMode::stop() {
     Display::showToast("BLUES SLAYED.\nJUST ROULETTE.\n+15 XP");
     XP::addRouletteWin();
     XP::addXPSilent(NO_REBOOT_XP_BONUS);
-    WiFiUtils::shutdown();
+    // WiFi is already off. Let the next mode handle re-enabling it.
+    // Calling WiFiUtils::shutdown() here causes a crash.
 }
 
 void PiggyBluesMode::update() {
@@ -624,16 +640,25 @@ void PiggyBluesMode::update() {
     // Refresh active target selection (sorted by RSSI)
     selectActiveTargets();
     
-    // Send payload burst - NO scan stop/start (that was causing 120ms+ lag every burst)
-    // BLE stack can handle concurrent scan+advertise, just brief interference
-    if (now - lastBurstTime >= burstInterval) {
-        advertisingNow = true;
-        
-        // Send payload (sendRandomPayload already checks isAdvertising before starting)
-        sendRandomPayload();
-        
-        advertisingNow = false;
-        lastBurstTime = now;
+    // Non-blocking advertising state machine
+    if (advertisingNow) {
+        // We are in an advertising burst. Check if it's time to stop.
+        if (now - advertisingStartTime >= cfgAdvDuration) {
+            if (pAdvertising && pAdvertising->isAdvertising()) {
+                pAdvertising->stop();
+            }
+            advertisingNow = false;
+        }
+    } else {
+        // We are not advertising. Check if it's time to start a new burst.
+        if (now - lastBurstTime >= burstInterval) {
+            advertisingNow = true;
+            advertisingStartTime = now;
+            lastBurstTime = now; // Reset timer for the next burst interval.
+            
+            // This function will now only START the advertisement, not block.
+            sendRandomPayload();
+        }
     }
     
     // Update mood occasionally with target info
@@ -713,10 +738,8 @@ void PiggyBluesMode::sendAppleJuice() {
         return;
     }
     
-    // Start advertising briefly
+    // Start advertising
     if (pAdvertising->start()) {
-        delay(cfgAdvDuration);
-        pAdvertising->stop();
         totalPackets++;
         appleCount++;
         XP::addXP(XPEvent::BLE_APPLE);  // +3 XP
@@ -750,8 +773,6 @@ void PiggyBluesMode::sendAndroidFastPair() {
     }
     
     if (pAdvertising->start()) {
-        delay(cfgAdvDuration);
-        pAdvertising->stop();
         totalPackets++;
         androidCount++;
         XP::addXP(XPEvent::BLE_ANDROID);  // +2 XP
@@ -781,8 +802,6 @@ void PiggyBluesMode::sendSamsungSpam() {
     }
     
     if (pAdvertising->start()) {
-        delay(cfgAdvDuration);
-        pAdvertising->stop();
         totalPackets++;
         samsungCount++;
         XP::addXP(XPEvent::BLE_SAMSUNG);  // +2 XP
@@ -817,8 +836,6 @@ void PiggyBluesMode::sendWindowsSwiftPair() {
     }
     
     if (pAdvertising->start()) {
-        delay(cfgAdvDuration);
-        pAdvertising->stop();
         totalPackets++;
         windowsCount++;
         XP::addXP(XPEvent::BLE_WINDOWS);  // +2 XP

@@ -247,6 +247,24 @@ static const Note SND_CHALLENGE_SWEEP[] = {
     {0, 0, 0}
 };
 
+// YOU_DIED: "Dark Souls" style death sound
+// Impact (43Hz), then F3 wobble (172/178), with dissonant B3/Eb4, fading to sub
+static const Note SND_YOU_DIED[] = {
+    {43, 200, 20},   // Impact F1 (Sub-bass thud)
+    {172, 80, 0},    // F3 wobble 1
+    {178, 80, 0},    // F3 wobble 1
+    {172, 80, 0},    // F3 wobble 2
+    {178, 80, 0},    // F3 wobble 2
+    {247, 60, 0},    // B3 (poison/dissonance)
+    {172, 80, 0},    // F3 wobble 3
+    {178, 80, 0},    // F3 wobble 3
+    {311, 60, 0},    // Eb4 (metallic edge)
+    {174, 400, 0},   // F3 sustain (The "Doom Tone")
+    {87, 400, 0},    // F2 drop
+    {43, 800, 0},    // F1 - tail (Sub-bass fade)
+    {0, 0, 0}
+};
+
 // ==[ MORSE REMOVED ]==
 // Morse GG was too long (600ms+), replaced with warm resolve in HANDSHAKE
 
@@ -411,6 +429,9 @@ bool update() {
                 break;
             case CHALLENGE_SWEEP:
                 startSequence(SND_CHALLENGE_SWEEP);
+                break;
+            case YOU_DIED:
+                startSequence(SND_YOU_DIED);
                 break;
             default:
                 break;

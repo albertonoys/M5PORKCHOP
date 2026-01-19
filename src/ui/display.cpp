@@ -951,7 +951,9 @@ void Display::drawBottomBar() {
                mode == PorkchopMode::BOAR_BROS ||
                mode == PorkchopMode::WIGLE_MENU ||
                mode == PorkchopMode::UNLOCKABLES ||
-               mode == PorkchopMode::BOUNTY_STATUS) {
+               mode == PorkchopMode::BOUNTY_STATUS ||
+               mode == PorkchopMode::OINK_MODE || 
+               mode == PorkchopMode::DNH_MODE) {
         // No uptime on menu and submenu screens
     } else {
         uint32_t uptime = porkchop.getUptime();
@@ -1199,7 +1201,7 @@ void Display::showBootSplash() {
     // Subtitle
     M5.Display.setTextSize(1);
     M5.Display.drawString("BASICALLY YOU, BUT AS AN ASCII PIG.", DISPLAY_W / 2, DISPLAY_H / 2 + 20);
-    M5.Display.drawString("BETA", DISPLAY_W / 2, DISPLAY_H / 2 + 35);
+    M5.Display.drawString("IDENTITY CRISIS EDITION.", DISPLAY_W / 2, DISPLAY_H / 2 + 35);
     
     bootSplashDelay(1200);
 }

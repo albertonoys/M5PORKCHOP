@@ -29,6 +29,34 @@ private:
     bool& ref_;
 };
 
+// Read and parse HTTP status code from a client response.
+// Handles optional "HTTP/1.1 100 Continue" prelude.
+static int readHttpStatus(WiFiClientSecure& client) {
+    for (int guard = 0; guard < 6; ++guard) {
+        String line = client.readStringUntil('\n');
+        line.trim();
+        if (!line.startsWith("HTTP/")) {
+            continue;
+        }
+        int sp1 = line.indexOf(' ');
+        if (sp1 < 0) return -1;
+        int sp2 = line.indexOf(' ', sp1 + 1);
+        String codeStr = (sp2 > sp1) ? line.substring(sp1 + 1, sp2) : line.substring(sp1 + 1);
+        int code = codeStr.toInt();
+
+        if (code == 100) {
+            // Consume headers for the 100 response
+            while (client.connected()) {
+                String h = client.readStringUntil('\n');
+                if (h == "\r" || h.length() == 0) break;
+            }
+            continue;
+        }
+        return code;
+    }
+    return -1;
+}
+
 static bool shouldAwardSmokedBacon() {
     uint8_t chance = 3;  // base 3%
     if (XP::getClass() == PorkClass::B4C0NM4NC3R) {
@@ -93,7 +121,8 @@ bool WiGLE::connect() {
     // Wait for connection with timeout
     uint32_t startTime = millis();
     uint32_t lastLog = startTime;
-    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 15000) {
+    // Slightly longer timeout helps when phone tethering or on weak RSSI.
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < 20000) {
         if (millis() - lastLog >= 1000) {
             lastLog = millis();
             Serial.printf("[WIGLE] Connecting... status=%d\n", WiFi.status());
@@ -334,12 +363,21 @@ bool WiGLE::uploadFile(const char* csvPath) {
     // Use bare WiFiClientSecure to avoid HTTPClient heap reuse
     WiFiClientSecure client;
     client.setInsecure();
-    client.setTimeout(30000);
+    client.setNoDelay(true);
+    client.setTimeout(60000);
     Serial.printf("[WIGLE][HEAP] before HTTP begin free=%lu largest=%lu\n",
                   (unsigned long)ESP.getFreeHeap(),
                   (unsigned long)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
 
-    if (!client.connect(API_HOST, 443)) {
+    bool connected = false;
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        if (client.connect(API_HOST, 443)) {
+            connected = true;
+            break;
+        }
+        delay(250);
+    }
+    if (!connected) {
         strcpy(lastError, "TLS CONNECT FAIL");
         csvFile.close();
         return false;
@@ -383,17 +421,8 @@ bool WiGLE::uploadFile(const char* csvPath) {
     client.print(bodyEnd);
     client.flush();
 
-    // Read response status line and minimal body for error context
-    String statusLine = client.readStringUntil('\n');
-    statusLine.trim();
-
-    int statusCode = -1;
-    if (statusLine.startsWith("HTTP/1.")) {
-        int firstSpace = statusLine.indexOf(' ');
-        if (firstSpace > 0 && firstSpace + 1 < (int)statusLine.length()) {
-            statusCode = statusLine.substring(firstSpace + 1).toInt();
-        }
-    }
+    // Read response status code (handles optional 100-Continue)
+    int statusCode = readHttpStatus(client);
 
     // Skip headers to reach body
     while (client.connected()) {
@@ -406,7 +435,7 @@ bool WiGLE::uploadFile(const char* csvPath) {
     uint32_t startBody = millis();
     while ((client.connected() || client.available()) &&
            body.length() < 256 &&
-           (millis() - startBody) < 2000) {
+           (millis() - startBody) < 5000) {
         if (client.available()) {
             body += (char)client.read();
         } else {
@@ -436,12 +465,18 @@ bool WiGLE::uploadFile(const char* csvPath) {
     }
 
     // Build a clearer error message
-    if (body.length() > 0) {
-        snprintf(lastError, sizeof(lastError), "UPLOAD FAILED: %s | %s", statusLine.c_str(), body.c_str());
-    } else if (statusCode > 0) {
-        snprintf(lastError, sizeof(lastError), "UPLOAD FAILED: %s", statusLine.c_str());
+    char statusTxt[16];
+    if (statusCode > 0) {
+        snprintf(statusTxt, sizeof(statusTxt), "HTTP %d", statusCode);
     } else {
-        snprintf(lastError, sizeof(lastError), "UPLOAD FAILED: NO RESPONSE");
+        strncpy(statusTxt, "NO RESPONSE", sizeof(statusTxt) - 1);
+        statusTxt[sizeof(statusTxt) - 1] = '\0';
+    }
+
+    if (body.length() > 0) {
+        snprintf(lastError, sizeof(lastError), "UPLOAD FAILED: %s | %s", statusTxt, body.c_str());
+    } else {
+        snprintf(lastError, sizeof(lastError), "UPLOAD FAILED: %s", statusTxt);
     }
     strcpy(statusMessage, "UPLOAD FAILED");
     SDLog::log("WIGLE", "Upload failed: %s", filenameBuf);
