@@ -25,6 +25,7 @@
 
 --[ TL;DR FOR THE ATTENTION-CHALLENGED
 
+```
 +===============================================================+
 |                                                               |
 |   1) press [O] = OINK MODE (active hunt)                      |
@@ -37,6 +38,7 @@
 |   "because it can" is not a defense.                          |
 |                                                               |
 +===============================================================+
+```
 
 
 --[ Contents
