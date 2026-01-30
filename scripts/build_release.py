@@ -147,6 +147,7 @@ def main():
     log("STEP 1: Building firmware with PlatformIO")
     log("=" * 60)
     
+    run_cmd("pio run -t clean -e m5cardputer", "Cleaning build artifacts")
     run_cmd("pio run -e m5cardputer", "Compiling")
     log_ok("Firmware compiled successfully")
     
