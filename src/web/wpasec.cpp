@@ -270,7 +270,7 @@ bool WPASec::canSync() {
     freeCacheMemory();
     
     size_t freeHeap = ESP.getFreeHeap();
-    size_t largestBlock = ESP.getMaxAllocHeap();
+    size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     
     Serial.printf("[WPASEC] canSync: %u free, %u contiguous (need %u/%u)\n", 
                   (unsigned int)freeHeap, (unsigned int)largestBlock,
@@ -559,7 +559,7 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     
     // Proactive heap conditioning - condition early when heap is marginal
     // This prevents fragmentation from getting critical before TLS attempts
-    size_t largestBlock = ESP.getMaxAllocHeap();
+    size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     if (largestBlock < HeapPolicy::kProactiveTlsConditioning &&
         largestBlock >= HeapPolicy::kMinContigForTls) {
         if (cb) {
@@ -731,13 +731,13 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     
     Serial.printf("[WPASEC] Heap before potfile: %u largest=%u\n", 
                   (unsigned int)ESP.getFreeHeap(),
-                  (unsigned int)ESP.getMaxAllocHeap());
+                  (unsigned int)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     
     uint16_t newCracks = 0;
     bool potfileOk = false;
     
     // Attempt potfile if heap is sufficient - no reconditioning, graceful skip if low
-    if (ESP.getMaxAllocHeap() >= HeapPolicy::kMinContigForTls) {
+    if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) >= HeapPolicy::kMinContigForTls) {
         potfileOk = downloadPotfile(newCracks);
         if (potfileOk) {
             result.newCracked = newCracks;
@@ -747,7 +747,7 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
         }
     } else {
         Serial.printf("[WPASEC] Skipping potfile: insufficient heap (%u < %u)\n",
-                      (unsigned int)ESP.getMaxAllocHeap(),
+                      (unsigned int)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT),
                       (unsigned int)HeapPolicy::kMinContigForTls);
         snprintf(lastError, sizeof(lastError), "POTFILE SKIP: LOW HEAP");
     }

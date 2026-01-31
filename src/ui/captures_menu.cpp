@@ -901,13 +901,8 @@ void CapturesMenu::processSyncState() {
             
         case SyncState::FREEING_MEMORY:
             strncpy(syncStatusText, "PREPARING...", sizeof(syncStatusText) - 1);
-            // Check heap
-            if (!WPASec::canSync()) {
-                strncpy(syncError, "LOW HEAP", sizeof(syncError) - 1);
-                syncState = SyncState::ERROR;
-            } else {
-                syncState = SyncState::UPLOADING;
-            }
+            // Defer heap gating to WPASec::syncCaptures() so conditioning can run.
+            syncState = SyncState::UPLOADING;
             break;
             
         case SyncState::UPLOADING:

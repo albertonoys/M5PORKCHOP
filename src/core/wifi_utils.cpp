@@ -8,6 +8,7 @@
 #include <time.h>
 #include <NimBLEDevice.h>  // For BLE deinit during heap conditioning
 #include "heap_health.h"
+#include "heap_policy.h"
 
 namespace WiFiUtils {
 
@@ -363,7 +364,7 @@ size_t conditionHeapForTLS() {
         
         // Check if heap has improved (early exit if already good)
         size_t currentLargest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-        if (i > 10 && currentLargest > 50000) {
+        if (i > 10 && currentLargest > HeapPolicy::kHeapStableThreshold) {
             Serial.printf("[HEAP] Early exit at %dms - heap stabilized (pkts=%u)\n", 
                           (i + 1) * 100, brewPacketCount);
             break;

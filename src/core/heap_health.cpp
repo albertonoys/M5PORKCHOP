@@ -1,6 +1,7 @@
 #include "heap_health.h"
 #include "heap_policy.h"
 #include <Arduino.h>
+#include <esp_heap_caps.h>
 
 namespace HeapHealth {
 
@@ -61,7 +62,7 @@ void update() {
     lastSampleMs = now;
 
     size_t freeHeap = ESP.getFreeHeap();
-    size_t largestBlock = ESP.getMaxAllocHeap();
+    size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     if (peakFree == 0 || peakLargest == 0) {
         peakFree = freeHeap;
         peakLargest = largestBlock;
@@ -91,7 +92,7 @@ uint8_t getPercent() {
 
 void resetPeaks(bool suppressToast) {
     peakFree = ESP.getFreeHeap();
-    peakLargest = ESP.getMaxAllocHeap();
+    peakLargest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     minFree = peakFree;
     minLargest = peakLargest;
     heapHealthPct = computePercent(peakFree, peakLargest, false);

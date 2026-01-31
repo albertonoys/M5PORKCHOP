@@ -237,7 +237,7 @@ bool WiGLE::canSync() {
     freeUploadedListMemory();
     
     size_t freeHeap = ESP.getFreeHeap();
-    size_t largestBlock = ESP.getMaxAllocHeap();
+    size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     
     Serial.printf("[WIGLE] canSync: %u free, %u contiguous (need %u/%u)\n", 
                   (unsigned int)freeHeap, (unsigned int)largestBlock,
@@ -616,7 +616,7 @@ WigleSyncResult WiGLE::syncFiles(WigleProgressCallback cb) {
     
     // Proactive heap conditioning - condition early when heap is marginal
     // This prevents fragmentation from getting critical before TLS attempts
-    size_t largestBlock = ESP.getMaxAllocHeap();
+    size_t largestBlock = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     if (largestBlock < HeapPolicy::kProactiveTlsConditioning &&
         largestBlock >= HeapPolicy::kMinContigForTls) {
         if (cb) {
@@ -777,10 +777,10 @@ WigleSyncResult WiGLE::syncFiles(WigleProgressCallback cb) {
     
     Serial.printf("[WIGLE] Heap before stats: %u largest=%u\n", 
                   (unsigned int)ESP.getFreeHeap(),
-                  (unsigned int)ESP.getMaxAllocHeap());
+                  (unsigned int)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     
     // Attempt stats fetch if heap sufficient - no reconditioning, graceful skip if low
-    if (ESP.getMaxAllocHeap() >= HeapPolicy::kMinContigForTls) {
+    if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) >= HeapPolicy::kMinContigForTls) {
         result.statsFetched = fetchStats();
         if (!result.statsFetched) {
             Serial.printf("[WIGLE] Stats fetch failed: %s\n", lastError);

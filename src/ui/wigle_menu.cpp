@@ -696,13 +696,8 @@ void WigleMenu::processSyncState() {
             
         case WigleSyncState::FREEING_MEMORY:
             strncpy(syncStatusText, "PREPARING...", sizeof(syncStatusText) - 1);
-            // Check heap
-            if (!WiGLE::canSync()) {
-                strncpy(syncError, "LOW HEAP", sizeof(syncError) - 1);
-                syncState = WigleSyncState::ERROR;
-            } else {
-                syncState = WigleSyncState::UPLOADING;
-            }
+            // Defer heap gating to WiGLE::syncFiles() so conditioning can run.
+            syncState = WigleSyncState::UPLOADING;
             break;
             
         case WigleSyncState::UPLOADING:

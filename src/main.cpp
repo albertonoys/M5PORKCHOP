@@ -15,6 +15,7 @@
 #include "core/sd_layout.h"
 #include "core/sdlog.h"
 #include "core/wifi_utils.h"
+#include "core/heap_policy.h"
 #include "core/network_recon.h"
 #include "ui/display.h"
 #include "gps/gps.h"
@@ -258,12 +259,15 @@ void performBootHeapConditioning() {
                   finalFree, finalLargest, improvement);
 
     // Check TLS compatibility
-    if (finalLargest >= 26624) { // 26KB
+    const size_t tlsGate = HeapPolicy::kMinContigForTls;
+    if (finalLargest >= tlsGate) {
         Serial.println("[BOOT] ✓ Heap conditioning successful - TLS operations should work");
     } else if (improvement > 1.0f) {
-        Serial.printf("[BOOT] ⚠ Partial improvement - largest block=%u (need 26624 for TLS)\n", finalLargest);
+        Serial.printf("[BOOT] ⚠ Partial improvement - largest block=%u (need %u for TLS)\n",
+                      (unsigned)finalLargest, (unsigned)tlsGate);
     } else {
-        Serial.printf("[BOOT] ❌ No improvement - largest block=%u (need 26624 for TLS)\n", finalLargest);
+        Serial.printf("[BOOT] ❌ No improvement - largest block=%u (need %u for TLS)\n",
+                      (unsigned)finalLargest, (unsigned)tlsGate);
     }
 
     Serial.printf("[BOOT] Total conditioned: ~%u KB\n",
