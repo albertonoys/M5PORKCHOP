@@ -1274,7 +1274,12 @@ void Display::showProgress(const String& title, uint8_t percent) {
 
 void Display::showToast(const String& message, uint32_t durationMs) {
     if (message.length() == 0) return;
-    strncpy(toastMessage, message.c_str(), sizeof(toastMessage) - 1);
+    showToast(message.c_str(), durationMs);
+}
+
+void Display::showToast(const char* message, uint32_t durationMs) {
+    if (!message || message[0] == '\0') return;
+    strncpy(toastMessage, message, sizeof(toastMessage) - 1);
     toastMessage[sizeof(toastMessage) - 1] = '\0';
     toastStartTime = millis();
     toastDurationMs = (durationMs > 0) ? durationMs : 2000;

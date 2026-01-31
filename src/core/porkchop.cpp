@@ -96,6 +96,8 @@ static const char* bootModeLabel(BootMode mode) {
     }
 }
 
+static bool healthBootToastShown = false;
+
 Porkchop::Porkchop() 
     : currentMode(PorkchopMode::IDLE)
     , previousMode(PorkchopMode::IDLE)
@@ -241,6 +243,17 @@ void Porkchop::init() {
     
     // Initialize non-blocking audio system
     SFX::init();
+
+    if (!healthBootToastShown) {
+        healthBootToastShown = true;
+        Display::showToast(
+            "HEALTH BAR IS HEAP HEALTH.\n"
+            "LARGEST CONTIG DRIVES TLS.\n"
+            "FRAGMENTATION YOINKS IT.\n"
+            "BREW FIXES.",
+            5000
+        );
+    }
     
     Serial.println("[PORKCHOP] Initialized");
     SDLog::log("PORK", "Initialized - LV%d %s", XP::getLevel(), XP::getTitle());

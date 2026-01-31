@@ -556,6 +556,10 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
         busy = false;
         return result;
     }
+
+    if (cb) {
+        cb("prepping heap", 0, 0);
+    }
     
     // Proactive heap conditioning - condition early when heap is marginal
     // This prevents fragmentation from getting critical before TLS attempts
@@ -598,6 +602,9 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     }
     
     // Collect files to upload from handshakes directory
+    if (cb) {
+        cb("scanning caps", 0, 0);
+    }
     const char* hsDir = SDLayout::handshakesDir();
     if (!SD.exists(hsDir)) {
         strncpy(result.error, "NO HANDSHAKES DIR", sizeof(result.error) - 1);
@@ -681,6 +688,9 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     uint8_t successMask[50] = {0};
     
     // Upload each pending file
+    if (cb) {
+        cb("yoinking caps", 0, 0);
+    }
     for (uint8_t i = 0; i < pendingCount; i++) {
         if (cb) {
             char status[32];
@@ -707,6 +717,9 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     // Mark successful uploads AFTER all TLS operations complete
     // This avoids cache reload during TLS when heap is tight
     if (result.uploaded > 0) {
+        if (cb) {
+            cb("marking loot", 0, 0);
+        }
         loadCache();
         for (uint8_t i = 0; i < pendingCount; i++) {
             if (successMask[i]) {
@@ -720,7 +733,7 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     
     // Download potfile
     if (cb) {
-        cb("DOWNLOADING POTFILE", 0, 0);
+        cb("slurping potfile", 0, 0);
     }
     
     // Free any residual memory before potfile TLS

@@ -613,6 +613,10 @@ WigleSyncResult WiGLE::syncFiles(WigleProgressCallback cb) {
         busy = false;
         return result;
     }
+
+    if (cb) {
+        cb("prepping heap", 0, 0);
+    }
     
     // Proactive heap conditioning - condition early when heap is marginal
     // This prevents fragmentation from getting critical before TLS attempts
@@ -654,6 +658,9 @@ WigleSyncResult WiGLE::syncFiles(WigleProgressCallback cb) {
     }
     
     // Collect files to upload from wardriving directory
+    if (cb) {
+        cb("scanning csv", 0, 0);
+    }
     const char* wardrivingDir = SDLayout::wardrivingDir();
     if (!SD.exists(wardrivingDir)) {
         strncpy(result.error, "NO WARDRIVING DIR", sizeof(result.error) - 1);
@@ -718,6 +725,9 @@ WigleSyncResult WiGLE::syncFiles(WigleProgressCallback cb) {
     uint8_t successMask[50] = {0};
     
     // Upload each pending file
+    if (cb) {
+        cb("uploading wigle", 0, 0);
+    }
     for (uint8_t i = 0; i < pendingCount; i++) {
         if (cb) {
             char status[32];
@@ -744,6 +754,9 @@ WigleSyncResult WiGLE::syncFiles(WigleProgressCallback cb) {
     // Mark successful uploads AFTER all TLS operations complete
     // This avoids list reload during TLS when heap is tight
     if (result.uploaded > 0) {
+        if (cb) {
+            cb("marking uploads", 0, 0);
+        }
         loadUploadedList();
         for (uint8_t i = 0; i < pendingCount; i++) {
             if (successMask[i]) {
@@ -766,7 +779,7 @@ WigleSyncResult WiGLE::syncFiles(WigleProgressCallback cb) {
     
     // Fetch stats after uploads
     if (cb) {
-        cb("FETCHING STATS", 0, 0);
+        cb("slurping stats", 0, 0);
     }
     
     // Free residual memory before stats TLS
