@@ -34,8 +34,8 @@
 static volatile bool oinkBusy = false;
 
 // Minimum free heap thresholds (centralized in HeapPolicy)
-static const size_t HANDSHAKE_ALLOC_MIN_BLOCK = sizeof(CapturedHandshake) + 1024;
-static const size_t PMKID_ALLOC_MIN_BLOCK = sizeof(CapturedPMKID) + 256;
+static const size_t HANDSHAKE_ALLOC_MIN_BLOCK = sizeof(CapturedHandshake) + HeapPolicy::kHandshakeAllocSlack;
+static const size_t PMKID_ALLOC_MIN_BLOCK = sizeof(CapturedPMKID) + HeapPolicy::kPmkidAllocSlack;
 
 // ============ Deferred Event System ============
 // Callback sets flags/data, update() processes them in main thread context

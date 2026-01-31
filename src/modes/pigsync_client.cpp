@@ -16,6 +16,7 @@
 #include "../core/sdlog.h"
 #include "../core/sd_layout.h"
 #include "../core/wifi_utils.h"
+#include "../core/heap_policy.h"
 #include "../core/network_recon.h"
 #include "../piglet/mood.h"
 #include "../ui/display.h"
@@ -1918,7 +1919,7 @@ bool PigSyncMode::startSync() {
     yield();
     
     // Guard: ensure enough contiguous heap for reliable transfer
-    if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) < 26000) {
+    if (heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) < HeapPolicy::kPigSyncMinContig) {
         strcpy(lastError, "LOW HEAP");
         return false;
     }

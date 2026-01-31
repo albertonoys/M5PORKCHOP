@@ -268,17 +268,18 @@ bool WPASec::canSync() {
     
     Serial.printf("[WPASEC] canSync: %u free, %u contiguous (need %u/%u)\n", 
                   (unsigned int)freeHeap, (unsigned int)largestBlock,
-                  (unsigned int)MIN_HEAP_FOR_TLS, (unsigned int)MIN_CONTIGUOUS_FOR_TLS);
+                  (unsigned int)HeapPolicy::kMinHeapForTls,
+                  (unsigned int)HeapPolicy::kMinContigForTls);
     
     // Check fragmentation first (more specific error)
-    if (largestBlock < MIN_CONTIGUOUS_FOR_TLS) {
+    if (largestBlock < HeapPolicy::kMinContigForTls) {
         snprintf(lastError, sizeof(lastError), "FRAGMENTED: %uKB", 
                  (unsigned int)(largestBlock / 1024));
         return false;
     }
     
     // Then total heap
-    if (freeHeap < MIN_HEAP_FOR_TLS) {
+    if (freeHeap < HeapPolicy::kMinHeapForTls) {
         snprintf(lastError, sizeof(lastError), "LOW HEAP: %uKB", 
                  (unsigned int)(freeHeap / 1024));
         return false;
@@ -553,12 +554,14 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     // Proactive heap conditioning - condition early when heap is marginal
     // This prevents fragmentation from getting critical before TLS attempts
     size_t largestBlock = ESP.getMaxAllocHeap();
-    if (largestBlock < PROACTIVE_CONDITIONING_THRESHOLD && largestBlock >= MIN_CONTIGUOUS_FOR_TLS) {
+    if (largestBlock < HeapPolicy::kProactiveTlsConditioning &&
+        largestBlock >= HeapPolicy::kMinContigForTls) {
         if (cb) {
             cb("OPTIMIZING HEAP", 0, 0);
         }
         Serial.printf("[WPASEC] Proactive conditioning: %u < %u threshold\n",
-                      (unsigned int)largestBlock, (unsigned int)PROACTIVE_CONDITIONING_THRESHOLD);
+                      (unsigned int)largestBlock,
+                      (unsigned int)HeapPolicy::kProactiveTlsConditioning);
         WiFiUtils::conditionHeapForTLS();
     }
     
@@ -728,7 +731,7 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     bool potfileOk = false;
     
     // Attempt potfile if heap is sufficient - no reconditioning, graceful skip if low
-    if (ESP.getMaxAllocHeap() >= MIN_CONTIGUOUS_FOR_TLS) {
+    if (ESP.getMaxAllocHeap() >= HeapPolicy::kMinContigForTls) {
         potfileOk = downloadPotfile(newCracks);
         if (potfileOk) {
             result.newCracked = newCracks;
@@ -739,7 +742,7 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     } else {
         Serial.printf("[WPASEC] Skipping potfile: insufficient heap (%u < %u)\n",
                       (unsigned int)ESP.getMaxAllocHeap(),
-                      (unsigned int)MIN_CONTIGUOUS_FOR_TLS);
+                      (unsigned int)HeapPolicy::kMinContigForTls);
         snprintf(lastError, sizeof(lastError), "POTFILE SKIP: LOW HEAP");
     }
     

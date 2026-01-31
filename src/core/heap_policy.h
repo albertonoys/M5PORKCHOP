@@ -21,9 +21,17 @@ namespace HeapPolicy {
     static constexpr size_t kFileServerMinHeap = 40000;
     static constexpr size_t kFileServerMinLargest = 30000;
 
+    // Allocation slack (allocator overhead / fragmentation cushion)
+    static constexpr size_t kReserveSlackSmall = 256;
+    static constexpr size_t kReserveSlackLarge = 1024;
+    static constexpr size_t kPmkidAllocSlack = 256;
+    static constexpr size_t kHandshakeAllocSlack = 1024;
+
     // Mode-specific thresholds
     static constexpr size_t kWarhogHeapWarning = 40000;
     static constexpr size_t kWarhogHeapCritical = 25000;
+    static constexpr size_t kDnhInjectMinHeap = 80000;
+    static constexpr size_t kPigSyncMinContig = 26000;
 
     // Stress test guardrail
     static constexpr size_t kStressMinHeap = 70000;

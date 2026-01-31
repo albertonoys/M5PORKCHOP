@@ -17,6 +17,20 @@
 #include "../core/sd_layout.h"
 #include "wigle.h"
 
+#ifndef FILESERVER_LOG_ENABLED
+#define FILESERVER_LOG_ENABLED 1
+#endif
+
+#if FILESERVER_LOG_ENABLED
+#define FS_LOGF(...) Serial.printf(__VA_ARGS__)
+#define FS_LOGLN(msg) Serial.println(msg)
+#define FS_LOG(msg) Serial.print(msg)
+#else
+#define FS_LOGF(...) do {} while (0)
+#define FS_LOGLN(...) do {} while (0)
+#define FS_LOG(msg) do {} while (0)
+#endif
+
 // Static members
 WebServer* FileServer::server = nullptr;
 FileServerState FileServer::state = FileServerState::IDLE;
@@ -74,7 +88,7 @@ static void logWiFiStatus(const char* label) {
     (void)label;
     wifi_mode_t mode = WiFi.getMode();
     wl_status_t status = WiFi.status();
-    Serial.printf("[FILESERVER] %s WiFi mode=%d status=%d\n", label, (int)mode, (int)status);
+    FS_LOGF("[FILESERVER] %s WiFi mode=%d status=%d\n", label, (int)mode, (int)status);
 }
 
 static void logRequest(WebServer* srv, const char* label) {
@@ -89,14 +103,14 @@ static void logRequest(WebServer* srv, const char* label) {
         case HTTP_DELETE: method = "DELETE"; break;
         default: method = "OTHER"; break;  // Avoid String allocation for rare case
     }
-    Serial.printf("[FILESERVER] %s %s\n", method, srv->uri().c_str());
+    FS_LOGF("[FILESERVER] %s %s\n", method, srv->uri().c_str());
 }
 
 static void logHeapStatus(const char* label) {
     // Log current free heap and largest free block for debugging memory usage
     size_t freeHeap = ESP.getFreeHeap();
     size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-    Serial.printf("[FILESERVER] %s heap free=%u largest=%u\n", label ? label : "heap", (unsigned int)freeHeap, (unsigned int)largest);
+    FS_LOGF("[FILESERVER] %s heap free=%u largest=%u\n", label ? label : "heap", (unsigned int)freeHeap, (unsigned int)largest);
 }
 
 static void logHeapStatusIfLow(const char* label) {
@@ -104,7 +118,7 @@ static void logHeapStatusIfLow(const char* label) {
     size_t freeHeap = ESP.getFreeHeap();
     if (freeHeap < 60000) {
         size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-        Serial.printf("[FILESERVER] %s low heap free=%u largest=%u\n", label ? label : "low heap", (unsigned int)freeHeap, (unsigned int)largest);
+        FS_LOGF("[FILESERVER] %s low heap free=%u largest=%u\n", label ? label : "low heap", (unsigned int)freeHeap, (unsigned int)largest);
     }
 }
 
@@ -439,7 +453,7 @@ static bool awardXpEntry(const char* src, uint16_t per, const char* awardFile, s
     }
     XP::addXP(per);
     xpSessionAwarded += per;
-    Serial.printf("[FILESERVER] XP AWARD %s +%u\n", src, (unsigned int)per);
+    FS_LOGF("[FILESERVER] XP AWARD %s +%u\n", src, (unsigned int)per);
     return true;
 }
 
@@ -3338,10 +3352,10 @@ bool FileServer::start(const char* ssid, const char* password) {
     // Pre-start heap conditioning if contiguous block is below TLS threshold.
     size_t largestBefore = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     if (largestBefore < HeapPolicy::kMinContigForTls) {
-        Serial.printf("[FILESERVER] Pre-start conditioning: largest=%u < %u\n",
+        FS_LOGF("[FILESERVER] Pre-start conditioning: largest=%u < %u\n",
                       (unsigned)largestBefore, (unsigned)HeapPolicy::kMinContigForTls);
         size_t largestAfter = WiFiUtils::conditionHeapForTLS();
-        Serial.printf("[FILESERVER] Pre-start conditioning complete: %u -> %u (+%d)\n",
+        FS_LOGF("[FILESERVER] Pre-start conditioning complete: %u -> %u (+%d)\n",
                       (unsigned)largestBefore, (unsigned)largestAfter,
                       (int)(largestAfter - largestBefore));
     }
@@ -3366,31 +3380,32 @@ bool FileServer::start(const char* ssid, const char* password) {
 
 void FileServer::startServer() {
     // #region agent log
-    Serial.println("[DBG-H1] startServer() ENTRY");
+    FS_LOGLN("[DBG-H1] startServer() ENTRY");
     // #endregion
     
     snprintf(statusMessage, sizeof(statusMessage), "%s", WiFi.localIP().toString().c_str());
     logWiFiStatus("startServer");
     
     // #region agent log
-    Serial.printf("[DBG-H1] IP stored: %s\n", statusMessage);
+    FS_LOGF("[DBG-H1] IP stored: %s\n", statusMessage);
     // #endregion
     
     // Start mDNS
     // #region agent log
-    Serial.printf("[DBG-H1] WiFi connected=%d, localIP=%s\n", 
+    FS_LOGF("[DBG-H1] WiFi connected=%d, localIP=%s\n", 
                   WiFi.isConnected(), WiFi.localIP().toString().c_str());
-    Serial.println("[DBG-H1] About to call MDNS.begin()");
+    FS_LOGLN("[DBG-H1] About to call MDNS.begin()");
     // #endregion
     
     bool mdnsOk = MDNS.begin("porkchop");
     
     // #region agent log
-    Serial.printf("[DBG-H1] MDNS.begin() returned %d\n", mdnsOk);
+    FS_LOGF("[DBG-H1] MDNS.begin() returned %d\n", mdnsOk);
     // #endregion
+
     
     // #region agent log
-    Serial.println("[DBG-H2] MDNS.begin() completed, creating WebServer");
+    FS_LOGLN("[DBG-H2] MDNS.begin() completed, creating WebServer");
     // #endregion
     
     // FIX: Heap guard before WebServer allocation - prevent OOM on ADV/tight heap
@@ -3398,7 +3413,7 @@ void FileServer::startServer() {
         size_t freeHeap = ESP.getFreeHeap();
         size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
         if (freeHeap < HeapPolicy::kFileServerMinHeap || largest < HeapPolicy::kFileServerMinLargest) {
-            Serial.printf("[FILESERVER] Low heap for WebServer: free=%u largest=%u\n",
+            FS_LOGF("[FILESERVER] Low heap for WebServer: free=%u largest=%u\n",
                           (unsigned)freeHeap, (unsigned)largest);
             strcpy(statusMessage, "Low heap");
             MDNS.end();  // Clean up mDNS we just started
@@ -3412,12 +3427,13 @@ void FileServer::startServer() {
     server = new WebServer(80);
     
     // #region agent log
-    Serial.printf("[DBG-H2] WebServer created, ptr=%p\n", (void*)server);
+    FS_LOGF("[DBG-H2] WebServer created, ptr=%p\n", (void*)server);
     // #endregion
+
     
     if (!server) {
         // #region agent log
-        Serial.println("[DBG-H2] ERROR: WebServer allocation failed!");
+        FS_LOGLN("[DBG-H2] ERROR: WebServer allocation failed!");
         // #endregion
         strcpy(statusMessage, "Server alloc fail");
         state = FileServerState::IDLE;
@@ -3425,7 +3441,7 @@ void FileServer::startServer() {
     }
     
     // #region agent log
-    Serial.println("[DBG-H3] Registering handlers...");
+    FS_LOGLN("[DBG-H3] Registering handlers...");
     // #endregion
     
     server->on("/", HTTP_GET, handleRoot);
@@ -3446,14 +3462,15 @@ void FileServer::startServer() {
     server->onNotFound(handleNotFound);
     
     // #region agent log
-    Serial.println("[DBG-H3] Handlers registered, calling server->begin()");
+    FS_LOGLN("[DBG-H3] Handlers registered, calling server->begin()");
     // #endregion
     
     server->begin();
     
     // #region agent log
-    Serial.println("[DBG-H4] server->begin() completed");
+    FS_LOGLN("[DBG-H4] server->begin() completed");
     // #endregion
+
     
     state = FileServerState::RUNNING;
     lastReconnectCheck = millis();
@@ -3494,14 +3511,14 @@ void FileServer::stop() {
     size_t largestBefore = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     if (largestBefore < HeapPolicy::kFileServerRecoveryThreshold) {
         // Short callback-enabled brew for reliable coalescing
-        Serial.printf("[FILESERVER] Heap recovery starting: largest=%u\n", (unsigned)largestBefore);
+        FS_LOGF("[FILESERVER] Heap recovery starting: largest=%u\n", (unsigned)largestBefore);
         size_t largestAfter = WiFiUtils::brewHeap(2000, false);
         if (largestAfter < HeapPolicy::kMinContigForTls) {
-            Serial.printf("[FILESERVER] Brew insufficient (largest=%u), running full conditioning\n",
+            FS_LOGF("[FILESERVER] Brew insufficient (largest=%u), running full conditioning\n",
                           (unsigned)largestAfter);
             largestAfter = WiFiUtils::conditionHeapForTLS();
         }
-        Serial.printf("[FILESERVER] Heap recovery complete: %u -> %u (+%d)\n",
+        FS_LOGF("[FILESERVER] Heap recovery complete: %u -> %u (+%d)\n",
                       (unsigned)largestBefore, (unsigned)largestAfter,
                       (int)(largestAfter - largestBefore));
     }
@@ -3574,7 +3591,7 @@ void FileServer::updateRunning() {
     
     // FIX: Timeout safety for listActive - prevent permanent lockout
     if (listActive.load() && (millis() - listStartTime.load() > 60000)) {
-        Serial.println("[FILESERVER] List operation timeout, resetting listActive");
+        FS_LOGLN("[FILESERVER] List operation timeout, resetting listActive");
         listActive.store(false);
     }
 
@@ -3639,7 +3656,7 @@ void FileServer::handleRoot() {
     size_t freeHeap = 0;
     size_t largest = 0;
     if (isUiHeapLow(&freeHeap, &largest)) {
-        Serial.printf("[FILESERVER] Low heap for UI: free=%u largest=%u\n",
+        FS_LOGF("[FILESERVER] Low heap for UI: free=%u largest=%u\n",
                       (unsigned int)freeHeap, (unsigned int)largest);
         size_t sent = sendProgmemResponse(server, 503, "text/html; charset=utf-8", LOW_HEAP_PAGE);
         sessionTxBytes += sent;
@@ -3659,7 +3676,7 @@ void FileServer::handleStyle() {
     size_t freeHeap = 0;
     size_t largest = 0;
     if (isUiHeapLow(&freeHeap, &largest)) {
-        Serial.printf("[FILESERVER] Low heap for CSS: free=%u largest=%u\n",
+        FS_LOGF("[FILESERVER] Low heap for CSS: free=%u largest=%u\n",
                       (unsigned int)freeHeap, (unsigned int)largest);
         server->sendHeader("Connection", "close");
         server->send(503, "text/plain", "LOW HEAP");
@@ -3678,7 +3695,7 @@ void FileServer::handleScript() {
     size_t freeHeap = 0;
     size_t largest = 0;
     if (isUiHeapLow(&freeHeap, &largest)) {
-        Serial.printf("[FILESERVER] Low heap for JS: free=%u largest=%u\n",
+        FS_LOGF("[FILESERVER] Low heap for JS: free=%u largest=%u\n",
                       (unsigned int)freeHeap, (unsigned int)largest);
         server->sendHeader("Connection", "close");
         server->send(503, "text/plain", "LOW HEAP");
@@ -4056,7 +4073,7 @@ void FileServer::handleUploadProcess() {
         if (uploadFile) {
             size_t written = uploadFile.write(upload.buf, upload.currentSize);
             if (written != upload.currentSize) {
-                Serial.printf("[FILESERVER] Upload write failed: wrote %u/%u\n",
+                FS_LOGF("[FILESERVER] Upload write failed: wrote %u/%u\n",
                               (unsigned int)written, (unsigned int)upload.currentSize);
                 resetUploadState(true);
                 return;
@@ -4066,7 +4083,7 @@ void FileServer::handleUploadProcess() {
             yield(); // Feed watchdog during upload
         } else {
             // Safety check: if uploadFile is not open, reject the upload
-            Serial.println("[FILESERVER] Upload write attempted but no file open");
+            FS_LOGLN("[FILESERVER] Upload write attempted but no file open");
             resetUploadState(true);
             return;
         }
@@ -4083,7 +4100,7 @@ void FileServer::handleUploadProcess() {
     
     // Additional safety check: if upload takes too long, reset to prevent hanging
     if (uploadActive.load() && (millis() - uploadLastProgress.load() > 30000)) {  // 30 second timeout
-        Serial.println("[FILESERVER] Upload timeout detected, resetting upload state");
+        FS_LOGLN("[FILESERVER] Upload timeout detected, resetting upload state");
         resetUploadState(true);
     }
 }
@@ -4109,7 +4126,7 @@ static void recursiveYieldCheck() {
 // FIX: Use char buffer for path building to avoid String allocs in recursion
 static bool deletePathRecursiveInternal(const char* path, size_t pathLen, uint8_t depth) {
     if (depth > MAX_RECURSION_DEPTH) {
-        Serial.printf("[FILESERVER] Delete depth limit exceeded at: %s\n", path);
+        FS_LOGF("[FILESERVER] Delete depth limit exceeded at: %s\n", path);
         return false;  // Refuse to go deeper to protect stack
     }
     
@@ -4144,7 +4161,7 @@ static bool deletePathRecursiveInternal(const char* path, size_t pathLen, uint8_
         
         // Build child path in stack buffer
         if (pathLen + 1 + entryNameLen >= sizeof(childPath)) {
-            Serial.printf("[FILESERVER] Path too long in delete: %s/%s\n", path, entryName);
+            FS_LOGF("[FILESERVER] Path too long in delete: %s/%s\n", path, entryName);
             entry.close();
             dir.close();
             return false;
@@ -4404,7 +4421,7 @@ bool FileServer::copyFileChunked(const String& srcPath, const String& dstPath) {
             // FIX: Check timeout BEFORE updating lastTimeout (was broken - always 0)
             uint32_t now = millis();
             if (now - lastTimeout > 30000) {
-                Serial.println("[FILESERVER] Copy operation timed out");
+                FS_LOGLN("[FILESERVER] Copy operation timed out");
                 success = false;
                 break;
             }
@@ -4426,7 +4443,7 @@ bool FileServer::copyFileChunked(const String& srcPath, const String& dstPath) {
 // FIX: Optimized to use char buffers for path building to reduce heap allocs in recursion
 bool FileServer::copyPathRecursive(const String& srcPath, const String& dstPath, uint8_t depth) {
     if (depth > MAX_RECURSION_DEPTH) {
-        Serial.printf("[FILESERVER] Copy depth limit exceeded at: %s\n", srcPath.c_str());
+        FS_LOGF("[FILESERVER] Copy depth limit exceeded at: %s\n", srcPath.c_str());
         return false;
     }
     
@@ -4468,7 +4485,7 @@ bool FileServer::copyPathRecursive(const String& srcPath, const String& dstPath,
             // Build paths in stack buffers
             if (srcLen + 1 + nameLen >= sizeof(newSrcBuf) || 
                 dstLen + 1 + nameLen >= sizeof(newDstBuf)) {
-                Serial.printf("[FILESERVER] Path too long in copy: %s\n", name);
+                FS_LOGF("[FILESERVER] Path too long in copy: %s\n", name);
                 entry.close();
                 dir.close();
                 return false;
@@ -4726,3 +4743,4 @@ void FileServer::handleNotFound() {
 const char* FileServer::getHTML() {
     return HTML_TEMPLATE;
 }
+

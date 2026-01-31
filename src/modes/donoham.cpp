@@ -142,8 +142,8 @@ static struct {
 static volatile bool pendingIncompleteAdd = false;
 static IncompleteHS pendingIncomplete;
 // Minimum free heap to allow new handshake allocations (handshake struct is large)
-static const size_t DNH_HANDSHAKE_ALLOC_MIN_BLOCK = sizeof(CapturedHandshake) + 1024;
-static const size_t DNH_PMKID_ALLOC_MIN_BLOCK = sizeof(CapturedPMKID) + 256;
+static const size_t DNH_HANDSHAKE_ALLOC_MIN_BLOCK = sizeof(CapturedHandshake) + HeapPolicy::kHandshakeAllocSlack;
+static const size_t DNH_PMKID_ALLOC_MIN_BLOCK = sizeof(CapturedPMKID) + HeapPolicy::kPmkidAllocSlack;
 
 // Channel order: 1, 6, 11 first (non-overlapping), then fill in
 static const uint8_t CHANNEL_ORDER[] = {1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 5, 10};
@@ -177,15 +177,15 @@ void DoNoHamMode::start() {
 
     // Reserve memory for captures
     size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-    if (largest >= (sizeof(CapturedPMKID) * 8 + 256)) {
+    if (largest >= (sizeof(CapturedPMKID) * 8 + HeapPolicy::kReserveSlackSmall)) {
         pmkids.reserve(8);
     }
     largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-    if (largest >= (sizeof(CapturedHandshake) * 4 + 1024)) {
+    if (largest >= (sizeof(CapturedHandshake) * 4 + HeapPolicy::kReserveSlackLarge)) {
         handshakes.reserve(4);
     }
     largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-    if (largest >= (sizeof(IncompleteHS) * 8 + 256)) {
+    if (largest >= (sizeof(IncompleteHS) * 8 + HeapPolicy::kReserveSlackSmall)) {
         incompleteHandshakes.reserve(8);
     }
     
@@ -1310,7 +1310,7 @@ void DoNoHamMode::injectTestNetwork(const uint8_t* bssid, const char* ssid, uint
     // Need ~300 bytes per DetectedNetwork + vector realloc overhead (can double capacity)
     // Be very conservative: require 80KB free to allow for reallocation headroom
     size_t freeHeap = ESP.getFreeHeap();
-    if (freeHeap < 80000) {
+    if (freeHeap < HeapPolicy::kDnhInjectMinHeap) {
         // Silently drop - stress test is overwhelming the system
         return;
     }
