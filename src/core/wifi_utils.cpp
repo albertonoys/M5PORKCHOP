@@ -359,25 +359,29 @@ size_t conditionHeapForTLS() {
     // The WiFi driver's internal task needs time to reorganize buffers
     // Channel hopping ensures we receive packets on multiple channels
     const uint8_t channels[] = {1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 5, 10};
-    uint32_t steps = (dwellMs + 99) / 100;  // 100ms per step
+    const uint32_t stepMs = HeapPolicy::kConditioningStepMs;
+    uint32_t steps = (dwellMs + stepMs - 1) / stepMs;
     if (steps < 1) steps = 1;
     for (uint32_t i = 0; i < steps; i++) {
         esp_wifi_set_channel(channels[i % 13], WIFI_SECOND_CHAN_NONE);
-        delay(100);
+        delay(stepMs);
         yield();  // Let background tasks run
         
         // Check if heap has improved (early exit if already good)
         size_t currentLargest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-        if (i > 10 && currentLargest > HeapPolicy::kHeapStableThreshold) {
+        uint32_t elapsedMs = (i + 1) * stepMs;
+        if (elapsedMs > HeapPolicy::kConditioningWarmupMs &&
+            currentLargest > HeapPolicy::kHeapStableThreshold) {
             Serial.printf("[HEAP] Early exit at %dms - heap stabilized (pkts=%u)\n", 
-                          (int)((i + 1) * 100), brewPacketCount);
+                          (int)elapsedMs, brewPacketCount);
             break;
         }
         
         // Log progress every second
-        if ((i + 1) % 10 == 0) {
+        if (HeapPolicy::kConditioningLogIntervalMs > 0 &&
+            (elapsedMs % HeapPolicy::kConditioningLogIntervalMs) == 0) {
             Serial.printf("[HEAP] Brew %ds: free=%u largest=%u pkts=%u\n",
-                          (unsigned)((i + 1) / 10),
+                          (unsigned)(elapsedMs / 1000),
                           ESP.getFreeHeap(), currentLargest, brewPacketCount);
         }
     }
@@ -449,11 +453,12 @@ size_t brewHeap(uint32_t dwellMs, bool includeBleCleanup) {
     esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
 
     const uint8_t channels[] = {1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 5, 10};
-    uint32_t steps = dwellMs / 100;
+    const uint32_t stepMs = HeapPolicy::kConditioningStepMs;
+    uint32_t steps = (dwellMs + stepMs - 1) / stepMs;
     if (steps < 1) steps = 1;
     for (uint32_t i = 0; i < steps; i++) {
         esp_wifi_set_channel(channels[i % 13], WIFI_SECOND_CHAN_NONE);
-        delay(100);
+        delay(stepMs);
         yield();
     }
 

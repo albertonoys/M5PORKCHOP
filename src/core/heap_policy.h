@@ -58,7 +58,18 @@ namespace HeapPolicy {
 
     // Heap conditioning dwell times
     static constexpr uint32_t kConditioningDwellMs = 3000;
+    static constexpr uint32_t kConditioningStepMs = 100;
+    static constexpr uint32_t kConditioningWarmupMs = 1000;
+    static constexpr uint32_t kConditioningLogIntervalMs = 1000;
     static constexpr uint32_t kBrewDefaultDwellMs = 1000;
     static constexpr uint32_t kBrewAutoDwellMs = 1200;
     static constexpr uint32_t kBrewFileServerDwellMs = 2000;
+
+    // Boot conditioning delays
+    static constexpr int kBootFragYieldEvery = 10;
+    static constexpr uint32_t kBootFragYieldDelayMs = 2;
+    static constexpr uint32_t kBootStructAllocDelayMs = 1;
+    static constexpr uint32_t kBootFreeDelayMs = 1;
+    static constexpr uint32_t kBootTlsTestDelayMs = 1;
+    static constexpr uint32_t kBootFinalDelayMs = 200;
 }

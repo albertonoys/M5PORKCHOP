@@ -179,7 +179,9 @@ void performBootHeapConditioning() {
             memset(fragBlocks[i], 0xAA, FRAG_SIZE);
             fragAllocated++;
         }
-        if (i % 10 == 0) delay(2); // Periodic yield
+        if (i % HeapPolicy::kBootFragYieldEvery == 0) {
+            delay(HeapPolicy::kBootFragYieldDelayMs); // Periodic yield
+        }
     }
     Serial.printf("[BOOT] Fragmentation: %u/%u blocks (%uKB)\n", fragAllocated, FRAG_BLOCKS, (fragAllocated * FRAG_SIZE) / 1024);
 
@@ -196,7 +198,7 @@ void performBootHeapConditioning() {
             memset(structBlocks[i], 0xBB, STRUCT_SIZE);
             structAllocated++;
         }
-        delay(1);
+        delay(HeapPolicy::kBootStructAllocDelayMs);
     }
     Serial.printf("[BOOT] Structures: %u/%u blocks (%uKB)\n", structAllocated, STRUCT_BLOCKS, (structAllocated * STRUCT_SIZE) / 1024);
 
@@ -217,7 +219,7 @@ void performBootHeapConditioning() {
             free(fragBlocks[i]);
             fragBlocks[i] = nullptr;
         }
-        delay(1);
+        delay(HeapPolicy::kBootFreeDelayMs);
     }
 
     // Free remaining fragmentation blocks
@@ -242,12 +244,12 @@ void performBootHeapConditioning() {
         } else {
             Serial.printf("[BOOT] ❌ %s allocation failed\n", TLS_NAMES[i]);
         }
-        delay(1);
+        delay(HeapPolicy::kBootTlsTestDelayMs);
     }
 
     // Phase 5: Final consolidation with longer delay
     Serial.println("[BOOT] Phase 5: Final consolidation...");
-    delay(200);
+    delay(HeapPolicy::kBootFinalDelayMs);
     yield();
 
     // Log final heap state
