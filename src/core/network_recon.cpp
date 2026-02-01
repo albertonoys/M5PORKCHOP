@@ -720,6 +720,10 @@ uint8_t getCurrentChannel() {
     return currentChannel;
 }
 
+uint32_t getHopIntervalMs() {
+    return HOP_INTERVAL_MS;
+}
+
 uint32_t getPacketCount() {
     return packetCount;
 }

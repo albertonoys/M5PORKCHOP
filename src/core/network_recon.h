@@ -91,6 +91,7 @@ bool isHeapStable();
  * @brief Get current scanning channel
  */
 uint8_t getCurrentChannel();
+uint32_t getHopIntervalMs();
 
 /**
  * @brief Get packet count since start

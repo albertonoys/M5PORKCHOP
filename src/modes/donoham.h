@@ -21,7 +21,6 @@ static const uint16_t HOP_BASE_PRIMARY = 250;      // Ch 1,6,11 baseline
 static const uint16_t HOP_BASE_SECONDARY = 150;    // Other channels baseline
 static const uint16_t HOP_MIN = 120;               // Dead channel minimum
 static const uint16_t HUNT_DURATION = 600;         // EAPOL burst camp time
-static const uint16_t IDLE_SWEEP_TIME = 80;        // All-dead fast peek
 static const uint8_t BUSY_THRESHOLD = 5;           // Beacons = "busy"
 static const uint8_t DEAD_STREAK_LIMIT = 3;        // Visits = "dead"
 static const uint32_t HUNT_COOLDOWN_MS = 10000;    // 10s re-hunt delay
@@ -89,7 +88,6 @@ private:
     static DNHState state;
     static uint8_t currentChannel;
     static uint8_t channelIndex;
-    static uint32_t lastHopTime;
     static uint32_t dwellStartTime;
     static bool dwellResolved;
     
@@ -106,6 +104,7 @@ private:
     static uint8_t lastHuntChannel;
     static uint32_t lastStatsDecay;
     static uint8_t lastCycleActivity;      // Total beacons in last cycle
+    static uint32_t adaptiveDwellUntil;
     
     // Channel hopping
     static void startDwell();

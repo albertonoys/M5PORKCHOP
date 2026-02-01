@@ -54,7 +54,6 @@ bool DoNoHamMode::running = false;
 DNHState DoNoHamMode::state = DNHState::HOPPING;
 uint8_t DoNoHamMode::currentChannel = 1;
 uint8_t DoNoHamMode::channelIndex = 0;
-uint32_t DoNoHamMode::lastHopTime = 0;
 uint32_t DoNoHamMode::dwellStartTime = 0;
 bool DoNoHamMode::dwellResolved = false;
 
@@ -75,6 +74,7 @@ uint32_t DoNoHamMode::lastHuntTime = 0;
 uint8_t DoNoHamMode::lastHuntChannel = 0;
 uint32_t DoNoHamMode::lastStatsDecay = 0;
 uint8_t DoNoHamMode::lastCycleActivity = 0;
+uint32_t DoNoHamMode::adaptiveDwellUntil = 0;
 
 // Guard flag for race condition prevention
 static volatile bool dnhBusy = false;
@@ -123,7 +123,7 @@ static PendingHandshakeFrame pendingHandshake;
 static volatile bool pendingHandshakeCapture = false;
 static char pendingHandshakeSSID[33] = {0};
 
-// Deferred save flag - set during update(), processed in stop() after promiscuous disabled
+// Deferred save flag - set during update(), processed with short recon pauses
 // Avoids SD/WiFi SPI bus contention that can cause crashes
 static volatile bool pendingSaveFlag = false;
 
@@ -211,7 +211,7 @@ void DoNoHamMode::start() {
     currentChannel = NetworkRecon::getCurrentChannel();
     int startIdx = channelToIndex(currentChannel);
     channelIndex = (startIdx >= 0) ? (uint8_t)startIdx : 0;
-    lastHopTime = millis();
+    adaptiveDwellUntil = 0;
     lastCleanupTime = millis();
     lastSaveTime = millis();
     lastMoodTime = millis();
@@ -318,11 +318,14 @@ void DoNoHamMode::update() {
     dnhBusy = true;
 
     // Sync channel state from NetworkRecon
+    uint8_t prevChannel = currentChannel;
     currentChannel = NetworkRecon::getCurrentChannel();
     int chanIdx = channelToIndex(currentChannel);
     if (chanIdx >= 0) {
         channelIndex = (uint8_t)chanIdx;
     }
+    bool channelChanged = (currentChannel != prevChannel);
+    // channelChanged already captures current channel transitions
     
     // Network discovery is handled by NetworkRecon; DNH does not mutate shared networks.
     
@@ -441,6 +444,7 @@ void DoNoHamMode::update() {
             if (state == DNHState::DWELLING) {
                 state = DNHState::HOPPING;
                 dwellResolved = false;
+                adaptiveDwellUntil = 0;
             }
         }
     }
@@ -579,18 +583,40 @@ void DoNoHamMode::update() {
     switch (state) {
         case DNHState::HOPPING:
             {
-                if (NetworkRecon::isChannelLocked()) {
+                // Clear any expired adaptive dwell lock
+                if (adaptiveDwellUntil != 0 && now >= adaptiveDwellUntil) {
+                    adaptiveDwellUntil = 0;
+                    if (NetworkRecon::isChannelLocked()) {
+                        NetworkRecon::unlockChannel();
+                    }
+                }
+
+                if (adaptiveDwellUntil != 0) {
+                    if (checkHuntingTrigger()) {
+                        adaptiveDwellUntil = 0;
+                    }
+                }
+
+                if (adaptiveDwellUntil == 0 && NetworkRecon::isChannelLocked()) {
                     NetworkRecon::unlockChannel();
                 }
-                uint32_t hopDelay = getAdaptiveHopDelay();
-                if (now - lastHopTime > hopDelay) {
-                    lastHopTime = now;
-                    
+
+                if (channelChanged) {
                     // Check if we should enter HUNTING mode after hop
                     bool enteredHunting = checkHuntingTrigger();
                     if (!enteredHunting) {
                         // Check if all channels are dead -> IDLE_SWEEP
                         checkIdleSweep();
+
+                        // Adaptive dwell: extend time on busy channels beyond recon hop interval
+                        uint32_t desiredDwell = getAdaptiveHopDelay();
+                        uint32_t baseHop = NetworkRecon::getHopIntervalMs();
+                        if (desiredDwell > baseHop) {
+                            adaptiveDwellUntil = now + (desiredDwell - baseHop);
+                            if (!NetworkRecon::isChannelLocked()) {
+                                NetworkRecon::lockChannel(currentChannel);
+                            }
+                        }
                     }
                 }
             }
@@ -618,6 +644,7 @@ void DoNoHamMode::update() {
                 state = DNHState::HOPPING;
                 lastHuntTime = now;
                 lastHuntChannel = currentChannel;
+                adaptiveDwellUntil = 0;
                 if (NetworkRecon::isChannelLocked()) {
                     NetworkRecon::unlockChannel();
                 }
@@ -630,11 +657,10 @@ void DoNoHamMode::update() {
                 if (NetworkRecon::isChannelLocked()) {
                     NetworkRecon::unlockChannel();
                 }
-                uint32_t peekDelay = IDLE_SWEEP_TIME;
-                if (now - lastHopTime > peekDelay) {
-                    lastHopTime = now;
-                    
-                    // If we see ANY activity, exit IDLE_SWEEP
+                adaptiveDwellUntil = 0;
+
+                // If we see ANY activity, exit IDLE_SWEEP
+                if (channelChanged) {
                     int idx = (int)channelIndex;
                     if (idx >= 0 && idx < 13) {
                         if (channelStats[idx].beaconCount > 0 || channelStats[idx].eapolCount > 0) {
@@ -672,11 +698,24 @@ void DoNoHamMode::update() {
         lastStatsDecay = now;
     }
     
-    // Backup save flag (every 30 seconds) - catches any missed immediate saves
-    // Actual save deferred to stop() after WiFi promiscuous disabled
+    // Backup save (every 30 seconds) - catches any missed immediate saves
+    // Pause NetworkRecon during SD writes to avoid SPI contention
     if (now - lastSaveTime > 30000) {
-        pendingSaveFlag = true;  // Will be processed in stop() after WiFi off
+        pendingSaveFlag = true;
         lastSaveTime = now;
+    }
+    if (pendingSaveFlag) {
+        pendingSaveFlag = false;
+        bool pausedByUs = false;
+        if (NetworkRecon::isRunning()) {
+            NetworkRecon::pause();
+            pausedByUs = true;
+        }
+        saveAllPMKIDs();
+        saveAllHandshakes();
+        if (pausedByUs) {
+            NetworkRecon::resume();
+        }
     }
     
     // Mood update (every 3 seconds)
@@ -749,6 +788,7 @@ bool DoNoHamMode::checkHuntingTrigger() {
         huntStartTime = now;
         lastHuntChannel = currentChannel;
         lastHuntTime = now;
+        adaptiveDwellUntil = 0;
         if (!NetworkRecon::isChannelLocked()) {
             NetworkRecon::lockChannel(currentChannel);
         }
@@ -813,6 +853,7 @@ void DoNoHamMode::startDwell() {
     state = DNHState::DWELLING;
     dwellStartTime = millis();
     dwellResolved = false;
+    adaptiveDwellUntil = 0;
     if (!NetworkRecon::isChannelLocked()) {
         NetworkRecon::lockChannel(currentChannel);
     }
