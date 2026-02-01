@@ -73,6 +73,13 @@ namespace HeapPolicy {
     static constexpr uint32_t kBleStopDelayMs = 50;
     static constexpr uint32_t kBleDeinitDelayMs = 100;
 
+    // NTP sync policy
+    static constexpr int kNtpRssiMinDbm = -60;
+    static constexpr uint32_t kNtpTimeoutMs = 6000;
+    static constexpr uint32_t kNtpMinFreeHeap = 20000;
+    static constexpr uint32_t kNtpMinContig = 8000;
+    static constexpr uint32_t kNtpRetryCooldownMs = 60000;
+
     // Boot conditioning delays
     static constexpr int kBootFragYieldEvery = 10;
     static constexpr uint32_t kBootFragYieldDelayMs = 2;

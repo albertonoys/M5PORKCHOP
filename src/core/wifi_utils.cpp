@@ -9,6 +9,7 @@
 #include <NimBLEDevice.h>  // For BLE deinit during heap conditioning
 #include "heap_health.h"
 #include "heap_policy.h"
+#include "heap_gates.h"
 
 namespace WiFiUtils {
 
@@ -19,6 +20,7 @@ static size_t tlsReserveSize = 0;
 static bool tlsReserveReleased = false;
 static SemaphoreHandle_t timeSyncMutex = nullptr;
 static uint32_t lastTimeSyncMs = 0;
+static bool timeSyncedThisBoot = false;
 
 // Initialize all mutexes safely during setup
 static bool initialized = false;
@@ -216,6 +218,43 @@ bool ensureTimeSynced(uint32_t timeoutMs, bool force) {
 
     xSemaphoreGive(timeSyncMutex);
     return isTimeValid();
+}
+
+TimeSyncStatus maybeSyncTimeForFileTransfer() {
+    // Respect one successful sync per boot.
+    if (timeSyncedThisBoot && isTimeValid()) {
+        return TimeSyncStatus::SKIP_ALREADY_SYNCED;
+    }
+
+    if (WiFi.status() != WL_CONNECTED) {
+        return TimeSyncStatus::SKIP_NOT_CONNECTED;
+    }
+
+    int rssi = WiFi.RSSI();
+    if (rssi < HeapPolicy::kNtpRssiMinDbm) {
+        return TimeSyncStatus::SKIP_LOW_RSSI;
+    }
+
+    HeapGates::GateStatus gate = HeapGates::checkGate(
+        HeapPolicy::kNtpMinFreeHeap,
+        HeapPolicy::kNtpMinContig);
+    if (gate.failure != HeapGates::TlsGateFailure::None) {
+        return TimeSyncStatus::SKIP_LOW_HEAP;
+    }
+
+    uint32_t now = millis();
+    if (lastTimeSyncMs != 0 &&
+        (now - lastTimeSyncMs) < HeapPolicy::kNtpRetryCooldownMs) {
+        return TimeSyncStatus::SKIP_ALREADY_SYNCED;
+    }
+
+    bool ok = ensureTimeSynced(HeapPolicy::kNtpTimeoutMs, false);
+    lastTimeSyncMs = now;
+    if (ok) {
+        timeSyncedThisBoot = true;
+        return TimeSyncStatus::OK;
+    }
+    return TimeSyncStatus::FAIL_TIMEOUT;
 }
 
 void hardReset() {

@@ -3569,6 +3569,7 @@ void FileServer::updateConnecting() {
     uint32_t elapsed = millis() - connectStartTime;
     
     if (WiFi.status() == WL_CONNECTED) {
+        WiFiUtils::maybeSyncTimeForFileTransfer();
         startServer();
         return;
     }
