@@ -251,7 +251,7 @@ void Porkchop::init() {
             "HEALTH BAR IS HEAP HEALTH.\n"
             "LARGEST CONTIG DRIVES TLS.\n"
             "FRAGMENTATION YOINKS IT.\n"
-            "BREW FIXES.",
+            "BREW FIXES. JAH BLESS DI RF.",
             5000
         );
     }
