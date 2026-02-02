@@ -95,7 +95,7 @@
     - four distinct moods (discovered, not explained)
     - a complicated relationship with your router
     - more emotional intelligence than most devs
-      (including us. especially us. valid.)
+      (including us. especially us.)
     
     it's not a vandalism kit.
     it's a learning tool.
@@ -118,7 +118,7 @@
         - run spectrum view + client monitor
         - see who's connected to what
         - realize your smart fridge has better WiFi than you
-        - question your IoT purchasing decisions. valid.
+        - question your IoT purchasing decisions.
 
     WARDRIVE:
         - GPS-tagged network mapping
@@ -156,7 +156,7 @@
 ----[ 1.4 - UNDER THE HOOD (Architecture)
 
     for the silicon gourmets. the ones who read datasheets for fun.
-    the ones who pronounce "char" three different ways. valid.
+    the ones who pronounce "char" three different ways.
     
     THE CORE:
     single-threaded cooperative loop. no RTOS tasks cluttering the
@@ -185,7 +185,7 @@
     we learned this the hard way. the crash dumps remember.
 
     OINK bounce: switching OINK -> IDLE can reclaim heap.
-    it's percussive maintenance. for memory. valid.
+    it's percussive maintenance. for memory.
     
     this feeds the HEALTH BAR. (see section 3.4).
     if health drops, the pig can't talk to the cloud.
@@ -201,7 +201,7 @@
         OTA_AVAILABLE, LOW_BATTERY
     
     the pig listens to all of them. the pig processes feelings.
-    the pig is a state machine with opinions. valid.
+    the pig is a state machine with opinions.
 
     THE STATE MACHINE:
     PorkchopMode enum. one mode active at a time.
@@ -233,7 +233,7 @@
     each mode changes the pig. something happens to its vocabulary.
     something happens to its priorities. this is not a bug.
     this is character development. this is what happens when 
-    devs work at 3am and nobody stops them. valid.
+    devs work at 3am and nobody stops them.
 
     the pig wakes up different depending on what you ask of it.
     you'll notice. or you won't. both are valid.
@@ -394,7 +394,7 @@
         - 2.4GHz spectrum visualization (channels 1-14)
         - gaussian lobes per network (RSSI = height, ego = width)
         - VULN indicator for weak security (WEP/OPEN)
-          (WEP in 2024+. these networks have given up. valid.)
+          (WEP in 2024+. these networks have given up.)
         - BRO indicator for networks in boar_bros.txt
         - dial mode (tilt to tune - accelerometer channel select)
           (Cardputer-Adv only - requires BMI270 IMU. original lacks tilt.)
@@ -529,7 +529,7 @@
     ignoring those needs has other consequences.
     
     we added psychology to a WiFi tool. we have problems.
-    shipped anyway. valid.
+    shipped anyway.
 
 
 ----[ 3.1 - MOOD SYSTEM
@@ -584,7 +584,7 @@
         the pig respects circadian rhythms.
         the pig has better sleep hygiene than you.
         the pig is judging your 4am coding session.
-        we feel attacked by our own creation. valid.
+        we feel attacked by our own creation.
 
 
 ----[ 3.3 - WEATHER SYSTEM
@@ -644,7 +644,7 @@
     we have removed the documentation for this section.
     why? because knowing the algorithm changes the behavior.
     also because the lawyers said "plausible deniability is a feature."
-    also because mystery is fun. valid.
+    also because mystery is fun.
     
     you are the rat. this is the maze.
     find the cheese.
@@ -718,7 +718,7 @@
     
     (hint: the pig likes WiFi. feed it.)
     (hint: the pig likes captures. feed it more.)
-    (hint: the pig likes you. questionable taste. valid.)
+    (hint: the pig likes you. questionable taste.)
 
 
 ----[ 4.4 - TROPHIES (64 little boxes of validation)
@@ -1385,7 +1385,7 @@
     "the pig looks sad"
         → feed it captures.
         → take it for a wardrive.
-        → you're both going through something. valid.
+        → you're both going through something.
 
 
 ----[ 12.2 - WHEN ALL ELSE FAILS
