@@ -9,8 +9,8 @@
 #include <FS.h>
 #include "../core/network_recon.h"
 
-// Maximum clients to track per network
-#define MAX_CLIENTS_PER_NETWORK 20  // Dense environment support (conferences, airports)
+// Maximum clients to track for the current target (dense environments)
+#define MAX_CLIENTS_PER_NETWORK 20
 
 struct DetectedClient {
     uint8_t mac[6];
@@ -31,9 +31,7 @@ struct DetectedNetwork {
     bool hasHandshake;  // Already captured handshake for this network
     uint8_t attackAttempts;  // Number of attack attempts (for retry logic)
     bool isHidden;  // Hidden SSID (needs probe response)
-    DetectedClient clients[MAX_CLIENTS_PER_NETWORK];
-    uint8_t clientCount;
-    uint32_t lastClientSeen;   // millis() of most recent client activity
+    uint32_t lastDataSeen;     // millis() of most recent client data frame
     uint32_t cooldownUntil;    // millis() until eligible for auto-target
 };
 
@@ -191,6 +189,8 @@ private:
     static uint8_t targetBssidCache[6];
     static bool targetHiddenCache;
     static bool targetCacheValid;
+    static DetectedClient targetClients[MAX_CLIENTS_PER_NETWORK];
+    static uint8_t targetClientCount;
     static int selectionIndex;  // Cursor for network selection
     static volatile uint32_t packetCount;
     static uint32_t deauthCount;
@@ -212,7 +212,8 @@ private:
     static void sendDisassocFrame(const uint8_t* bssid, const uint8_t* station, uint8_t reason);
     static void sendAssociationRequest(const uint8_t* bssid, const char* ssid, uint8_t ssidLen);
     static void hopChannel();
-    static void trackClient(const uint8_t* bssid, const uint8_t* clientMac, int8_t rssi);
+    static void trackTargetClient(const uint8_t* bssid, const uint8_t* clientMac, int8_t rssi);
+    static void clearTargetClients();
     static bool detectPMF(const uint8_t* payload, uint16_t len);
 
     static int findNetwork(const uint8_t* bssid);

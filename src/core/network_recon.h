@@ -7,9 +7,6 @@
 #include <esp_wifi.h>
 #include <vector>
 
-// Maximum clients to track per network (shared with modes)
-#define MAX_CLIENTS_PER_NETWORK 20
-
 // Maximum networks to track
 #define MAX_RECON_NETWORKS 200
 

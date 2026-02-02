@@ -152,6 +152,8 @@ uint8_t OinkMode::targetClientCountCache = 0;
 uint8_t OinkMode::targetBssidCache[6] = {0};
 bool OinkMode::targetHiddenCache = false;
 bool OinkMode::targetCacheValid = false;
+DetectedClient OinkMode::targetClients[MAX_CLIENTS_PER_NETWORK] = {};
+uint8_t OinkMode::targetClientCount = 0;
 int OinkMode::selectionIndex = 0;
 volatile uint32_t OinkMode::packetCount = 0;
 uint32_t OinkMode::deauthCount = 0;
@@ -323,6 +325,7 @@ void OinkMode::init() {
     
     targetIndex = -1;
     memset(targetBssid, 0, 6);
+    clearTargetClients();
     selectionIndex = 0;
     packetCount = 0;
     deauthCount = 0;
@@ -416,6 +419,7 @@ void OinkMode::stop() {
     beaconFrame = beaconFrameStorage;
     beaconFrameLen = 0;
     beaconCaptured = false;
+    clearTargetClients();
     
     // Free per-handshake beacon memory to prevent leaks on repeated start/stop
     for (auto& hs : handshakes) {
@@ -934,15 +938,15 @@ void OinkMode::update() {
                 channelHopping = true;
                 targetIndex = -1;
                 memset(targetBssid, 0, 6);
+                clearTargetClients();
                 break;
             }
 
             targetIndex = foundIdx;
             {
                 uint32_t lockElapsed = now - stateStartTime;
-                bool hasRecentClient = (targetCopy.clientCount > 0) &&
-                    targetCopy.lastClientSeen > 0 &&
-                    (now - targetCopy.lastClientSeen) <= CLIENT_RECENT_MS;
+                bool hasRecentClient = (targetCopy.lastDataSeen > 0) &&
+                    (now - targetCopy.lastDataSeen) <= CLIENT_RECENT_MS;
 
                 if (!hasRecentClient && lockElapsed >= LOCK_EARLY_EXIT_MS) {
                     autoState = AutoState::NEXT_TARGET;
@@ -951,6 +955,7 @@ void OinkMode::update() {
                     channelHopping = true;
                     targetIndex = -1;
                     memset(targetBssid, 0, 6);
+                    clearTargetClients();
                     break;
                 }
 
@@ -996,17 +1001,21 @@ void OinkMode::update() {
                         strncpy(targetSSIDLocal, networks()[i].ssid, 32);
                         targetSSIDLocal[32] = 0;
                         targetHasPMF = networks()[i].hasPMF;
-                        clientCountLocal = networks()[i].clientCount;
-                        if (clientCountLocal > MAX_CLIENTS_PER_NETWORK) {
-                            clientCountLocal = MAX_CLIENTS_PER_NETWORK;
-                        }
-                        for (uint8_t c = 0; c < clientCountLocal; c++) {
-                            memcpy(clientMacs[c], networks()[i].clients[c].mac, 6);
-                        }
                         break;
                     }
                 }
                 NetworkRecon::exitCritical();
+
+                if (targetFound) {
+                    clientCountLocal = targetClientCount;
+                    if (clientCountLocal > MAX_CLIENTS_PER_NETWORK) {
+                        clientCountLocal = MAX_CLIENTS_PER_NETWORK;
+                    }
+                    for (uint8_t c = 0; c < clientCountLocal; c++) {
+                        memcpy(clientMacs[c], targetClients[c].mac, 6);
+                    }
+                }
+
                 oinkBusy = wasBusy;
 
                 if (!targetFound) {
@@ -1016,6 +1025,7 @@ void OinkMode::update() {
                     channelHopping = true;
                     targetIndex = -1;
                     memset(targetBssid, 0, 6);
+                    clearTargetClients();
                     break;
                 }
 
@@ -1236,6 +1246,7 @@ void OinkMode::update() {
                     deauthing = false;
                     channelHopping = true;
                     memset(targetBssid, 0, 6);
+                    clearTargetClients();
                 }
             }
         }
@@ -1288,6 +1299,7 @@ void OinkMode::update() {
                 deauthing = false;
                 channelHopping = true;
                 memset(targetBssid, 0, 6);
+                clearTargetClients();
             }
         }
         
@@ -1315,6 +1327,7 @@ void OinkMode::stopScan() {
 
 void OinkMode::selectTarget(int index) {
     if (index >= 0 && index < (int)networks().size()) {
+        clearTargetClients();
         targetIndex = index;
         memcpy(targetBssid, networks()[index].bssid, 6);  // Store BSSID
         networks()[index].isTarget = true;
@@ -1341,6 +1354,7 @@ void OinkMode::clearTarget() {
     }
     targetIndex = -1;
     memset(targetBssid, 0, 6);
+    clearTargetClients();
     deauthing = false;
     channelHopping = true;
     // Unlock channel so NetworkRecon resumes hopping
@@ -1583,7 +1597,7 @@ void OinkMode::processDataFrame(const uint8_t* payload, uint16_t len, int8_t rss
     if (bssid && clientMac) {
         // Don't track broadcast/multicast
         if ((clientMac[0] & 0x01) == 0) {
-            trackClient(bssid, clientMac, rssi);
+            trackTargetClient(bssid, clientMac, rssi);
         }
     }
     
@@ -2774,62 +2788,53 @@ void OinkMode::sendAssociationRequest(const uint8_t* bssid, const char* ssid, ui
     esp_wifi_80211_tx(WIFI_IF_STA, assocReq, bodyOffset, false);
 }
 
-void OinkMode::trackClient(const uint8_t* bssid, const uint8_t* clientMac, int8_t rssi) {
-    int netIdx = findNetwork(bssid);
-    if (netIdx < 0) return;
-    
-    // Protect all network vector accesses with spinlock
-    NetworkRecon::enterCritical();
-    
-    // Revalidate index after acquiring lock
-    if (netIdx >= (int)networks().size()) {
-        NetworkRecon::exitCritical();
-        return;
-    }
-    
-    DetectedNetwork& net = networks()[netIdx];
+void OinkMode::clearTargetClients() {
+    targetClientCount = 0;
+    targetClientCountCache = 0;
+    memset(targetClients, 0, sizeof(targetClients));
+}
+
+void OinkMode::trackTargetClient(const uint8_t* bssid, const uint8_t* clientMac, int8_t rssi) {
+    if (targetIndex < 0) return;
+    if (memcmp(bssid, targetBssid, 6) != 0) return;
+
     uint32_t now = millis();
-    
+
     // Check if client already tracked
-    for (int i = 0; i < net.clientCount; i++) {
-        if (memcmp(net.clients[i].mac, clientMac, 6) == 0) {
-            net.clients[i].rssi = rssi;
-            net.clients[i].lastSeen = now;
-            net.lastClientSeen = now;
-            NetworkRecon::exitCritical();
+    for (uint8_t i = 0; i < targetClientCount; i++) {
+        if (memcmp(targetClients[i].mac, clientMac, 6) == 0) {
+            targetClients[i].rssi = rssi;
+            targetClients[i].lastSeen = now;
             return;
         }
     }
-    
+
     // LRU eviction: if at capacity, evict stalest client (not seen in 30s)
-    if (net.clientCount >= MAX_CLIENTS_PER_NETWORK) {
+    if (targetClientCount >= MAX_CLIENTS_PER_NETWORK) {
         int stalestIdx = -1;
         uint32_t oldestTime = now;
-        for (int i = 0; i < net.clientCount; i++) {
-            if (net.clients[i].lastSeen < oldestTime) {
-                oldestTime = net.clients[i].lastSeen;
+        for (uint8_t i = 0; i < targetClientCount; i++) {
+            if (targetClients[i].lastSeen < oldestTime) {
+                oldestTime = targetClients[i].lastSeen;
                 stalestIdx = i;
             }
         }
         // Evict stale client (>30s old) to make room
         if (stalestIdx >= 0 && (millis() - oldestTime > 30000)) {
-            net.clients[stalestIdx] = net.clients[net.clientCount - 1];
-            net.clientCount--;
+            targetClients[stalestIdx] = targetClients[targetClientCount - 1];
+            targetClientCount--;
         } else {
-            NetworkRecon::exitCritical();
             return;  // All clients fresh, give up
         }
     }
-    
+
     // Add new client if room
-    if (net.clientCount < MAX_CLIENTS_PER_NETWORK) {
-        memcpy(net.clients[net.clientCount].mac, clientMac, 6);
-        net.clients[net.clientCount].rssi = rssi;
-        net.clients[net.clientCount].lastSeen = now;
-        net.clientCount++;
-        net.lastClientSeen = now;
+    if (targetClientCount < MAX_CLIENTS_PER_NETWORK) {
+        memcpy(targetClients[targetClientCount].mac, clientMac, 6);
+        targetClients[targetClientCount].rssi = rssi;
+        targetClients[targetClientCount].lastSeen = now;
+        targetClientCount++;
     }
-    NetworkRecon::exitCritical();
 }
 
 bool OinkMode::detectPMF(const uint8_t* payload, uint16_t len) {
@@ -2908,7 +2913,7 @@ void OinkMode::updateTargetCache() {
         const DetectedNetwork& net = networks()[targetIndex];
         strncpy(targetSSIDCache, net.ssid, 32);
         targetSSIDCache[32] = 0;
-        targetClientCountCache = net.clientCount;
+        targetClientCountCache = targetClientCount;
         targetHiddenCache = net.isHidden;
         memcpy(targetBssidCache, net.bssid, sizeof(targetBssidCache));
         targetCacheValid = true;
@@ -2955,11 +2960,10 @@ void OinkMode::sortNetworksByPriority() {
             int priority = 50;  // Base
             
             // Has clients = much higher priority (deauth more likely to work)
-            if (net.clientCount > 0 &&
-                net.lastClientSeen > 0 &&
-                (now - net.lastClientSeen) <= CLIENT_RECENT_MS) {
+            if (net.lastDataSeen > 0 &&
+                (now - net.lastDataSeen) <= CLIENT_RECENT_MS) {
                 priority -= 30;
-            } else if (net.clientCount > 0) {
+            } else if (net.lastDataSeen > 0) {
                 priority -= 10;
             }
             
@@ -3003,6 +3007,7 @@ void OinkMode::sortNetworksByPriority() {
             deauthing = false;
             channelHopping = true;
             memset(targetBssid, 0, 6);
+            clearTargetClients();
         }
     }
 
@@ -3020,9 +3025,8 @@ int OinkMode::getNextTarget() {
     // First pass: networks with clients, no handshake, attackAttempts < 3
     uint32_t now = millis();
     auto hasRecentClient = [now](const DetectedNetwork& net) {
-        return net.clientCount > 0 &&
-            net.lastClientSeen > 0 &&
-            (now - net.lastClientSeen) <= CLIENT_RECENT_MS;
+        return net.lastDataSeen > 0 &&
+            (now - net.lastDataSeen) <= CLIENT_RECENT_MS;
     };
 
     int result = -1;
@@ -3081,7 +3085,7 @@ int OinkMode::getNextTarget() {
             if (networks()[i].hasPMF) continue;
             if (networks()[i].hasHandshake) continue;
             if (networks()[i].authmode == WIFI_AUTH_OPEN) continue;
-            if (networks()[i].clientCount > 0) {
+            if (networks()[i].lastDataSeen > 0) {
                 result = i;
                 break;
             }
@@ -3267,8 +3271,7 @@ void OinkMode::injectTestNetwork(const uint8_t* bssid, const char* ssid, uint8_t
     net.hasHandshake = false;
     net.attackAttempts = 0;
     net.isHidden = (!ssid || ssid[0] == 0);
-    net.clientCount = 0;
-    net.lastClientSeen = 0;
+    net.lastDataSeen = 0;
     net.cooldownUntil = 0;
     
     try {
@@ -3311,6 +3314,7 @@ bool OinkMode::excludeNetwork(int index) {
         channelHopping = true;
         targetIndex = -1;
         memset(targetBssid, 0, 6);
+        clearTargetClients();
         autoState = AutoState::NEXT_TARGET;
         stateStartTime = millis();
     }

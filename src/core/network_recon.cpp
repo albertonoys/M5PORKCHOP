@@ -167,8 +167,7 @@ static void processBeacon(const uint8_t* payload, uint16_t len, int8_t rssi) {
             net.hasHandshake = false;
             net.attackAttempts = 0;
             net.isHidden = false;
-            net.clientCount = 0;
-            net.lastClientSeen = 0;
+            net.lastDataSeen = 0;
             net.cooldownUntil = 0;
             
             // Parse SSID from IE
@@ -333,41 +332,19 @@ static void processProbeResponse(const uint8_t* payload, uint16_t len, int8_t rs
     taskEXIT_CRITICAL(&vectorMux);
 }
 
-static void trackClient(const uint8_t* bssid, const uint8_t* clientMac, int8_t rssi) {
+static void markDataActivity(const uint8_t* bssid) {
     taskENTER_CRITICAL(&vectorMux);
-    
+
     int idx = findNetworkInternal(bssid);
-    if (idx < 0 || idx >= (int)networks.size()) {
-        taskEXIT_CRITICAL(&vectorMux);
-        return;
+    if (idx >= 0 && idx < (int)networks.size()) {
+        networks[idx].lastDataSeen = millis();
     }
-    
-    DetectedNetwork& net = networks[idx];
-    
-    // Check if client already tracked
-    for (uint8_t i = 0; i < net.clientCount; i++) {
-        if (memcmp(net.clients[i].mac, clientMac, 6) == 0) {
-            net.clients[i].rssi = rssi;
-            net.clients[i].lastSeen = millis();
-            net.lastClientSeen = millis();
-            taskEXIT_CRITICAL(&vectorMux);
-            return;
-        }
-    }
-    
-    // Add new client if space available
-    if (net.clientCount < MAX_CLIENTS_PER_NETWORK) {
-        memcpy(net.clients[net.clientCount].mac, clientMac, 6);
-        net.clients[net.clientCount].rssi = rssi;
-        net.clients[net.clientCount].lastSeen = millis();
-        net.clientCount++;
-        net.lastClientSeen = millis();
-    }
-    
+
     taskEXIT_CRITICAL(&vectorMux);
 }
 
 static void processDataFrame(const uint8_t* payload, uint16_t len, int8_t rssi) {
+    (void)rssi;
     if (len < 28) return;
     
     uint8_t toDs = (payload[1] & 0x01);
@@ -386,7 +363,7 @@ static void processDataFrame(const uint8_t* payload, uint16_t len, int8_t rssi) 
     
     if (bssid && clientMac) {
         if ((clientMac[0] & 0x01) == 0) {
-            trackClient(bssid, clientMac, rssi);
+            markDataActivity(bssid);
         }
     }
 }

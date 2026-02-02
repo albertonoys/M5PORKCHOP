@@ -1393,7 +1393,7 @@ void DoNoHamMode::injectTestNetwork(const uint8_t* bssid, const char* ssid, uint
         net.hasHandshake = false;
         net.attackAttempts = 0;
         net.isHidden = (!ssid || ssid[0] == 0);
-        net.clientCount = 0;
+        net.lastDataSeen = 0;
         
         networks().push_back(net);
     } catch (...) {
