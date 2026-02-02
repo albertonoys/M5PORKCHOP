@@ -27,7 +27,6 @@ uint32_t ChargingMode::lastUpdateMs = 0;
 
 uint8_t ChargingMode::animFrame = 0;
 uint32_t ChargingMode::lastAnimMs = 0;
-bool ChargingMode::barsHidden = false;
 uint32_t ChargingMode::unplugDetectMs = 0;
 float ChargingMode::lastEstimateVoltage = 0.0f;
 uint32_t ChargingMode::lastEstimateMs = 0;
@@ -48,7 +47,6 @@ void ChargingMode::init() {
     batteryVoltage = 0.0f;
     charging = false;
     minutesToFull = -1;
-    barsHidden = false;
     unplugDetectMs = 0;
     lastEstimateVoltage = 0.0f;
     lastEstimateMs = 0;
@@ -102,7 +100,6 @@ void ChargingMode::start() {
     running = true;
     exitRequested = false;
     keyWasPressed = true;  // Prevent immediate key detection
-    barsHidden = true;
     unplugDetectMs = 0;
     lastEstimateVoltage = 0.0f;
     lastEstimateMs = 0;
@@ -129,7 +126,6 @@ void ChargingMode::stop() {
     
     running = false;
     exitRequested = false;
-    barsHidden = false;
     unplugDetectMs = 0;
     lastEstimateVoltage = 0.0f;
     lastEstimateMs = 0;
@@ -296,7 +292,7 @@ int ChargingMode::estimateMinutesToFull() {
     // Estimate time to 4.20V (full)
     float remainingV = 4.20f - batteryVoltage;
     if (remainingV <= 0) {
-        lastAvgVoltage = batteryVoltage;
+        lastEstimateVoltage = batteryVoltage;
         lastEstimateMs = now;
         return 0;  // Already full
     }
@@ -332,75 +328,59 @@ void ChargingMode::draw(M5Canvas& canvas) {
     } else {
         snprintf(titleBuf, sizeof(titleBuf), "BATTERY");
     }
-    canvas.drawString(titleBuf, DISPLAY_W / 2, 4);
-    
-    // Large battery bar
-    int barX = 30;
-    int barY = 30;
-    int barW = DISPLAY_W - 60;
-    int barH = 30;
-    int barTipW = 6;
-    int barTipH = 14;
-    
-    // Battery outline
-    canvas.drawRect(barX, barY, barW, barH, fg);
-    canvas.drawRect(barX + 1, barY + 1, barW - 2, barH - 2, fg);
-    
-    // Battery tip (positive terminal)
-    canvas.fillRect(barX + barW, barY + (barH - barTipH) / 2, barTipW, barTipH, fg);
-    
-    // Fill level
-    int fillW = (barW - 6) * batteryPercent / 100;
-    if (fillW > 0) {
-        // Animated fill when charging
-        if (charging) {
-            int animOffset = (animFrame * (barW - 6) / 4) % (barW - 6);
-            int startFill = (batteryPercent < 100) ? fillW : 0;
-            
-            // Base fill
-            canvas.fillRect(barX + 3, barY + 3, fillW, barH - 6, fg);
-            
-            // Animated "charging" segment
-            if (batteryPercent < 100) {
-                int segW = 15;
-                int segX = barX + 3 + fillW + (animFrame * 5);
-                if (segX + segW < barX + barW - 3) {
-                    canvas.fillRect(segX, barY + 3, segW, barH - 6, fg);
-                }
-            }
-        } else {
-            canvas.fillRect(barX + 3, barY + 3, fillW, barH - 6, fg);
-        }
-    }
-    
-    // Large percentage
-    canvas.setTextSize(3);
-    canvas.setTextDatum(middle_center);
+    const int centerX = DISPLAY_W / 2;
+    const int lineH = 18;
+    const int lineGap = 6;
+    const int blockH = lineH * 3 + lineGap * 2;
+    int startY = (MAIN_H - blockH) / 2;
+    if (startY < 0) startY = 0;
+
+    canvas.drawString(titleBuf, centerX, startY);
+
+    // Percent + time on same line
     char pctBuf[8];
     snprintf(pctBuf, sizeof(pctBuf), "%d%%", batteryPercent);
-    canvas.drawString(pctBuf, DISPLAY_W / 2, 85);
-    
-    // Voltage
-    canvas.setTextSize(2);
-    char voltBuf[16];
-    snprintf(voltBuf, sizeof(voltBuf), "%.2fV", batteryVoltage);
-    canvas.drawString(voltBuf, DISPLAY_W / 2, 110);
-    
-    // Time to full estimate (if charging)
+
+    char timeBuf[16];
+    bool showTime = false;
     if (charging && minutesToFull > 0) {
-        char timeBuf[24];
         if (minutesToFull >= 60) {
-            snprintf(timeBuf, sizeof(timeBuf), "~%dh %dm TO FULL", 
+            snprintf(timeBuf, sizeof(timeBuf), "~%dh%02dm",
                      minutesToFull / 60, minutesToFull % 60);
         } else {
-            snprintf(timeBuf, sizeof(timeBuf), "~%dm TO FULL", minutesToFull);
+            snprintf(timeBuf, sizeof(timeBuf), "~%dm", minutesToFull);
         }
-        canvas.setTextSize(1);
-        canvas.setTextDatum(bottom_center);
-        canvas.drawString(timeBuf, DISPLAY_W / 2, MAIN_H - 2);
+        showTime = true;
     } else if (charging && batteryPercent >= 100) {
-        canvas.setTextSize(1);
-        canvas.setTextDatum(bottom_center);
-        canvas.drawString("FULLY CHARGED", DISPLAY_W / 2, MAIN_H - 2);
+        snprintf(timeBuf, sizeof(timeBuf), "FULL");
+        showTime = true;
     }
+
+    int midY = startY + lineH + lineGap;
+    canvas.setTextSize(2);
+    if (showTime) {
+        const int gap = 6;
+        int pctW = canvas.textWidth(pctBuf);
+        int timeW = canvas.textWidth(timeBuf);
+        int totalW = pctW + gap + timeW;
+        if (totalW <= (DISPLAY_W - 8)) {
+            int startX = centerX - totalW / 2;
+            canvas.setTextDatum(top_left);
+            canvas.drawString(pctBuf, startX, midY);
+            canvas.drawString(timeBuf, startX + pctW + gap, midY);
+        } else {
+            canvas.setTextDatum(top_center);
+            canvas.drawString(pctBuf, centerX, midY);
+        }
+    } else {
+        canvas.setTextDatum(top_center);
+        canvas.drawString(pctBuf, centerX, midY);
+    }
+
+    // Voltage line
+    char voltBuf[16];
+    snprintf(voltBuf, sizeof(voltBuf), "%.2fV", batteryVoltage);
+    int voltY = midY + lineH + lineGap;
+    canvas.setTextDatum(top_center);
+    canvas.drawString(voltBuf, centerX, voltY);
 }

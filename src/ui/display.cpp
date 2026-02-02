@@ -96,7 +96,6 @@ static void getSystemTimeString(char* out, size_t len) {
 }
 
 static portMUX_TYPE displayMux = portMUX_INITIALIZER_UNLOCKED;
-static bool barsHiddenActive = false;
 
 static void drawHeartIcon(M5Canvas& canvas, int x, int y, uint16_t color) {
     // Upright heart built from two circles + triangle
@@ -265,17 +264,8 @@ void Display::update() {
     // Check for screen dimming
     updateDimming();
     
-    // SD Format + Charging modes hide bars to save RAM/keep UI clean
-    bool barsHidden = SdFormatMenu::areBarsHidden() || ChargingMode::areBarsHidden();
-    barsHiddenActive = barsHidden;
-
-    static bool lastBarsHidden = false;
-    if (barsHidden && !lastBarsHidden) {
-        // Clear physical bar areas once on transition to bar-less mode
-        M5.Display.fillRect(0, 0, DISPLAY_W, TOP_BAR_H, COLOR_BG);
-        M5.Display.fillRect(0, DISPLAY_H - BOTTOM_BAR_H, DISPLAY_W, BOTTOM_BAR_H, COLOR_BG);
-    }
-    lastBarsHidden = barsHidden;
+    // SD Format mode hides bars to save RAM for disk operations
+    bool barsHidden = SdFormatMenu::areBarsHidden();
     
     if (!barsHidden) {
         drawTopBar();
@@ -483,16 +473,12 @@ void Display::clear() {
 
 void Display::pushAll() {
     M5.Display.startWrite();
-    if (!barsHiddenActive) {
-        topBar.pushSprite(0, 0);
-    }
+    topBar.pushSprite(0, 0);
     mainCanvas.pushSprite(0, TOP_BAR_H);
-    if (!barsHiddenActive) {
-        bottomBar.pushSprite(0, DISPLAY_H - BOTTOM_BAR_H);
-    }
+    bottomBar.pushSprite(0, DISPLAY_H - BOTTOM_BAR_H);
     M5.Display.endWrite();
 
-    if (!barsHiddenActive && topBarMessageTwoLineActive) {
+    if (topBarMessageTwoLineActive) {
         drawTopBarMessageTwoLineDirect();
     }
 }
@@ -684,7 +670,14 @@ void Display::drawTopBar() {
     } else {
         getSystemTimeString(timeBuf, sizeof(timeBuf));
     }
-    int battLevel = M5.Power.getBatteryLevel();
+    static uint32_t lastBattUpdateMs = 0;
+    static int lastBattLevel = 0;
+    uint32_t now = millis();
+    if (lastBattUpdateMs == 0 || (now - lastBattUpdateMs) >= 2000) {
+        lastBattLevel = M5.Power.getBatteryLevel();
+        lastBattUpdateMs = now;
+    }
+    int battLevel = lastBattLevel;
     char statusBuf[4];
     statusBuf[0] = gpsStatus ? 'G' : '-';
     statusBuf[1] = wifiStatus ? 'W' : '-';

@@ -15,7 +15,6 @@ public:
     static bool isRunning() { return running; }
     static bool shouldExit() { return exitRequested; }
     static void clearExit() { exitRequested = false; }
-    static bool areBarsHidden() { return barsHidden; }
     
     // Battery info getters for display
     static uint8_t getBatteryPercent() { return batteryPercent; }
@@ -43,9 +42,6 @@ private:
     // Animation
     static uint8_t animFrame;
     static uint32_t lastAnimMs;
-
-    // Bar-less mode state (like SD format)
-    static bool barsHidden;
 
     // Exit/unplug detection
     static uint32_t unplugDetectMs;
