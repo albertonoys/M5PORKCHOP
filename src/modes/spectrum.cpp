@@ -24,17 +24,22 @@
 #include <ctype.h>
 #include <string.h>
 
-// Layout constants - spectrum fills canvas above XP bar
+// Layout constants - spectrum + waterfall + channel labels + status bar
 const int SPECTRUM_LEFT = 20;       // Space for dB labels
 const int SPECTRUM_RIGHT = 238;     // Right edge
+const int SPECTRUM_WIDTH = 218;     // SPECTRUM_RIGHT - SPECTRUM_LEFT
 const int SPECTRUM_TOP = 2;         // Top margin
-const int SPECTRUM_BOTTOM = 75;     // Above channel labels
-const int CHANNEL_LABEL_Y = 78;     // Channel number row
-const int XP_BAR_Y = 91;            // XP bar starts here
+const int SPECTRUM_BOTTOM = 48;     // Reduced to make room for waterfall
+const int WATERFALL_TOP = 50;       // Waterfall starts here
+const int WATERFALL_ROWS = 22;      // Number of history rows
+const int WATERFALL_BOTTOM = 72;    // WATERFALL_TOP + WATERFALL_ROWS
+const int CHANNEL_LABEL_Y = 74;     // Channel number row
+const int XP_BAR_Y = 86;            // Filter/status bar
 
 // RSSI scale
 const int8_t RSSI_MIN = -95;        // Bottom of scale (weak signals)
 const int8_t RSSI_MAX = -30;        // Top of scale (very strong)
+const int8_t NOISE_FLOOR_DB = -92;  // Simulated noise floor level (future)
 
 // View defaults
 const float DEFAULT_CENTER_MHZ = 2437.0f;  // Channel 6
@@ -50,10 +55,8 @@ const float PAN_STEP_MHZ = 5.0f;           // One channel per pan
 // Timing
 const uint32_t UPDATE_INTERVAL_MS = 100;   // 10 FPS update rate
 
+// Legacy Gaussian LUT (kept for compatibility with old bezier code path)
 // Gaussian LUT for spectrum lobes (sigma=6.6, distances -15 to +15 MHz)
-// Pre-computed: exp(-0.5 * dist^2 / 43.56) for each integer distance
-// Eliminates expensive expf() calls in hot render path (~6000/sec savings)
-// Formula: exp(-0.5 * d^2 / 43.56) where d = distance in MHz
 static const float GAUSSIAN_LUT[31] = {
     0.0756f, 0.1052f, 0.1437f, 0.1914f, 0.2493f,  // -15 to -11
     0.3173f, 0.3946f, 0.4797f, 0.5695f, 0.6616f,  // -10 to -6
@@ -63,6 +66,57 @@ static const float GAUSSIAN_LUT[31] = {
     0.6616f, 0.5695f, 0.4797f, 0.3946f, 0.3173f,  // +6 to +10
     0.2493f, 0.1914f, 0.1437f, 0.1052f, 0.0756f   // +11 to +15
 };
+
+// NEW: Sinc LUT for realistic RF carrier wave shape with side lobes
+// Formula: |sin(π * d / BW) / (π * d / BW)| where BW = 11 (WiFi channel half-bandwidth)
+// Side lobes naturally decay: main lobe at 0, first nulls at ±11 MHz, side lobes between
+// Extended range to ±22 MHz to show 2 side lobes per side
+// Index 0-44 maps to distance -22 to +22 MHz
+static const float SINC_LUT[45] = {
+    // d = -22 to -18 (2nd side lobe region, left)
+    0.0000f, 0.0650f, 0.1100f, 0.1300f, 0.1100f,
+    // d = -17 to -13 (approaching 2nd null)
+    0.0650f, 0.0000f, 0.0900f, 0.1500f, 0.1800f,
+    // d = -12 to -8 (1st side lobe, left - peaks around -16)
+    0.1500f, 0.0000f, 0.1700f, 0.2700f, 0.3300f,
+    // d = -7 to -3 (main lobe rising)
+    0.3700f, 0.5000f, 0.6500f, 0.8000f, 0.9100f,
+    // d = -2 to 0 (main lobe peak)
+    0.9700f, 0.9950f, 1.0000f,
+    // d = 1 to 5 (main lobe falling)
+    0.9950f, 0.9700f, 0.9100f, 0.8000f, 0.6500f,
+    // d = 6 to 10 (main lobe edge to 1st null)
+    0.5000f, 0.3700f, 0.3300f, 0.2700f, 0.1700f,
+    // d = 11 to 15 (1st null and 1st side lobe, right)
+    0.0000f, 0.1500f, 0.1800f, 0.1500f, 0.0900f,
+    // d = 16 to 20 (2nd null region)
+    0.0000f, 0.0650f, 0.1100f, 0.1300f, 0.1100f,
+    // d = 21 to 22 (2nd side lobe tail)
+    0.0650f, 0.0000f
+};
+
+// Spectrum analyzer buffers (static allocation - no heap)
+static int8_t spectrumBuffer[SPECTRUM_WIDTH];           // Current frame RSSI per column
+static int8_t spectrumPersist[SPECTRUM_WIDTH];          // Persistence (rolling average)
+static int8_t spectrumPeak[SPECTRUM_WIDTH];             // Peak hold per column
+static uint8_t waterfallBuffer[WATERFALL_ROWS][SPECTRUM_WIDTH];  // History (0-255 intensity)
+static uint8_t waterfallWriteRow = 0;                   // Current write position (circular)
+static uint32_t lastWaterfallUpdate = 0;
+static const uint32_t WATERFALL_UPDATE_MS = 100;        // 10 FPS waterfall scroll
+
+// Noise floor randomization seed (for animated noise)
+static uint16_t noiseState = 0xACE1;
+
+// Simple PRNG for noise floor animation
+static inline uint8_t fastNoise() {
+    noiseState ^= noiseState << 7;
+    noiseState ^= noiseState >> 9;
+    noiseState ^= noiseState << 8;
+    return (uint8_t)(noiseState & 0x07);  // 0-7 range for subtle jitter
+}
+
+// Forward declaration for sinc amplitude helper
+static float getSincAmplitude(float dist);
 
 constexpr uint8_t CHANNEL_SLOTS = 14;  // index 1-13 used
 const int8_t RSSI_NO_SIGNAL = -100;
@@ -228,6 +282,14 @@ void SpectrumMode::init() {
         channelPeakRSSI[ch] = RSSI_NO_SIGNAL;
         channelAvgRSSI[ch] = RSSI_NO_SIGNAL;
     }
+    
+    // Initialize spectrum analyzer buffers (analyzer-style rendering)
+    memset(spectrumBuffer, RSSI_MIN, sizeof(spectrumBuffer));
+    memset(spectrumPersist, RSSI_MIN, sizeof(spectrumPersist));
+    memset(spectrumPeak, RSSI_MIN, sizeof(spectrumPeak));
+    memset(waterfallBuffer, 0, sizeof(waterfallBuffer));
+    waterfallWriteRow = 0;
+    lastWaterfallUpdate = 0;
 }
 
 void SpectrumMode::start() {
@@ -475,6 +537,12 @@ void SpectrumMode::update() {
 
     // Build render snapshot (heap-safe, avoids vector pointer races during draw)
     updateRenderSnapshot();
+    
+    // Update spectrum analyzer buffers for waterfall display (only in spectrum view)
+    if (!monitoringNetwork) {
+        updateSpectrumBuffers();
+        updateWaterfall();
+    }
 }
 
 void SpectrumMode::updateRenderSnapshot() {
@@ -809,7 +877,9 @@ void SpectrumMode::draw(M5Canvas& canvas) {
     } else {
         // Draw spectrum visualization
         drawAxis(canvas);
+        drawNoiseFloor(canvas);     // Animated noise at baseline
         drawSpectrum(canvas);
+        drawWaterfall(canvas);      // Historical spectrum scrolling down
         drawChannelMarkers(canvas);
         drawFilterBar(canvas);
         
@@ -1015,6 +1085,148 @@ void SpectrumMode::drawDialInfo(M5Canvas& canvas) {
     canvas.setTextDatum(top_right);  // top-right align
     canvas.drawString(info, 236, infoY);
     canvas.setTextDatum(top_left);  // reset
+}
+
+// Draw animated noise floor at spectrum baseline
+// Creates realistic "grass" effect like a real spectrum analyzer
+void SpectrumMode::drawNoiseFloor(M5Canvas& canvas) {
+    int baseY = SPECTRUM_BOTTOM;
+    
+    // Draw noise floor line with random jitter
+    for (int x = SPECTRUM_LEFT; x < SPECTRUM_RIGHT; x++) {
+        // Get random noise amplitude (0-7 pixels)
+        uint8_t noise = fastNoise();
+        
+        // Noise extends downward from baseline (into waterfall area slightly)
+        // and upward a tiny bit to create organic "grass" look
+        int noiseUp = noise / 2;      // 0-3 pixels up
+        int noiseDown = noise / 4;    // 0-1 pixels down
+        
+        // Draw vertical noise line at this X
+        if (noiseUp > 0) {
+            canvas.drawFastVLine(x, baseY - noiseUp, noiseUp, COLOR_FG);
+        }
+        // Small dots below baseline for texture
+        if (noiseDown > 0 && (x % 3) == 0) {
+            canvas.drawPixel(x, baseY + 1, COLOR_FG);
+        }
+    }
+}
+
+// Update spectrum buffers from network RSSI data
+// Called each frame to populate spectrumBuffer for waterfall
+void SpectrumMode::updateSpectrumBuffers() {
+    // Clear current frame buffer to noise floor
+    for (int i = 0; i < SPECTRUM_WIDTH; i++) {
+        spectrumBuffer[i] = NOISE_FLOOR_DB + (fastNoise() % 4) - 2;  // -94 to -90 dB noise
+    }
+    
+    // Accumulate signal from each visible network
+    for (uint16_t n = 0; n < renderCount; n++) {
+        const SpectrumRenderNet& net = renderNets[n];
+        if (!matchesFilterRender(net)) continue;
+        
+        float centerFreq = net.displayFreqMHz;
+        int8_t rssi = net.rssi;
+        
+        // Draw sinc lobe into buffer
+        for (int x = 0; x < SPECTRUM_WIDTH; x++) {
+            // Convert X to frequency
+            float freq = viewCenterMHz - viewWidthMHz / 2 + 
+                        (float)x * viewWidthMHz / SPECTRUM_WIDTH;
+            float dist = freq - centerFreq;
+            
+            // Get sinc amplitude
+            float amp = getSincAmplitude(dist);
+            if (amp < 0.05f) continue;  // Skip negligible contributions
+            
+            // Calculate RSSI at this point
+            int8_t signalRssi = NOISE_FLOOR_DB + (int8_t)((rssi - NOISE_FLOOR_DB) * amp);
+            
+            // Take max of existing and new signal (signals don't add in dB space simply)
+            if (signalRssi > spectrumBuffer[x]) {
+                spectrumBuffer[x] = signalRssi;
+            }
+        }
+    }
+    
+    // Update persistence buffer (rolling average for smoother display)
+    for (int i = 0; i < SPECTRUM_WIDTH; i++) {
+        spectrumPersist[i] = smoothIIR(spectrumPersist[i], spectrumBuffer[i], 4);
+        
+        // Update peak hold
+        if (spectrumBuffer[i] > spectrumPeak[i]) {
+            spectrumPeak[i] = spectrumBuffer[i];
+        } else {
+            // Decay peaks slowly
+            if (spectrumPeak[i] > RSSI_MIN) {
+                spectrumPeak[i]--;
+            }
+        }
+    }
+}
+
+// Push current spectrum buffer to waterfall history
+void SpectrumMode::updateWaterfall() {
+    uint32_t now = millis();
+    if (now - lastWaterfallUpdate < WATERFALL_UPDATE_MS) return;
+    lastWaterfallUpdate = now;
+    
+    // Convert current spectrumBuffer to intensity (0-255) and store in waterfall
+    for (int x = 0; x < SPECTRUM_WIDTH; x++) {
+        // Map RSSI (-95 to -30) to intensity (0-255)
+        int8_t rssi = spectrumPersist[x];
+        int intensity = (int)((rssi - RSSI_MIN) * 255 / (RSSI_MAX - RSSI_MIN));
+        if (intensity < 0) intensity = 0;
+        if (intensity > 255) intensity = 255;
+        waterfallBuffer[waterfallWriteRow][x] = (uint8_t)intensity;
+    }
+    
+    // Advance circular buffer write position
+    waterfallWriteRow = (waterfallWriteRow + 1) % WATERFALL_ROWS;
+}
+
+// Draw waterfall display - historical spectrum scrolling down
+void SpectrumMode::drawWaterfall(M5Canvas& canvas) {
+    // Draw horizontal separator line above waterfall
+    canvas.drawFastHLine(SPECTRUM_LEFT, WATERFALL_TOP - 1, SPECTRUM_WIDTH, COLOR_FG);
+    
+    // Draw waterfall rows (oldest at top, newest at bottom)
+    for (int row = 0; row < WATERFALL_ROWS; row++) {
+        // Calculate which buffer row to read (circular buffer)
+        // waterfallWriteRow points to NEXT write position, so oldest is at waterfallWriteRow
+        int bufRow = (waterfallWriteRow + row) % WATERFALL_ROWS;
+        int screenY = WATERFALL_TOP + row;
+        
+        // Draw each pixel in this row
+        for (int x = 0; x < SPECTRUM_WIDTH; x++) {
+            uint8_t intensity = waterfallBuffer[bufRow][x];
+            
+            // Only draw if above noise threshold (intensity > 20 means signal present)
+            if (intensity > 20) {
+                // Dithering for monochrome display:
+                // Higher intensity = more pixels filled
+                // Use position-based pattern for clean look
+                bool drawPixel = false;
+                
+                if (intensity > 200) {
+                    drawPixel = true;  // Full brightness - always draw
+                } else if (intensity > 150) {
+                    drawPixel = ((x + row) % 2) == 0;  // 50% checkerboard
+                } else if (intensity > 100) {
+                    drawPixel = ((x % 2) == 0) && ((row % 2) == 0);  // 25% grid
+                } else if (intensity > 50) {
+                    drawPixel = ((x % 3) == 0) && ((row % 2) == 0);  // ~16% sparse
+                } else {
+                    drawPixel = ((x % 4) == 0) && ((row % 3) == 0);  // ~8% very sparse
+                }
+                
+                if (drawPixel) {
+                    canvas.drawPixel(SPECTRUM_LEFT + x, screenY, COLOR_FG);
+                }
+            }
+        }
+    }
 }
 
 // Draw client monitoring overlay [P3] [P12] [P14] [P15]
@@ -1283,92 +1495,114 @@ void SpectrumMode::drawSpectrum(M5Canvas& canvas) {
     }
 }
 
+// Helper: Get Sinc amplitude at distance d from center using LUT + interpolation
+// Sinc function has natural side lobes at ±11MHz, ±17MHz (nulls at ±11, ±22)
+static float getSincAmplitude(float dist) {
+    float lutPos = dist + 22.0f;  // Map -22..+22 to 0..44
+    if (lutPos < 0.0f || lutPos > 44.0f) return 0.0f;
+    int lutIdx = (int)lutPos;
+    float frac = lutPos - lutIdx;
+    if (lutIdx >= 44) return SINC_LUT[44];
+    return SINC_LUT[lutIdx] + frac * (SINC_LUT[lutIdx + 1] - SINC_LUT[lutIdx]);
+}
+
+// Legacy Gaussian helper (kept for reference)
+static float getGaussianAmplitude(float dist) {
+    float lutPos = dist + 15.0f;  // Map -15..+15 to 0..30
+    if (lutPos < 0.0f || lutPos > 30.0f) return 0.0f;
+    int lutIdx = (int)lutPos;
+    float frac = lutPos - lutIdx;
+    if (lutIdx >= 30) return GAUSSIAN_LUT[30];
+    return GAUSSIAN_LUT[lutIdx] + frac * (GAUSSIAN_LUT[lutIdx + 1] - GAUSSIAN_LUT[lutIdx]);
+}
+
 void SpectrumMode::drawGaussianLobe(M5Canvas& canvas, float centerFreqMHz, 
                                      int8_t rssi, bool filled, uint16_t activityPps) {
-    // 2.4GHz WiFi channels are 22MHz wide
-    // Uses pre-computed GAUSSIAN_LUT[] to avoid expensive expf() calls
-    // LUT index 0-30 maps to distance -15 to +15 MHz
+    // Sinc-based carrier wave rendering with visible side lobes
+    // Real RF signals have sinc shape: main lobe + decaying side lobes
+    // Extended range to ±22MHz to show side lobes like a real spectrum analyzer
 
     float center = constrain(centerFreqMHz, MIN_CENTER_MHZ, MAX_CENTER_MHZ);
-    float startFreq = fmax(center - LOBE_HALF_WIDTH_MHZ, BAND_MIN_MHZ);
-    float endFreq = fmin(center + LOBE_HALF_WIDTH_MHZ, BAND_MAX_MHZ);
+    
+    // Sinc extends ±22MHz (to show side lobes)
+    const float SINC_HALF_WIDTH = 22.0f;
+    float startFreq = fmax(center - SINC_HALF_WIDTH, BAND_MIN_MHZ);
+    float endFreq = fmin(center + SINC_HALF_WIDTH, BAND_MAX_MHZ);
     
     int peakY = rssiToY(rssi);
     int baseY = SPECTRUM_BOTTOM;
+    int lobeHeight = baseY - peakY;
     
     // Don't draw if peak is below baseline
-    if (peakY >= baseY) return;
+    if (lobeHeight <= 0) return;
     
-    uint8_t skipMod = 1;
-    if (filled && activityPps > 0) {
-        uint16_t capped = activityPps;
-        if (capped > 400) capped = 400;
-        float pulseSpeed = 1.0f + ((float)capped / 400.0f) * 7.0f;
-        uint32_t phaseMs = (uint32_t)(millis() * pulseSpeed) % 1000u;
+    // Calculate X coordinates
+    int leftX = freqToX(startFreq);
+    int rightX = freqToX(endFreq);
+    
+    // Clip to visible area
+    if (rightX < SPECTRUM_LEFT || leftX > SPECTRUM_RIGHT) return;
+    leftX = max(leftX, SPECTRUM_LEFT);
+    rightX = min(rightX, SPECTRUM_RIGHT);
+    
+    // === SINC CARRIER WAVE: Draw as connected line segments ===
+    // Activity-based animation (subtle vertical jitter)
+    int8_t jitterOffset = 0;
+    if (activityPps > 0) {
+        uint16_t capped = min(activityPps, (uint16_t)400);
+        float jitterAmp = 2.0f * ((float)capped / 400.0f);
+        uint32_t phaseMs = (uint32_t)(millis() * 8) % 1000u;
         float phase = (float)phaseMs / 1000.0f;
-        float intensity = 0.5f + 0.5f * sinf(phase * TWO_PI_F);
-        skipMod = (uint8_t)(6 - (int)(intensity * 5.0f));
-        if (skipMod < 1) skipMod = 1;
-        if (skipMod > 6) skipMod = 6;
+        jitterOffset = (int8_t)(jitterAmp * sinf(phase * TWO_PI_F));
     }
     
-    // Draw lobe from center-15MHz to center+15MHz (clipped to band edges)
-    int prevX = -1;
+    // Draw carrier wave as connected line segments (1 pixel step)
+    int prevX = leftX;
     int prevY = baseY;
-    bool prevVisible = false;
-    int xCounter = 0;
+    bool prevValid = false;
     
-    for (float freq = startFreq; freq <= endFreq; freq += LOBE_STEP_MHZ) {
-        int x = freqToX(freq);
-        
-        // Skip if outside visible area
-        if (x < SPECTRUM_LEFT || x > SPECTRUM_RIGHT) {
-            prevX = x;
-            prevY = baseY;
-            prevVisible = false;
-            continue;
-        }
-        
-        // Gaussian amplitude from LUT with linear interpolation
-        // LUT maps integer distances -15 to +15 (indices 0-30)
+    for (int x = leftX; x <= rightX; x++) {
+        // Convert X back to frequency
+        float freq = viewCenterMHz - viewWidthMHz / 2 + 
+                    (float)(x - SPECTRUM_LEFT) * viewWidthMHz / (SPECTRUM_RIGHT - SPECTRUM_LEFT);
         float dist = freq - center;
-        float lutPos = dist + 15.0f;  // Map -15..+15 to 0..30
-        float amplitude;
-        if (lutPos < 0.0f || lutPos > 30.0f) {
-            amplitude = 0.0f;
-        } else {
-            int lutIdx = (int)lutPos;
-            float frac = lutPos - lutIdx;
-            if (lutIdx >= 30) {
-                amplitude = GAUSSIAN_LUT[30];
-            } else {
-                // Linear interpolation between adjacent LUT entries
-                amplitude = GAUSSIAN_LUT[lutIdx] + frac * (GAUSSIAN_LUT[lutIdx + 1] - GAUSSIAN_LUT[lutIdx]);
-            }
-        }
-        int y = baseY - (int)((baseY - peakY) * amplitude);
+        
+        // Get sinc amplitude (includes side lobes)
+        float amp = getSincAmplitude(dist);
+        
+        // Calculate Y with activity jitter
+        int y = baseY - (int)(lobeHeight * amp) + jitterOffset;
+        y = constrain(y, SPECTRUM_TOP, baseY);
         
         if (filled) {
-            // Filled lobe - draw vertical line from baseline to curve
+            // Filled: draw vertical line from baseline to curve
             if (y < baseY) {
-                if (skipMod == 1 || (xCounter % skipMod) == 0) {
-                    canvas.drawFastVLine(x, y, baseY - y, COLOR_FG);
-                }
+                canvas.drawFastVLine(x, y, baseY - y, COLOR_FG);
             }
         } else {
-            if (!prevVisible) {
-                if (y < baseY) {
-                    canvas.drawLine(x, baseY, x, y, COLOR_FG);
-                }
-            } else {
+            // Outline: connect to previous point
+            if (prevValid && (prevY < baseY || y < baseY)) {
                 canvas.drawLine(prevX, prevY, x, y, COLOR_FG);
             }
         }
         
         prevX = x;
         prevY = y;
-        prevVisible = true;
-        xCounter++;
+        prevValid = true;
+    }
+    
+    // For outline mode: connect to baseline at edges
+    if (!filled) {
+        // Left edge
+        int leftEdgeY = baseY - (int)(lobeHeight * getSincAmplitude(startFreq - center));
+        if (leftEdgeY < baseY) {
+            canvas.drawLine(leftX, baseY, leftX, leftEdgeY, COLOR_FG);
+        }
+        // Right edge
+        int rightEdgeY = baseY - (int)(lobeHeight * getSincAmplitude(endFreq - center));
+        if (rightEdgeY < baseY) {
+            canvas.drawLine(rightX, rightEdgeY, rightX, baseY, COLOR_FG);
+        }
     }
 }
 

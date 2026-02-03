@@ -182,6 +182,10 @@ private:
     static void drawChannelMarkers(M5Canvas& canvas);
     static void drawFilterBar(M5Canvas& canvas);     // Filter indicator bar
     static void drawDialInfo(M5Canvas& canvas);      // Dial mode info bar
+    static void drawNoiseFloor(M5Canvas& canvas);    // Animated noise at baseline
+    static void drawWaterfall(M5Canvas& canvas);     // Historical spectrum waterfall
+    static void updateSpectrumBuffers();             // Populate buffers from network data
+    static void updateWaterfall();                   // Push to waterfall history
     static void pruneStale();            // Remove networks not seen recently
     static void pruneStaleClients();     // Remove clients not seen recently
     static void updateDialChannel();     // Update dial mode tilt-to-tune
