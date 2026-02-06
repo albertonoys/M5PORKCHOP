@@ -21,11 +21,11 @@ String UnlockablesMenu::textBuffer = "";
 // Hash: SHA256(phrase) - lowercase hex, lowercase input
 static const UnlockableItem UNLOCKABLES[] = {
     // Bit 0: commit messages speak in riddles
-    { 
-        "PROPHECY", 
+    {
+        "PROPHECY",
         "THE PROPHECY SPEAKS THE KEY",
         "13ca9c448763034b2d1b1ec33b449ae90433634c16b50a0a9fba6f4b5a67a72a",
-        0 
+        0
     },
     // Bit 1: persistence is immortality
     {
@@ -33,6 +33,20 @@ static const UnlockableItem UNLOCKABLES[] = {
         "PIG SURVIVES M5BURNER",
         "6c58bc00fea09c8d7fdb97c7b58741ad37bd7ba8e5c76d35076e3b57071b172b",
         1
+    },
+    // Bit 2: classic unix identity crisis
+    {
+        "C4LLS1GN",
+        "UNIX KNOWS. DO YOU?",
+        "73d7b7288d31175792d8a1f51b63936d5683718082f5a401b4e9d6829de967d3",
+        2
+    },
+    // Bit 3: jah bless di herb
+    {
+        "B4K3D_P1G",
+        "JAH PROVIDES. PIG RESTS.",
+        "af062b87461d9caa433210fc29a6c1c2aaf28c09c6c54578f16160d7d6a8caa0",
+        3
     },
 };
 

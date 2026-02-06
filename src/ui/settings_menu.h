@@ -43,6 +43,7 @@ private:
     static uint8_t origGpsRxPin;
     static uint8_t origGpsTxPin;
     static uint32_t origGpsBaud;
+    static uint8_t origGpsSource;
 
     static const uint8_t VISIBLE_ROOT_ITEMS = 5;
     static const uint8_t VISIBLE_GROUP_ITEMS = 4;

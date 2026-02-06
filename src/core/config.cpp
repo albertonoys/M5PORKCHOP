@@ -8,6 +8,7 @@
 #include <SD.h>
 #include <SPIFFS.h>
 #include <SPI.h>
+#include <driver/gpio.h>
 
 // ---- Cardputer microSD wiring (explicit, per Cardputer v1.1 schematic) ----
 // ESP32-S3FN8:
@@ -164,6 +165,34 @@ SPIClass& Config::sdSpi() {
 
 int Config::sdCsPin() {
     return SD_CS_PIN;
+}
+
+void Config::prepareCapLoraGpio() {
+    // GPIO 13 is ESP32-S3 default FSPIQ (MISO) via IOMUX. Even though SD remaps
+    // FSPI MISO to G39, the default IOMUX linkage on G13 can disrupt the FSPI
+    // peripheral when Serial2 reconfigures G13 as UART TX output.
+    // gpio_reset_pin() clears IOMUX function, disconnects peripheral signals,
+    // and returns the pin to plain GPIO mode.
+    gpio_reset_pin(static_cast<gpio_num_t>(CapLoraPins::GPS_TX));   // G13
+
+    // Reset SX1262 LoRa chip to known state. The CapLoRa868 LoRa SPI shares
+    // MOSI(G14)/MISO(G39)/SCK(G40) with SD card. After reset the SX1262
+    // enters STANDBY_RC with all IOs high-impedance, preventing bus contention.
+    pinMode(CapLoraPins::LORA_RESET, OUTPUT);
+    digitalWrite(CapLoraPins::LORA_RESET, LOW);   // Assert NRESET (active low)
+    delay(10);                                      // SX1262 datasheet: >100us
+    digitalWrite(CapLoraPins::LORA_RESET, HIGH);   // Release reset
+    delay(10);                                      // Wait for standby entry
+
+    // Deassert LoRa chip select (HIGH = not selected, MISO tri-stated)
+    pinMode(CapLoraPins::LORA_CS, OUTPUT);
+    digitalWrite(CapLoraPins::LORA_CS, HIGH);
+
+    // Configure control pins as inputs (don't drive)
+    pinMode(CapLoraPins::LORA_BUSY, INPUT);
+    pinMode(CapLoraPins::LORA_DIO1, INPUT);
+
+    Serial.println("[CONFIG] CapLoRa868: SX1262 reset, CS deasserted, G13 IOMUX cleared");
 }
 
 bool Config::reinitSD() {
@@ -353,6 +382,10 @@ bool Config::loadPersonality() {
     strncpy(personalityConfig.name, name, sizeof(personalityConfig.name) - 1);
     personalityConfig.name[sizeof(personalityConfig.name) - 1] = '\0';
 
+    const char* callsign = doc["callsign"] | "";
+    strncpy(personalityConfig.callsign, callsign, sizeof(personalityConfig.callsign) - 1);
+    personalityConfig.callsign[sizeof(personalityConfig.callsign) - 1] = '\0';
+
     personalityConfig.mood = doc["mood"] | 50;
     personalityConfig.experience = doc["experience"] | 0;
     personalityConfig.curiosity = doc["curiosity"] | 0.7f;
@@ -387,6 +420,7 @@ bool Config::loadPersonality() {
 void Config::savePersonalityToSPIFFS() {
     JsonDocument doc;
     doc["name"] = personalityConfig.name;
+    doc["callsign"] = personalityConfig.callsign;
     doc["mood"] = personalityConfig.mood;
     doc["experience"] = personalityConfig.experience;
     doc["curiosity"] = personalityConfig.curiosity;

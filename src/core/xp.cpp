@@ -1724,6 +1724,7 @@ void XP::checkAchievements() {
             unlockAchievement(ACH_FULL_CLEAR);
         }
     }
+
 }
 
 const PorkXPData& XP::getData() {

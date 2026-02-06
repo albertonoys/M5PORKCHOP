@@ -1550,7 +1550,9 @@ void DoNoHamMode::handleProbeResponse(const uint8_t* frame, uint16_t len, int8_t
 void DoNoHamMode::handleEAPOL(const uint8_t* frame, uint16_t len, int8_t rssi) {
     if (!running) return;
     if (dnhBusy) return;  // Skip if update() is processing vectors
-    if (rssi < Config::wifi().attackMinRssi) return;  // Too weak to capture reliably
+    // No RSSI filter here: M2/M4 frames (client→AP) are often 10-15 dB weaker
+    // than M1/M3 (AP→client). Filtering by frame RSSI drops half the handshake.
+    // DNH is passive — capture everything audible.
     
     // Parse 802.11 data frame to find EAPOL
     // Frame: FC(2) + Duration(2) + Addr1(6) + Addr2(6) + Addr3(6) + Seq(2) = 24 bytes

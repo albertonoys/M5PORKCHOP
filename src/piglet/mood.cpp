@@ -406,7 +406,15 @@ const char* PHRASES_DYNAMIC[] = {
     "$KM km. GPS lied maybe.",
     "$NET sniffed. pig suspicious.",
     "bacon lvl $LVL. no soup today.",
-    "$DEAUTH kicked. clients confused."
+    "$DEAUTH kicked. clients confused.",
+    "oi $NAME. $NET sniffed innit",
+    "$HS catches. not bad $NAME",
+    "$NAME still here? lvl $LVL. respect.",
+    "$NAME n pig. $NET hunted.",
+    "gg $NAME. $HS bagged.",
+    "horse asked about $NAME. weird.",
+    "$NAME in the git log now",
+    "$NAME. $KM km together. pig remembers."
 };
 
 static const int PHRASES_DYNAMIC_COUNT = sizeof(PHRASES_DYNAMIC) / sizeof(PHRASES_DYNAMIC[0]);
@@ -527,6 +535,11 @@ static const char* formatDynamicPhrase(const char* templ) {
             } else if (strncmp(p, "$LVL", 4) == 0) {
                 int n = snprintf(out, remaining, "%u", XP::getLevel());
                 out += n; remaining -= n; p += 4;
+            } else if (strncmp(p, "$NAME", 5) == 0) {
+                const char* cs = Config::personality().callsign;
+                const char* nm = (cs[0] != '\0') ? cs : "OPERATOR";
+                int n = snprintf(out, remaining, "%s", nm);
+                out += n; remaining -= n; p += 5;
             } else if (strncmp(p, "$KM", 3) == 0) {
                 int n = snprintf(out, remaining, "%.1f", sess.distanceM / 1000.0f);
                 out += n; remaining -= n; p += 3;
@@ -1163,10 +1176,18 @@ void Mood::onHandshakeCaptured(const char* apName) {
     // Second phrase - the count
     snprintf(buf2, sizeof(buf2), "%lu today!", (unsigned long)(sess.handshakes + 1));
     
-    // Third phrase - celebration
-    const char* celebrations[] = { "oink++", "gg bacon", "ez mode", "pwn train" };
-    strncpy(buf3, celebrations[random(0, 4)], sizeof(buf3) - 1);
-    buf3[sizeof(buf3) - 1] = '\0';
+    // Third phrase - celebration (name-aware ~50% when callsign set)
+    const char* cs = Config::personality().callsign;
+    if (cs[0] != '\0' && random(0, 2) == 0) {
+        const char* nameCelebrations[] = {
+            "gg %s", "oi %s. proper.", "%s eats", "oink for %s", "nice one %s"
+        };
+        snprintf(buf3, sizeof(buf3), nameCelebrations[random(0, 5)], cs);
+    } else {
+        const char* celebrations[] = { "oink++", "gg bacon", "ez mode", "pwn train" };
+        strncpy(buf3, celebrations[random(0, 4)], sizeof(buf3) - 1);
+        buf3[sizeof(buf3) - 1] = '\0';
+    }
     
     // Set first phrase immediately, queue rest
     currentPhrase = buf1;
@@ -1521,6 +1542,10 @@ void Mood::selectPhrase() {
     const SessionStats& sess = XP::getSession();
     if (specialRoll < 15 && sess.networks > 0) {  // 10% after rare check
         int idx = pickPhraseIdx(PhraseCategory::DYNAMIC, PHRASES_DYNAMIC_COUNT);
+        // Skip $NAME phrases when no callsign configured
+        if (strstr(PHRASES_DYNAMIC[idx], "$NAME") && Config::personality().callsign[0] == '\0') {
+            idx = pickPhraseIdx(PhraseCategory::DYNAMIC, PHRASES_DYNAMIC_COUNT);
+        }
         currentPhrase = formatDynamicPhrase(PHRASES_DYNAMIC[idx]);
         return;
     }

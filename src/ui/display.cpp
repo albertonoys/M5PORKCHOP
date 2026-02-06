@@ -1265,6 +1265,18 @@ void Display::showBootSplash() {
 
     bootSplashDelay(1200);
 
+    // Screen 4 (optional): Welcome back when callsign is set
+    const char* cs = Config::personality().callsign;
+    if (cs[0] != '\0') {
+        M5.Display.fillScreen(COLOR_BG);
+        M5.Display.setTextDatum(middle_center);
+        M5.Display.setTextSize(2);
+        M5.Display.drawString("WELCOME BACK", DISPLAY_W / 2, DISPLAY_H / 2 - 15);
+        M5.Display.setTextSize(3);
+        M5.Display.drawString(cs, DISPLAY_W / 2, DISPLAY_H / 2 + 15);
+        bootSplashDelay(1000);
+    }
+
     // Reset display state for main UI compatibility
     M5.Display.setTextDatum(top_left);
     M5.Display.setTextSize(1);

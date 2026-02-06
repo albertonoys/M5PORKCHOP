@@ -15,6 +15,19 @@ enum class GPSSource : uint8_t {
     CUSTOM = 2      // Custom pins - user-configured
 };
 
+static constexpr uint8_t GPS_SOURCE_COUNT = 3;
+
+// CapLoRa868 module pins (M5Stack Cardputer ADV EXT header)
+// LoRa SPI shares MOSI/MISO/SCK with SD card - only CS differs
+namespace CapLoraPins {
+    static constexpr uint8_t LORA_CS    = 5;   // SX1262 NSS (chip select)
+    static constexpr uint8_t LORA_RESET = 3;   // SX1262 NRESET
+    static constexpr uint8_t LORA_DIO1  = 4;   // SX1262 DIO1 (interrupt)
+    static constexpr uint8_t LORA_BUSY  = 6;   // SX1262 BUSY
+    static constexpr uint8_t GPS_RX     = 15;  // GPS UART RX
+    static constexpr uint8_t GPS_TX     = 13;  // GPS UART TX (default FSPIQ IOMUX!)
+}
+
 // GPS power management settings
 struct GPSConfig {
     bool enabled = true;
@@ -98,6 +111,7 @@ struct BLEConfig {
 // Personality
 struct PersonalityConfig {
     char name[32] = "Porkchop";
+    char callsign[16] = "";             // User handle (unlocked at L10)
     int mood = 50;                      // -100 to 100
     uint32_t experience = 0;
     float curiosity = 0.7f;
@@ -123,6 +137,7 @@ public:
     static bool loadWpaSecKeyFromFile();  // Load key from /m5porkchop/wpa-sec/wpasec_key.txt (legacy /wpasec_key.txt)
     static bool loadWigleKeyFromFile();   // Load keys from /m5porkchop/wigle/wigle_key.txt (legacy /wigle_key.txt)
     static void prepareSDBus();           // Prepare SPI bus for raw SD access
+    static void prepareCapLoraGpio();     // Quiesce SX1262 and clear G13 IOMUX before GPS UART
     static SPIClass& sdSpi();             // Access SD SPI bus
     static int sdCsPin();                 // Access SD chip-select pin
     

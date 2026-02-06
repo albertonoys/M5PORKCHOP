@@ -12,6 +12,7 @@
 #include <string.h>            // For memset
 #include "core/porkchop.h"
 #include "core/config.h"
+#include "core/xp.h"
 #include "core/sd_layout.h"
 #include "core/sdlog.h"
 #include "core/wifi_utils.h"
@@ -334,13 +335,19 @@ void setup() {
                 Serial.println("[GPS] WARNING: Cap LoRa868 GPS selected but hardware is not Cardputer ADV!");
                 Serial.println("[GPS] Cap LoRa868 requires Cardputer ADV EXT bus. Check config.");
             }
-            // FIX: Deselect Cap LoRa868 SPI CS to prevent SD card bus conflicts
-            // GPIO 5 is the LoRa chip select - must be HIGH to avoid SPI contention
-            pinMode(5, OUTPUT);
-            digitalWrite(5, HIGH);
-            Serial.println("[GPS] Cap LoRa868 SPI CS (GPIO5) deasserted");
+            // Quiesce SX1262 and clear G13 FSPIQ IOMUX before GPS UART init.
+            // CapLoRa shares MOSI/MISO/SCK with SD; G13 is default FSPIQ pin.
+            Config::prepareCapLoraGpio();
         }
         GPS::init(Config::gps().rxPin, Config::gps().txPin, Config::gps().baudRate);
+
+        // Re-verify SD after CapLoRa GPS UART init (UART on G13 may disturb FSPI bus)
+        if (Config::gps().source == GPSSource::CAP_LORA) {
+            Serial.println("[GPS] Re-verifying SD card after CapLoRa GPS UART init...");
+            if (!Config::reinitSD()) {
+                Serial.println("[GPS] WARNING: SD card re-init failed after CapLoRa GPS init");
+            }
+        }
     }
 
     // Initialize ML subsystem
@@ -381,6 +388,41 @@ void loop() {
                       (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     }
     // #endregion
+
+    // B4K3D_P1G: 4:20 lockout -- pig stops working
+    {
+        static bool bakedActive = false;
+        static uint32_t bakedStartMs = 0;
+        static uint32_t bakedDurationMs = 0;
+        static bool bakedTriggered = false;
+        static uint32_t lastBakedCheck = 0;
+
+        if (bakedActive) {
+            if (millis() - bakedStartMs >= bakedDurationMs) {
+                bakedActive = false;
+            } else {
+                yield();
+                return;
+            }
+        }
+
+        if (!bakedTriggered && XP::hasUnlockable(3) && millis() - lastBakedCheck > 1000) {
+            lastBakedCheck = millis();
+            time_t now = time(nullptr);
+            if (now > 1600000000) {
+                int8_t tzOffset = Config::gps().timezoneOffset;
+                now += (int32_t)tzOffset * 3600;
+                struct tm timeinfo;
+                gmtime_r(&now, &timeinfo);
+                if ((timeinfo.tm_hour == 4 || timeinfo.tm_hour == 16) && timeinfo.tm_min == 20) {
+                    bakedActive = true;
+                    bakedStartMs = millis();
+                    bakedDurationMs = random(120000, 420001);
+                    bakedTriggered = true;
+                }
+            }
+        }
+    }
 
     // Update GPS
     if (Config::gps().enabled) {

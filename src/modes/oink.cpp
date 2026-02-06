@@ -250,12 +250,13 @@ static int pmkidTargetIndex = 0;
 static uint32_t pmkidProbeTime = 0;
 static const uint32_t PMKID_TIMEOUT = 300;      // 300ms wait per AP
 static const uint32_t PMKID_HUNT_MAX = 30000;   // 30s total hunt window
+static uint64_t pmkidProbedBitset = 0;           // Tracks probed networks (up to 64)
 
 // Targeting heuristics
 static const uint32_t CLIENT_RECENT_MS = 10000;      // Prefer clients seen within 10s
 static const uint32_t LOCK_FAST_TRACK_MS = 2500;     // Fast-track lock when clients appear quickly
 static const uint32_t LOCK_EARLY_EXIT_MS = 4000;     // Bail if no clients show up quickly
-static const uint32_t ATTACK_COOLDOWN_MS = 8000;     // Cooldown after failed attack
+// Attack cooldown is now RSSI-scaled (4-12s) — see ATTACKING timeout handler
 
 // Target warm-up gate (avoid locking before recon has signal density)
 static const uint32_t TARGET_WARMUP_MIN_MS = 1500;    // Minimum time before target selection
@@ -763,6 +764,7 @@ void OinkMode::update() {
                         autoState = AutoState::PMKID_HUNTING;
                         pmkidTargetIndex = -1;
                         pmkidProbeTime = 0;  // Reset timer for first target
+                        pmkidProbedBitset = 0;
                         stateStartTime = now;
                         Mood::setStatusMessage("ghost farming");
                     } else {
@@ -827,7 +829,10 @@ void OinkMode::update() {
                                 }
                             }
                             if (hasPMKID) continue;
-                            
+
+                            // Skip networks already probed this cycle
+                            if (pmkidTargetIndex < 64 && (pmkidProbedBitset & (1ULL << pmkidTargetIndex))) continue;
+
                             foundTarget = true;
                             memcpy(targetBssid, net.bssid, 6);
                             strncpy(targetSSID, net.ssid, 32);
@@ -844,6 +849,7 @@ void OinkMode::update() {
                         }
                         sendAssociationRequest(targetBssid, targetSSID, strlen(targetSSID));
                         pmkidProbeTime = now;
+                        if (pmkidTargetIndex < 64) pmkidProbedBitset |= (1ULL << pmkidTargetIndex);
                         Avatar::sniff();
                     } else {
                         // No more targets to probe
@@ -1145,7 +1151,15 @@ void OinkMode::update() {
                     NetworkRecon::enterCritical();
                     for (auto& net : networks()) {
                         if (memcmp(net.bssid, targetBssid, 6) == 0) {
-                            net.cooldownUntil = now + ATTACK_COOLDOWN_MS;
+                            // Scale cooldown by RSSI: strong signals retry faster (likely timing issue),
+                            // weak signals wait longer (likely signal issue)
+                            int8_t tRssi = (net.rssiAvg != 0) ? net.rssiAvg : net.rssi;
+                            uint32_t cooldown;
+                            if (tRssi >= -45) cooldown = 4000;
+                            else if (tRssi >= -55) cooldown = 6000;
+                            else if (tRssi >= -65) cooldown = 8000;
+                            else cooldown = 12000;
+                            net.cooldownUntil = now + cooldown;
                             break;
                         }
                     }
@@ -1202,9 +1216,22 @@ void OinkMode::update() {
             // Pig is bored - no valid targets available
             // Stop grass, show bored phrases, periodically retry
             
-            // Adaptive channel hop: fast sweep (500ms) when spectrum is empty,
-            // slow (2000ms) when networks present but none are valid targets
-            uint32_t boredHopInterval = networks().empty() ? 500 : 2000;
+            // Adaptive channel hop: fast sweep (500ms) when spectrum is empty
+            // or all networks are below RSSI threshold (user is moving),
+            // slow (2000ms) when strong networks present but none are valid targets
+            uint32_t boredHopInterval;
+            if (networks().empty()) {
+                boredHopInterval = 500;
+            } else {
+                bool anyStrong = false;
+                NetworkRecon::enterCritical();
+                for (size_t i = 0; i < networks().size() && i < 20; i++) {
+                    int8_t r = (networks()[i].rssiAvg != 0) ? networks()[i].rssiAvg : networks()[i].rssi;
+                    if (r >= Config::wifi().attackMinRssi) { anyStrong = true; break; }
+                }
+                NetworkRecon::exitCritical();
+                boredHopInterval = anyStrong ? 2000 : 500;
+            }
             if (now - lastHopTime > boredHopInterval) {
                 hopChannel();
                 lastHopTime = now;
@@ -3062,6 +3089,11 @@ static uint8_t computeQualityScore(const DetectedNetwork& net, uint32_t now) {
 
 static int computeTargetScore(const DetectedNetwork& net, uint32_t now) {
     int score = (int)computeQualityScore(net, now);
+
+    // Proximity bonus: very strong nearby targets have near-100% capture probability
+    int8_t rssi = (net.rssiAvg != 0) ? net.rssiAvg : net.rssi;
+    if (rssi >= -40) score += 25;
+    else if (rssi >= -50) score += 15;
 
     if (net.lastDataSeen > 0) {
         uint32_t dataAge = now - net.lastDataSeen;
