@@ -99,10 +99,14 @@ static bool ensureDir(const char* path) {
     return SD.mkdir(path);
 }
 
-static uint64_t calcPathSize(const char* path) {
+static const int MAX_RECURSE_DEPTH = 8;
+
+static uint64_t calcPathSize(const char* path, int depth = 0) {
+    if (depth > MAX_RECURSE_DEPTH) return 0;
+
     File f = SD.open(path);
     if (!f) return 0;
-    
+
     if (!f.isDirectory()) {
         uint64_t size = f.size();
         f.close();
@@ -111,19 +115,19 @@ static uint64_t calcPathSize(const char* path) {
 
     uint64_t total = 0;
     File entry = f.openNextFile();
-    int fileCount = 0;  // Prevent infinite loops on corrupted filesystems
-    
+    int fileCount = 0;
+
     while (entry) {
         const char* name = basenameFromPath(entry.name());
-        String child = path;
-        if (!child.endsWith("/")) child += "/";
-        child += name;
+        char child[256];
+        size_t pathLen = strlen(path);
+        bool needsSlash = (pathLen > 0 && path[pathLen - 1] != '/');
+        snprintf(child, sizeof(child), "%s%s%s", path, needsSlash ? "/" : "", name);
         entry.close();
-        total += calcPathSize(child.c_str());
+        total += calcPathSize(child, depth + 1);
         entry = f.openNextFile();
         fileCount++;
-        
-        // Yield periodically to prevent WDT resets
+
         if (fileCount % 10 == 0) {
             yield();
         }
@@ -171,7 +175,9 @@ static bool copyFile(const char* src, const char* dst) {
     return true;
 }
 
-static bool copyPathRecursive(const char* src, const char* dst) {
+static bool copyPathRecursive(const char* src, const char* dst, int depth = 0) {
+    if (depth > MAX_RECURSE_DEPTH) return true; // silently skip deep trees
+
     File f = SD.open(src);
     if (!f) return false;
     bool isDir = f.isDirectory();
@@ -187,26 +193,27 @@ static bool copyPathRecursive(const char* src, const char* dst) {
 
     File dir = SD.open(src);
     if (!dir) return false;
-    
+
     File entry = dir.openNextFile();
-    int fileCount = 0; // Prevent infinite loops on corrupted filesystems
-    
+    int fileCount = 0;
+
     while (entry) {
         const char* name = basenameFromPath(entry.name());
-        String childSrc = src;
-        if (!childSrc.endsWith("/")) childSrc += "/";
-        childSrc += name;
-        String childDst = dst;
-        if (!childDst.endsWith("/")) childDst += "/";
-        childDst += name;
+        char childSrc[256];
+        char childDst[256];
+        size_t srcLen = strlen(src);
+        size_t dstLen = strlen(dst);
+        bool srcSlash = (srcLen > 0 && src[srcLen - 1] != '/');
+        bool dstSlash = (dstLen > 0 && dst[dstLen - 1] != '/');
+        snprintf(childSrc, sizeof(childSrc), "%s%s%s", src, srcSlash ? "/" : "", name);
+        snprintf(childDst, sizeof(childDst), "%s%s%s", dst, dstSlash ? "/" : "", name);
         entry.close();
-        if (!copyPathRecursive(childSrc.c_str(), childDst.c_str())) {
+        if (!copyPathRecursive(childSrc, childDst, depth + 1)) {
             dir.close();
             return false;
         }
         entry = dir.openNextFile();
         fileCount++;
-        // Yield periodically to prevent WDT resets
         if (fileCount % 10 == 0) {
             yield();
         }

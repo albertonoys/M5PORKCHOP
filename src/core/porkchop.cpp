@@ -561,29 +561,33 @@ void Porkchop::registerCallback(PorkchopEvent event, EventCallback callback) {
 
 void Porkchop::processEvents() {
     // Process events with bounds checking and yield for WDT safety
+    // NOTE: All postEvent() callers pass nullptr for data — no ownership to track.
     size_t processed = 0;
     const size_t MAX_EVENTS_PER_UPDATE = 16; // Limit events processed per update to prevent WDT
-    
-    for (const auto& item : eventQueue) {
-        if (processed >= MAX_EVENTS_PER_UPDATE) {
-            // If we hit the limit, remove processed events and keep remaining for next update
-            eventQueue.erase(eventQueue.begin(), eventQueue.begin() + processed);
-            return; // Exit early to avoid WDT timeout
-        }
-        
+
+    // Index-based loop to avoid iterator invalidation from erase()
+    size_t i = 0;
+    while (i < eventQueue.size() && processed < MAX_EVENTS_PER_UPDATE) {
+        const auto& item = eventQueue[i];
+
         for (const auto& cb : callbacks) {
             if (cb.first == item.event) {
-                // Execute callback with potential for yielding to prevent WDT issues
                 cb.second(item.event, item.data);
-                
-                // Yield occasionally during heavy event processing
+
                 if (++processed % 4 == 0) {
-                    yield(); // Allow other tasks to run
+                    yield();
                 }
             }
         }
+        i++;
     }
-    eventQueue.clear();
+
+    // Erase all processed events in one operation after the loop
+    if (i >= eventQueue.size()) {
+        eventQueue.clear();
+    } else {
+        eventQueue.erase(eventQueue.begin(), eventQueue.begin() + i);
+    }
 }
 
 void Porkchop::handleInput() {

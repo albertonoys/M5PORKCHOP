@@ -76,11 +76,12 @@ void BaconMode::init() {
 void BaconMode::start() {
     Serial.println("[BACON] Starting...");
     
-    // Stop NetworkRecon to avoid promiscuous conflicts during scan/tx
+    // Pause NetworkRecon to avoid promiscuous conflicts during scan/tx
+    // Use pause() instead of stop() to preserve state for lighter resume
     reconWasRunning = NetworkRecon::isRunning();
     reconWasPaused = NetworkRecon::isPaused();
-    if (reconWasRunning || reconWasPaused) {
-        NetworkRecon::stop();
+    if (reconWasRunning) {
+        NetworkRecon::pause();
     }
 
     // Show scanning toast and start async scan (non-blocking)
@@ -128,14 +129,16 @@ void BaconMode::stop() {
     }
     
     // Full WiFi shutdown for clean BLE handoff (per BEST_PRACTICES section 14)
+    // Must stop() recon first since shutdown() kills WiFi out from under it
+    NetworkRecon::stop();
     WiFiUtils::shutdown();
 
     // Restore NetworkRecon state if it was active before BACON
-    if (reconWasRunning || reconWasPaused) {
+    if (reconWasRunning) {
         NetworkRecon::start();
-        if (reconWasPaused) {
-            NetworkRecon::pause();
-        }
+    } else if (reconWasPaused) {
+        NetworkRecon::start();
+        NetworkRecon::pause();
     }
     reconWasRunning = false;
     reconWasPaused = false;

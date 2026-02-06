@@ -62,6 +62,8 @@ static const size_t WIGLE_FILE_MAX_SIZE = 400000;
 
 // Graceful stop request flag for background scan task
 static volatile bool stopRequested = false;
+// Set by scan task just before self-deleting, used for safe cleanup in stop()
+static volatile bool scanTaskExited = false;
 
 // Helper: Open SD file with retry logic
 static File openFileWithRetry(const char* path, const char* mode) {
@@ -267,6 +269,7 @@ void WarhogMode::stop() {
     
     // Signal task to stop gracefully
     stopRequested = true;
+    scanTaskExited = false;
 
     // Wait briefly for background scan to notice stopRequested
     if (scanInProgress && scanTaskHandle != NULL) {
@@ -276,11 +279,19 @@ void WarhogMode::stop() {
         }
         // Force cleanup if task didn't exit in time
         if (scanTaskHandle != NULL) {
+            Serial.println("[WARHOG] Force-deleting scan task");
             vTaskDelete(scanTaskHandle);
             scanTaskHandle = NULL;
         }
-        // Always clean up scan data
-        WiFi.scanDelete();
+        // Only call scanDelete if task exited cleanly (not mid-scan-processing)
+        if (scanTaskExited) {
+            WiFi.scanDelete();
+        } else {
+            // Task was force-killed — WiFi state may be inconsistent.
+            // Full disconnect resets the scan state machine safely.
+            WiFi.disconnect(true);
+            delay(50);
+        }
     }
     scanInProgress = false;
     scanResult = -2;
@@ -309,19 +320,21 @@ void WarhogMode::scanTask(void* pvParameters) {
     // Check for early abort request
     if (shouldAbortScan()) {
         scanResult = -2;
+        scanTaskExited = true;
         scanTaskHandle = NULL;
         vTaskDelete(NULL);
         return;
     }
-    
+
     // Do full WiFi reset for reliable scanning
     WiFi.scanDelete();
     WiFi.disconnect(true);
         vTaskDelay(pdMS_TO_TICKS(100));
-    
+
     // Check abort between WiFi operations
     if (shouldAbortScan()) {
         scanResult = -2;
+        scanTaskExited = true;
         scanTaskHandle = NULL;
         vTaskDelete(NULL);
         return;
@@ -341,7 +354,8 @@ void WarhogMode::scanTask(void* pvParameters) {
     Serial.printf("[WARHOG] Scan task stack HWM: %u bytes unused of 4096\n",
                   (unsigned)(hwm * sizeof(StackType_t)));
 
-    // Clean up task handle and self-delete
+    // Signal clean exit, then self-delete
+    scanTaskExited = true;
     scanTaskHandle = NULL;
     vTaskDelete(NULL);
 }
@@ -440,7 +454,8 @@ void WarhogMode::performScan() {
     scanInProgress = true;
     scanStartTime = millis();
     scanResult = -1;  // Running
-    
+    scanTaskExited = false;
+
     // Create background task for sync scan
     xTaskCreatePinnedToCore(
         scanTask,           // Function

@@ -23,7 +23,7 @@ namespace NetworkRecon {
 static bool initialized = false;
 static bool running = false;
 static bool paused = false;
-static bool channelLocked = false;
+static std::atomic<bool> channelLocked{false};
 static bool channelLockedBeforePause = false;  // [BUG4 FIX] Save state for pause/resume
 static uint8_t lockedChannel = 0;
 static uint8_t currentChannel = 1;
@@ -105,7 +105,7 @@ static NewNetworkCallback newNetworkCallback = nullptr;
 // ============================================================================
 
 static void hopChannel() {
-    if (channelLocked) return;
+    if (channelLocked.load(std::memory_order_acquire)) return;
     
     currentChannelIndex = (currentChannelIndex + 1) % RECON_CHANNEL_COUNT;
     currentChannel = CHANNEL_HOP_ORDER[currentChannelIndex];
@@ -115,7 +115,7 @@ static void hopChannel() {
         uint32_t now = millis();
         if (now - lastHopLog > 1000) {
             lastHopLog = now;
-            Serial.printf("[DBG-H1] RECON hop ch=%d locked=%d\n", currentChannel, channelLocked ? 1 : 0);
+            Serial.printf("[DBG-H1] RECON hop ch=%d locked=%d\n", currentChannel, channelLocked.load() ? 1 : 0);
         }
     }
     // #endregion
@@ -739,7 +739,7 @@ void init() {
     lastCleanupTime = 0;
     running = false;
     paused = false;
-    channelLocked = false;
+    channelLocked.store(false, std::memory_order_relaxed);
     busy = false;
     pendingNetWrite = 0;
     pendingNetRead = 0;
@@ -850,9 +850,9 @@ void pause() {
     paused = true;
     
     // [BUG4 FIX] Save and clear channel lock - will restore on resume if mode still active
-    channelLockedBeforePause = channelLocked;
-    if (channelLocked) {
-        channelLocked = false;
+    channelLockedBeforePause = channelLocked.load(std::memory_order_acquire);
+    if (channelLockedBeforePause) {
+        channelLocked.store(false, std::memory_order_release);
         Serial.println("[RECON] Channel lock suspended for pause");
     }
     
@@ -885,7 +885,7 @@ void resume() {
     // [BUG4 FIX] Restore channel lock only if mode callback still registered
     // (If modeCallback is null, no mode owns the lock anymore)
     if (channelLockedBeforePause && modeCallback != nullptr) {
-        channelLocked = true;
+        channelLocked.store(true, std::memory_order_release);
         Serial.printf("[RECON] Channel lock restored to %d\n", lockedChannel);
     }
     channelLockedBeforePause = false;
@@ -903,7 +903,7 @@ void update() {
     
     // Channel hopping
     uint32_t hopInterval = getHopIntervalMsInternal();
-    if (!channelLocked && now - lastHopTime > hopInterval) {
+    if (!channelLocked.load(std::memory_order_acquire) && now - lastHopTime > hopInterval) {
         hopChannel();
         lastHopTime = now;
     }
@@ -1040,22 +1040,22 @@ int findNetworkIndex(const uint8_t* bssid) {
 
 void lockChannel(uint8_t channel) {
     if (channel < 1 || channel > 14) return;
-    
-    channelLocked = true;
+
     lockedChannel = channel;
     currentChannel = channel;
+    channelLocked.store(true, std::memory_order_release);
     esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
     
     Serial.printf("[RECON] Channel locked to %d\n", channel);
 }
 
 void unlockChannel() {
-    channelLocked = false;
+    channelLocked.store(false, std::memory_order_release);
     Serial.println("[RECON] Channel unlocked, resuming hopping");
 }
 
 bool isChannelLocked() {
-    return channelLocked;
+    return channelLocked.load(std::memory_order_acquire);
 }
 
 void setChannel(uint8_t channel) {

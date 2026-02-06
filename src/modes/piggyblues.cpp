@@ -100,8 +100,9 @@ static bool advCachePrimed = false;
 static inline void primeAdvCache() {
     if (advCachePrimed) return;
     advDataCache.clearData();
+    // Add max-size payload to force NimBLE's internal buffer allocation.
+    // Keep the data — first real sendX() call will clearData() before setting payload.
     advDataCache.addData(ADV_WARMUP_PAYLOAD, sizeof(ADV_WARMUP_PAYLOAD));
-    advDataCache.clearData();
     advCachePrimed = true;
 }
 
