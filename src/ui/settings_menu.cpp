@@ -764,47 +764,41 @@ static bool setSettingValue(SettingId id, int value) {
     }
 }
 
-static bool setSettingText(SettingId id, const String& value) {
+static bool setSettingText(SettingId id, const char* value) {
     switch (id) {
         case SET_WIFI_SSID:
-            if (strcmp(Config::wifi().otaSSID, value.c_str()) == 0) return false;
-            strncpy(Config::wifi().otaSSID, value.c_str(), sizeof(Config::wifi().otaSSID) - 1);
+            if (strcmp(Config::wifi().otaSSID, value) == 0) return false;
+            strncpy(Config::wifi().otaSSID, value, sizeof(Config::wifi().otaSSID) - 1);
             Config::wifi().otaSSID[sizeof(Config::wifi().otaSSID) - 1] = '\0';
             return true;
         case SET_WIFI_PASS:
-            if (strcmp(Config::wifi().otaPassword, value.c_str()) == 0) return false;
-            strncpy(Config::wifi().otaPassword, value.c_str(), sizeof(Config::wifi().otaPassword) - 1);
+            if (strcmp(Config::wifi().otaPassword, value) == 0) return false;
+            strncpy(Config::wifi().otaPassword, value, sizeof(Config::wifi().otaPassword) - 1);
             Config::wifi().otaPassword[sizeof(Config::wifi().otaPassword) - 1] = '\0';
             return true;
         case SET_WPASEC_STATUS:
-            if (strcmp(Config::wifi().wpaSecKey, value.c_str()) == 0) return false;
-            strncpy(Config::wifi().wpaSecKey, value.c_str(), sizeof(Config::wifi().wpaSecKey) - 1);
+            if (strcmp(Config::wifi().wpaSecKey, value) == 0) return false;
+            strncpy(Config::wifi().wpaSecKey, value, sizeof(Config::wifi().wpaSecKey) - 1);
             Config::wifi().wpaSecKey[sizeof(Config::wifi().wpaSecKey) - 1] = '\0';
             return true;
         case SET_WIGLE_NAME_STATUS:
-            if (strcmp(Config::wifi().wigleApiName, value.c_str()) == 0) return false;
-            strncpy(Config::wifi().wigleApiName, value.c_str(), sizeof(Config::wifi().wigleApiName) - 1);
+            if (strcmp(Config::wifi().wigleApiName, value) == 0) return false;
+            strncpy(Config::wifi().wigleApiName, value, sizeof(Config::wifi().wigleApiName) - 1);
             Config::wifi().wigleApiName[sizeof(Config::wifi().wigleApiName) - 1] = '\0';
             return true;
         case SET_WIGLE_TOKEN_STATUS:
-            if (strcmp(Config::wifi().wigleApiToken, value.c_str()) == 0) return false;
-            strncpy(Config::wifi().wigleApiToken, value.c_str(), sizeof(Config::wifi().wigleApiToken) - 1);
+            if (strcmp(Config::wifi().wigleApiToken, value) == 0) return false;
+            strncpy(Config::wifi().wigleApiToken, value, sizeof(Config::wifi().wigleApiToken) - 1);
             Config::wifi().wigleApiToken[sizeof(Config::wifi().wigleApiToken) - 1] = '\0';
             return true;
         case SET_CALLSIGN:
-            if (strcmp(Config::personality().callsign, value.c_str()) == 0) return false;
-            strncpy(Config::personality().callsign, value.c_str(), sizeof(Config::personality().callsign) - 1);
+            if (strcmp(Config::personality().callsign, value) == 0) return false;
+            strncpy(Config::personality().callsign, value, sizeof(Config::personality().callsign) - 1);
             Config::personality().callsign[sizeof(Config::personality().callsign) - 1] = '\0';
             return true;
         default:
             return false;
     }
-}
-
-static String getSettingText(SettingId id) {
-    char buf[80];
-    getSettingTextBuf(id, buf, sizeof(buf));
-    return String(buf);
 }
 }  // namespace
 bool SettingsMenu::active = false;
@@ -812,7 +806,8 @@ bool SettingsMenu::exitRequested = false;
 bool SettingsMenu::keyWasPressed = false;
 bool SettingsMenu::editing = false;
 bool SettingsMenu::textEditing = false;
-String SettingsMenu::textBuffer = "";
+char SettingsMenu::textBuffer[80] = "";
+uint8_t SettingsMenu::textLen = 0;
 uint8_t SettingsMenu::rootIndex = 0;
 uint8_t SettingsMenu::rootScroll = 0;
 uint8_t SettingsMenu::groupIndex = 0;
@@ -838,7 +833,7 @@ void SettingsMenu::show() {
     keyWasPressed = true;
     editing = false;
     textEditing = false;
-    textBuffer = "";
+    textBuffer[0] = '\0'; textLen = 0;
     rootIndex = 0;
     rootScroll = 0;
     groupIndex = 0;
@@ -1052,7 +1047,8 @@ void SettingsMenu::handleInput() {
                 } else if (direct->type == SettingType::TEXT) {
                     if (isTextEditable(direct->id)) {
                         textEditing = true;
-                        textBuffer = getSettingText(direct->id);
+                        getSettingTextBuf(direct->id, textBuffer, sizeof(textBuffer));
+                        textLen = strlen(textBuffer);
                         textEditId = direct->id;
                         keyWasPressed = true;
                     }
@@ -1104,7 +1100,8 @@ void SettingsMenu::handleInput() {
                 case SettingType::TEXT:
                     if (isTextEditable(entry.id)) {
                         textEditing = true;
-                        textBuffer = getSettingText(entry.id);
+                        getSettingTextBuf(entry.id, textBuffer, sizeof(textBuffer));
+                        textLen = strlen(textBuffer);
                         textEditId = entry.id;
                         keyWasPressed = true;
                     }
@@ -1155,13 +1152,13 @@ void SettingsMenu::handleTextInput() {
             else dirtyConfig = true;
         }
         textEditing = false;
-        textBuffer = "";
+        textBuffer[0] = '\0'; textLen = 0;
         return;
     }
 
     if (keys.del) {
-        if (textBuffer.length() > 0) {
-            textBuffer.remove(textBuffer.length() - 1);
+        if (textLen > 0) {
+            textBuffer[--textLen] = '\0';
         }
         return;
     }
@@ -1169,16 +1166,17 @@ void SettingsMenu::handleTextInput() {
     for (char c : keys.word) {
         if (c == '`') {
             textEditing = false;
-            textBuffer = "";
+            textBuffer[0] = '\0'; textLen = 0;
             return;
         }
     }
 
     const size_t limit = getTextLimit(static_cast<SettingId>(textEditId));
-    if (textBuffer.length() < limit) {
+    if (textLen < limit) {
         for (char c : keys.word) {
-            if (c >= 32 && c <= 126 && c != '`' && textBuffer.length() < limit) {
-                textBuffer += c;
+            if (c >= 32 && c <= 126 && c != '`' && textLen < limit) {
+                textBuffer[textLen++] = c;
+                textBuffer[textLen] = '\0';
             }
         }
     }
@@ -1236,8 +1234,7 @@ void SettingsMenu::draw(M5Canvas& canvas) {
                     if (direct->type == SettingType::TEXT) {
                         if (selected && textEditing && direct->id == static_cast<SettingId>(textEditId)) {
                             char displayBuf[12];
-                            const char* textSrc = textBuffer.c_str();
-                            size_t textLen = textBuffer.length();
+                            const char* textSrc = textBuffer;
                             if (textLen > 5) {
                                 if (textLen >= 2) {
                                     snprintf(displayBuf, sizeof(displayBuf), "...%c%c",
@@ -1357,8 +1354,7 @@ void SettingsMenu::draw(M5Canvas& canvas) {
         } else if (entry.type == SettingType::TEXT) {
             if (selected && textEditing && entry.id == static_cast<SettingId>(textEditId)) {
                 char displayBuf[12];
-                const char* textSrc = textBuffer.c_str();
-                size_t textLen = textBuffer.length();
+                const char* textSrc = textBuffer;
                 if (textLen > 5) {
                     if (textLen >= 2) {
                         snprintf(displayBuf, sizeof(displayBuf), "...%c%c",

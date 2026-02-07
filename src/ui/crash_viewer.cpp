@@ -16,7 +16,7 @@ static void formatTimeLine(time_t t, char* out, size_t len);
 
 bool CrashViewer::active = false;
 std::vector<CrashViewer::CrashEntry> CrashViewer::crashFiles;
-std::vector<String> CrashViewer::fileLines;
+std::vector<CrashViewer::LogLine> CrashViewer::fileLines;
 uint16_t CrashViewer::listScroll = 0;
 uint16_t CrashViewer::fileScroll = 0;
 uint16_t CrashViewer::totalLines = 0;
@@ -103,6 +103,13 @@ void CrashViewer::scanCrashFiles() {
     });
 }
 
+static void pushLogLine(std::vector<CrashViewer::LogLine>& lines, const char* text) {
+    CrashViewer::LogLine entry;
+    strncpy(entry.text, text, sizeof(entry.text) - 1);
+    entry.text[sizeof(entry.text) - 1] = '\0';
+    lines.push_back(entry);
+}
+
 void CrashViewer::loadCrashFile(const char* path) {
     fileLines.clear();
     fileScroll = 0;
@@ -112,34 +119,44 @@ void CrashViewer::loadCrashFile(const char* path) {
 
     File f = SD.open(path, FILE_READ);
     if (!f) {
-        fileLines.push_back("FAILED TO OPEN");
+        pushLogLine(fileLines, "FAILED TO OPEN");
         char displayName[32];
         formatDisplayName(path, displayName, sizeof(displayName));
-        fileLines.push_back(displayName);
+        pushLogLine(fileLines, displayName);
         totalLines = fileLines.size();
         return;
     }
 
-    std::vector<String> allLines;
-    allLines.reserve(MAX_LOG_LINES);  // FIX: Pre-allocate to avoid realloc fragmentation
+    // Read last MAX_LOG_LINES non-empty lines using ring buffer approach
+    fileLines.reserve(MAX_LOG_LINES);
+    char lineBuf[80];
+    uint16_t lineCount = 0;
     while (f.available()) {
-        String line = f.readStringUntil('\n');
-        line.trim();
-        if (line.length() == 0) {
-            continue;
+        size_t len = f.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
+        lineBuf[len] = '\0';
+        while (len > 0 && (lineBuf[len - 1] == '\r' || lineBuf[len - 1] == ' ')) {
+            lineBuf[--len] = '\0';
         }
-        allLines.push_back(line);
-        if (allLines.size() > MAX_LOG_LINES) {
-            allLines.erase(allLines.begin());
+        if (len == 0) continue;
+
+        if (lineCount < MAX_LOG_LINES) {
+            pushLogLine(fileLines, lineBuf);
+        } else {
+            // Shift left by 1 and replace last
+            for (uint16_t i = 1; i < fileLines.size(); i++) {
+                fileLines[i - 1] = fileLines[i];
+            }
+            strncpy(fileLines.back().text, lineBuf, sizeof(LogLine::text) - 1);
+            fileLines.back().text[sizeof(LogLine::text) - 1] = '\0';
         }
+        lineCount++;
     }
     f.close();
 
-    fileLines = allLines;
     totalLines = fileLines.size();
 
     if (fileLines.empty()) {
-        fileLines.push_back("EMPTY FILE");
+        pushLogLine(fileLines, "EMPTY FILE");
         totalLines = 1;
     }
 }
@@ -273,9 +290,9 @@ void CrashViewer::drawFile(M5Canvas& canvas) {
     uint8_t y = 2;
 
     for (uint8_t i = 0; i < VISIBLE_LINES && (fileScroll + i) < totalLines; i++) {
-        const String& line = fileLines[fileScroll + i];
+        const LogLine& line = fileLines[fileScroll + i];
         char displayLine[48];
-        strncpy(displayLine, line.c_str(), sizeof(displayLine) - 1);
+        strncpy(displayLine, line.text, sizeof(displayLine) - 1);
         displayLine[sizeof(displayLine) - 1] = '\0';
         size_t lineLen = strlen(displayLine);
         if (lineLen > 39 && sizeof(displayLine) > 39) {

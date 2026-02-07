@@ -14,7 +14,9 @@ public:
     static bool isActive() { return active; }
     static void draw(M5Canvas& canvas);
     static void getStatusLine(char* out, size_t len);
-    
+
+    struct LogLine { char text[80]; };
+
 private:
     struct CrashEntry {
         char path[64];
@@ -22,7 +24,7 @@ private:
     };
     static bool active;
     static std::vector<CrashEntry> crashFiles;
-    static std::vector<String> fileLines;
+    static std::vector<LogLine> fileLines;
     static uint16_t listScroll;
     static uint16_t fileScroll;
     static uint16_t totalLines;

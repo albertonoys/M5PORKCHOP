@@ -24,26 +24,13 @@ static const size_t WPASEC_MAX_CACHE_ENTRIES = 500;
 // Static member initialization
 bool WPASec::cacheLoaded = false;
 char WPASec::lastError[64] = "";
-std::map<String, WPASec::CacheEntry> WPASec::crackedCache;
-std::map<String, bool> WPASec::uploadedCache;
+std::vector<WPASec::CrackedEntry> WPASec::crackedCache;
+std::vector<WPASec::UploadedEntry> WPASec::uploadedCache;
 volatile bool WPASec::busy = false;
 bool WPASec::batchMode = false;
 
 bool WPASec::isBusy() {
     return busy;
-}
-
-String WPASec::normalizeBSSID(const char* bssid) {
-    if (!bssid) return "";
-    String out = "";
-    out.reserve(12);
-    for (int i = 0; bssid[i]; i++) {
-        char c = bssid[i];
-        if (c != ':' && c != '-') {
-            out += (char)toupper(c);
-        }
-    }
-    return out;
 }
 
 void WPASec::normalizeBSSID_Char(const char* bssid, char* output, size_t outLen) {
@@ -74,16 +61,20 @@ bool WPASec::loadUploadedList() {
         return false;
     }
 
-    String line;
-    line.reserve(64);  // Pre-allocate to reduce heap fragmentation
+    char lineBuf[64];
     while (f.available() && uploadedCache.size() < WPASEC_MAX_CACHE_ENTRIES) {
-        line = f.readStringUntil('\n');  // Reuses existing capacity
-        line.trim();
-        if (!line.isEmpty()) {
-            String key = normalizeBSSID(line.c_str());
-            if (!key.isEmpty()) {
-                uploadedCache[key] = true;
-            }
+        size_t len = f.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
+        lineBuf[len] = '\0';
+        // Trim trailing whitespace
+        while (len > 0 && (lineBuf[len - 1] == '\r' || lineBuf[len - 1] == ' ')) {
+            lineBuf[--len] = '\0';
+        }
+        if (len == 0) continue;
+
+        UploadedEntry entry;
+        normalizeBSSID_Char(lineBuf, entry.bssid, sizeof(entry.bssid));
+        if (entry.bssid[0] != '\0') {
+            uploadedCache.push_back(entry);
         }
     }
 
@@ -109,32 +100,60 @@ bool WPASec::loadCache() {
         // Format: AP_BSSID:CLIENT_BSSID:SSID:password (WPA-SEC potfile format)
         // AP_BSSID is always 12 hex chars, CLIENT_BSSID is always 12 hex chars
         // Cap at 500 entries to prevent memory exhaustion
-        String line;
-        line.reserve(128);  // Pre-allocate to reduce heap fragmentation
+        char lineBuf[160];
         while (f.available() && crackedCache.size() < WPASEC_MAX_CACHE_ENTRIES) {
-            line = f.readStringUntil('\n');  // Reuses existing capacity
-            line.trim();
-            if (line.isEmpty()) continue;
+            size_t len = f.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
+            lineBuf[len] = '\0';
+            // Trim trailing whitespace
+            while (len > 0 && (lineBuf[len - 1] == '\r' || lineBuf[len - 1] == ' ')) {
+                lineBuf[--len] = '\0';
+            }
+            if (len == 0) continue;
 
             // WPA-SEC potfile: AP_BSSID:CLIENT_BSSID:SSID:password
             // Both BSSIDs are exactly 12 hex chars (no colons)
             // Password can contain colons, so we must find the THIRD colon
-            int firstColon = line.indexOf(':');
-            int secondColon = (firstColon > 0) ? line.indexOf(':', firstColon + 1) : -1;
-            int thirdColon = (secondColon > 0) ? line.indexOf(':', secondColon + 1) : -1;
+            // Find colons by scanning
+            const char* firstColon = nullptr;
+            const char* secondColon = nullptr;
+            const char* thirdColon = nullptr;
+            for (const char* p = lineBuf; *p; p++) {
+                if (*p == ':') {
+                    if (!firstColon) firstColon = p;
+                    else if (!secondColon) secondColon = p;
+                    else if (!thirdColon) { thirdColon = p; break; }
+                }
+            }
 
             // Validate: AP BSSID at pos 0-11 (colon at 12), client BSSID at pos 13-24 (colon at 25)
-            if (firstColon == 12 && secondColon == 25 && thirdColon > secondColon) {
-                String bssid = line.substring(0, firstColon);  // AP BSSID
-                String ssid = line.substring(secondColon + 1, thirdColon);  // SSID between 2nd and 3rd colon
-                String password = line.substring(thirdColon + 1);  // Everything after 3rd colon
+            if (firstColon && secondColon && thirdColon &&
+                (firstColon - lineBuf) == 12 &&
+                (secondColon - lineBuf) == 25 &&
+                thirdColon > secondColon) {
 
-                bssid = normalizeBSSID(bssid.c_str());
+                CrackedEntry entry;
+                memset(&entry, 0, sizeof(entry));
 
-                CacheEntry entry;
-                entry.ssid = ssid;
-                entry.password = password;
-                crackedCache[bssid] = entry;
+                // AP BSSID: first 12 chars, normalize
+                char rawBssid[13];
+                memcpy(rawBssid, lineBuf, 12);
+                rawBssid[12] = '\0';
+                normalizeBSSID_Char(rawBssid, entry.bssid, sizeof(entry.bssid));
+
+                // SSID: between 2nd and 3rd colon
+                size_t ssidLen = (size_t)(thirdColon - secondColon - 1);
+                if (ssidLen >= sizeof(entry.ssid)) ssidLen = sizeof(entry.ssid) - 1;
+                memcpy(entry.ssid, secondColon + 1, ssidLen);
+                entry.ssid[ssidLen] = '\0';
+
+                // Password: everything after 3rd colon
+                const char* pwStart = thirdColon + 1;
+                size_t pwLen = strlen(pwStart);
+                if (pwLen >= sizeof(entry.password)) pwLen = sizeof(entry.password) - 1;
+                memcpy(entry.password, pwStart, pwLen);
+                entry.password[pwLen] = '\0';
+
+                crackedCache.push_back(entry);
             }
         }
 
@@ -153,30 +172,36 @@ bool WPASec::loadCache() {
 // Local Cache Queries
 // ============================================================================
 
+const WPASec::CrackedEntry* WPASec::findCracked(const char* normalizedBssid) {
+    for (size_t i = 0; i < crackedCache.size(); i++) {
+        if (strcmp(crackedCache[i].bssid, normalizedBssid) == 0) {
+            return &crackedCache[i];
+        }
+    }
+    return nullptr;
+}
+
 bool WPASec::isCracked(const char* bssid) {
     loadCache();
-    String key = normalizeBSSID(bssid);
-    return crackedCache.find(key) != crackedCache.end();
+    char key[13];
+    normalizeBSSID_Char(bssid, key, sizeof(key));
+    return findCracked(key) != nullptr;
 }
 
-String WPASec::getPassword(const char* bssid) {
+const char* WPASec::getPassword(const char* bssid) {
     loadCache();
-    String key = normalizeBSSID(bssid);
-    auto it = crackedCache.find(key);
-    if (it != crackedCache.end()) {
-        return it->second.password;
-    }
-    return "";
+    char key[13];
+    normalizeBSSID_Char(bssid, key, sizeof(key));
+    const CrackedEntry* entry = findCracked(key);
+    return entry ? entry->password : "";
 }
 
-String WPASec::getSSID(const char* bssid) {
+const char* WPASec::getSSID(const char* bssid) {
     loadCache();
-    String key = normalizeBSSID(bssid);
-    auto it = crackedCache.find(key);
-    if (it != crackedCache.end()) {
-        return it->second.ssid;
-    }
-    return "";
+    char key[13];
+    normalizeBSSID_Char(bssid, key, sizeof(key));
+    const CrackedEntry* entry = findCracked(key);
+    return entry ? entry->ssid : "";
 }
 
 uint16_t WPASec::getCrackedCount() {
@@ -186,9 +211,13 @@ uint16_t WPASec::getCrackedCount() {
 
 bool WPASec::isUploaded(const char* bssid) {
     loadCache();
-    String key = normalizeBSSID(bssid);
-    if (crackedCache.find(key) != crackedCache.end()) return true;
-    return uploadedCache.find(key) != uploadedCache.end();
+    char key[13];
+    normalizeBSSID_Char(bssid, key, sizeof(key));
+    if (findCracked(key) != nullptr) return true;
+    for (size_t i = 0; i < uploadedCache.size(); i++) {
+        if (strcmp(uploadedCache[i].bssid, key) == 0) return true;
+    }
+    return false;
 }
 
 const char* WPASec::getLastError() {
@@ -199,7 +228,9 @@ void WPASec::freeCacheMemory() {
     size_t crackedCount = crackedCache.size();
     size_t uploadedCount = uploadedCache.size();
     crackedCache.clear();
+    crackedCache.shrink_to_fit();
     uploadedCache.clear();
+    uploadedCache.shrink_to_fit();
     cacheLoaded = false;
     Serial.printf("[WPASEC] Freed cache: %u cracked, %u uploaded\n",
                   (unsigned int)crackedCount, (unsigned int)uploadedCount);
@@ -214,8 +245,8 @@ bool WPASec::saveUploadedList() {
         return false;
     }
 
-    for (const auto& kv : uploadedCache) {
-        f.println(kv.first);
+    for (size_t i = 0; i < uploadedCache.size(); i++) {
+        f.println(uploadedCache[i].bssid);
     }
 
     f.close();
@@ -224,17 +255,22 @@ bool WPASec::saveUploadedList() {
 
 void WPASec::markAsUploaded(const char* bssid) {
     loadCache();
-    String key = normalizeBSSID(bssid);
-    if (!key.isEmpty()) {
-        if (uploadedCache.find(key) == uploadedCache.end() &&
-            uploadedCache.size() >= WPASEC_MAX_CACHE_ENTRIES) {
-            // Cap in-memory cache to avoid unbounded heap growth.
-            return;
-        }
-        uploadedCache[key] = true;
-        if (!batchMode) {
-            saveUploadedList();  // Only save immediately if not in batch mode
-        }
+    char key[13];
+    normalizeBSSID_Char(bssid, key, sizeof(key));
+    if (key[0] == '\0') return;
+
+    // Check if already present
+    for (size_t i = 0; i < uploadedCache.size(); i++) {
+        if (strcmp(uploadedCache[i].bssid, key) == 0) return;
+    }
+    // Cap in-memory cache to avoid unbounded heap growth
+    if (uploadedCache.size() >= WPASEC_MAX_CACHE_ENTRIES) return;
+
+    UploadedEntry entry;
+    memcpy(entry.bssid, key, sizeof(entry.bssid));
+    uploadedCache.push_back(entry);
+    if (!batchMode) {
+        saveUploadedList();
     }
 }
 
@@ -708,8 +744,18 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
         loadCache();
         for (uint8_t i = 0; i < pendingCount; i++) {
             if (successMask[i]) {
-                String key = normalizeBSSID(pendingUploads[i].bssid);
-                uploadedCache[key] = true;
+                char key[13];
+                normalizeBSSID_Char(pendingUploads[i].bssid, key, sizeof(key));
+                // Check not already present before push
+                bool found = false;
+                for (size_t j = 0; j < uploadedCache.size(); j++) {
+                    if (strcmp(uploadedCache[j].bssid, key) == 0) { found = true; break; }
+                }
+                if (!found && uploadedCache.size() < WPASEC_MAX_CACHE_ENTRIES) {
+                    UploadedEntry entry;
+                    memcpy(entry.bssid, key, sizeof(entry.bssid));
+                    uploadedCache.push_back(entry);
+                }
             }
         }
         saveUploadedList();

@@ -30,7 +30,8 @@ private:
     static bool keyWasPressed;
     static bool editing;  // Currently adjusting a value
     static bool textEditing;  // Currently editing text
-    static String textBuffer;  // Buffer for text input
+    static char textBuffer[80];   // Buffer for text input (max field is 64 chars)
+    static uint8_t textLen;
     static uint8_t rootIndex;
     static uint8_t rootScroll;
     static uint8_t groupIndex;

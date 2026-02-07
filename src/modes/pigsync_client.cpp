@@ -296,7 +296,7 @@ static bool parseSirloinHandshake(const uint8_t* data, uint16_t len, CapturedHan
     offset += 2;
 
     if (beaconLen > 0) {
-        if (offset + beaconLen > len) {
+        if (beaconLen > 512 || offset + beaconLen > len) {
             return false;
         }
         out.beaconData = (uint8_t*)malloc(beaconLen);
@@ -897,6 +897,7 @@ void PigSyncMode::start() {
     
     // Clear state
     devices.clear();
+    devices.reserve(10);
     state = State::IDLE;
     connected = false;
     memset(connectedMac, 0, 6);

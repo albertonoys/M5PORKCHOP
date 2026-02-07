@@ -77,8 +77,9 @@ static bool xpWpaLoaded = false;
 static bool xpWigleLoaded = false;
 static bool xpWpaCacheComplete = false;
 static bool xpWigleCacheComplete = false;
-static std::vector<String> xpAwardedWpa;
-static std::vector<String> xpAwardedWigle;
+struct XpAwardEntry { char key[80]; };
+static std::vector<XpAwardEntry> xpAwardedWpa;
+static std::vector<XpAwardEntry> xpAwardedWigle;
 
 static void refreshSdPaths() {
     XP_WPA_AWARDED_FILE = SDLayout::xpAwardedWpaPath();
@@ -213,9 +214,9 @@ static void resetUploadState(bool removePartial) {
     uploadDirBuf[0] = '\0';
 }
 
-static bool listContains(const std::vector<String>& list, const String& value) {
-    for (const auto& entry : list) {
-        if (entry == value) return true;
+static bool listContains(const std::vector<XpAwardEntry>& list, const char* value) {
+    for (size_t i = 0; i < list.size(); i++) {
+        if (strcmp(list[i].key, value) == 0) return true;
     }
     return false;
 }
@@ -287,7 +288,7 @@ static bool isSameOrSubPath(const String& parent, const String& child) {
     return (c.length() > p.length() && c.charAt(p.length()) == '/');
 }
 
-static void loadAwardedList(const char* path, std::vector<String>& out, bool& loaded, bool& complete) {
+static void loadAwardedList(const char* path, std::vector<XpAwardEntry>& out, bool& loaded, bool& complete) {
     if (loaded) return;
     if (!path || !path[0]) {
         out.clear();
@@ -296,19 +297,24 @@ static void loadAwardedList(const char* path, std::vector<String>& out, bool& lo
         return;
     }
     out.clear();
-    out.reserve(XP_AWARD_CACHE_MAX);  // FIX: Pre-allocate to avoid realloc fragmentation
+    out.reserve(XP_AWARD_CACHE_MAX);
     complete = true;
     File f = SD.open(path, FILE_READ);
     if (f) {
-        String line;
-        line.reserve(128);  // Pre-allocate to reduce heap fragmentation
+        char lineBuf[80];
         while (f.available()) {
-            yield();  // FIX: Prevent WDT on large files
-            line = f.readStringUntil('\n');  // Reuses existing capacity
-            line.trim();
-            if (line.length()) {
+            yield();
+            size_t len = f.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
+            lineBuf[len] = '\0';
+            while (len > 0 && (lineBuf[len - 1] == '\r' || lineBuf[len - 1] == ' ')) {
+                lineBuf[--len] = '\0';
+            }
+            if (len > 0) {
                 if (out.size() < XP_AWARD_CACHE_MAX) {
-                    out.push_back(line);
+                    XpAwardEntry entry;
+                    strncpy(entry.key, lineBuf, sizeof(entry.key) - 1);
+                    entry.key[sizeof(entry.key) - 1] = '\0';
+                    out.push_back(entry);
                 } else {
                     complete = false;
                     break;
@@ -320,30 +326,35 @@ static void loadAwardedList(const char* path, std::vector<String>& out, bool& lo
     loaded = true;
 }
 
-static bool appendAwarded(const char* path, std::vector<String>& out, const String& value) {
+static bool appendAwarded(const char* path, std::vector<XpAwardEntry>& out, const char* value) {
     if (!path || !path[0]) return false;
     if (listContains(out, value)) return false;
-    if (out.size() >= XP_AWARD_CACHE_MAX) return false;  // FIX: Cap vector size
+    if (out.size() >= XP_AWARD_CACHE_MAX) return false;
     File f = SD.open(path, FILE_APPEND);
     if (!f) return false;
     f.println(value);
     f.close();
-    out.push_back(value);
+    XpAwardEntry entry;
+    strncpy(entry.key, value, sizeof(entry.key) - 1);
+    entry.key[sizeof(entry.key) - 1] = '\0';
+    out.push_back(entry);
     return true;
 }
 
-static bool fileHasLine(const char* path, const String& value) {
+static bool fileHasLine(const char* path, const char* value) {
     if (!path || !path[0]) return false;
     File f = SD.open(path, FILE_READ);
     if (!f) return false;
-    String line;
-    line.reserve(128);  // Pre-allocate to reduce heap fragmentation
+    char lineBuf[80];
     while (f.available()) {
-        yield();  // FIX: Prevent WDT on large files
-        line = f.readStringUntil('\n');  // Reuses existing capacity
-        line.trim();
-        if (!line.length()) continue;
-        if (line == value) {
+        yield();
+        size_t len = f.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
+        lineBuf[len] = '\0';
+        while (len > 0 && (lineBuf[len - 1] == '\r' || lineBuf[len - 1] == ' ')) {
+            lineBuf[--len] = '\0';
+        }
+        if (len == 0) continue;
+        if (strcmp(lineBuf, value) == 0) {
             f.close();
             return true;
         }
@@ -353,8 +364,8 @@ static bool fileHasLine(const char* path, const String& value) {
 }
 
 static bool isAwarded(const char* path,
-                      const String& value,
-                      std::vector<String>& cache,
+                      const char* value,
+                      std::vector<XpAwardEntry>& cache,
                       bool& loaded,
                       bool& complete) {
     loadAwardedList(path, cache, loaded, complete);
@@ -364,17 +375,16 @@ static bool isAwarded(const char* path,
     return fileHasLine(path, value);
 }
 
-static String normalizeHexToken(const String& input, size_t maxLen) {
-    String out;
-    out.reserve(maxLen);
-    for (size_t i = 0; i < input.length(); i++) {
+static size_t normalizeHexToken(const char* input, char* out, size_t outLen, size_t maxHex) {
+    size_t j = 0;
+    for (size_t i = 0; input[i] && j < maxHex && j < outLen - 1; i++) {
         const char c = input[i];
         if (isxdigit(static_cast<unsigned char>(c))) {
-            out += (char)toupper(static_cast<unsigned char>(c));
-            if (out.length() >= maxLen) break;
+            out[j++] = (char)toupper(static_cast<unsigned char>(c));
         }
     }
-    return out;
+    out[j] = '\0';
+    return j;
 }
 
 // FIX: Accept const char* directly to avoid implicit String construction from char[]
@@ -448,7 +458,7 @@ static bool wigleLooksValid(const String& path) {
     return wigleLooksValid(path.c_str());
 }
 
-static bool awardXpEntry(const char* src, uint16_t per, const char* awardFile, std::vector<String>& awardList, const String& key) {
+static bool awardXpEntry(const char* src, uint16_t per, const char* awardFile, std::vector<XpAwardEntry>& awardList, const char* key) {
     if (xpSessionAwarded + per > XP_SESSION_CAP) {
         return false;
     }
@@ -477,66 +487,63 @@ static void scanXpAwards() {
     loadAwardedList(XP_WPA_AWARDED_FILE, xpAwardedWpa, xpWpaLoaded, xpWpaCacheComplete);
     loadAwardedList(XP_WIGLE_AWARDED_FILE, xpAwardedWigle, xpWigleLoaded, xpWigleCacheComplete);
 
-    // WPA-SEC awards
-    // FIX: Reuse String objects to reduce heap fragmentation
+    // WPA-SEC awards — zero String allocations in loop
     File wpaFile = SD.open(WPA_SENT_FILE, FILE_READ);
     if (!wpaFile) {
         wpaFile = SD.open(SDLayout::wpasecUploadedPath(), FILE_READ);
     }
     if (wpaFile) {
-        String line;
-        line.reserve(64);  // Pre-allocate for typical BSSID lines
-        String bssid;
-        bssid.reserve(16);
-        char pcapPathBuf[128];  // FIX: Stack buffer for path building
+        char lineBuf[64];
+        char bssid[16];
+        char pcapPathBuf[128];
         const char* hsDir = SDLayout::handshakesDir();
-        
+
         while (wpaFile.available() && xpSessionAwarded < XP_SESSION_CAP) {
-            yield();  // FIX: Prevent WDT on large files
-            line = wpaFile.readStringUntil('\n');
-            line.trim();
-            if (!line.length()) continue;
-            bssid = normalizeHexToken(line, 12);
-            if (bssid.length() < 12) continue;
+            yield();
+            size_t len = wpaFile.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
+            lineBuf[len] = '\0';
+            while (len > 0 && (lineBuf[len - 1] == '\r' || lineBuf[len - 1] == ' ')) {
+                lineBuf[--len] = '\0';
+            }
+            if (len == 0) continue;
+            size_t hexLen = normalizeHexToken(lineBuf, bssid, sizeof(bssid), 12);
+            if (hexLen < 12) continue;
             if (isAwarded(XP_WPA_AWARDED_FILE, bssid, xpAwardedWpa, xpWpaLoaded, xpWpaCacheComplete)) continue;
-            snprintf(pcapPathBuf, sizeof(pcapPathBuf), "%s/%s.pcap", hsDir, bssid.c_str());
+            snprintf(pcapPathBuf, sizeof(pcapPathBuf), "%s/%s.pcap", hsDir, bssid);
             if (!pcapLooksValid(pcapPathBuf)) continue;
             awardXpEntry("WPA", XP_WPA_PER, XP_WPA_AWARDED_FILE, xpAwardedWpa, bssid);
         }
         wpaFile.close();
     }
 
-    // WiGLE awards
-    // FIX: Reuse String objects to reduce heap fragmentation
+    // WiGLE awards — zero String allocations in loop
     File wigleFile = SD.open(WIGLE_UPLOADED_FILE, FILE_READ);
     if (wigleFile) {
-        String line;
-        line.reserve(128);  // Pre-allocate for path lines
-        String path;
-        path.reserve(128);
-        char pathBuf[160];  // FIX: Stack buffer for path building
+        char lineBuf[128];
+        char pathBuf[160];
         const char* wdDir = SDLayout::wardrivingDir();
-        
+
         while (wigleFile.available() && xpSessionAwarded < XP_SESSION_CAP) {
-            yield();  // FIX: Prevent WDT on large files
-            line = wigleFile.readStringUntil('\n');
-            line.trim();
-            if (!line.length()) continue;
-            
-            // FIX: Build path in stack buffer when needed, else reuse line
-            if (line.charAt(0) != '/') {
-                snprintf(pathBuf, sizeof(pathBuf), "%s/%s", wdDir, line.c_str());
+            yield();
+            size_t len = wigleFile.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
+            lineBuf[len] = '\0';
+            while (len > 0 && (lineBuf[len - 1] == '\r' || lineBuf[len - 1] == ' ')) {
+                lineBuf[--len] = '\0';
+            }
+            if (len == 0) continue;
+
+            const char* path;
+            if (lineBuf[0] != '/') {
+                snprintf(pathBuf, sizeof(pathBuf), "%s/%s", wdDir, lineBuf);
                 path = pathBuf;
             } else {
-                path = line;
+                path = lineBuf;
             }
-            
-            // FIX: Check extension without creating lowercase copy
-            size_t pathLen = path.length();
-            if (pathLen < 10) continue;  // ".wigle.csv" is 10 chars
-            const char* ext = path.c_str() + pathLen - 10;
-            if (strcasecmp(ext, ".wigle.csv") != 0) continue;
-            
+
+            size_t pathLen = strlen(path);
+            if (pathLen < 10) continue;
+            if (strcasecmp(path + pathLen - 10, ".wigle.csv") != 0) continue;
+
             if (isAwarded(XP_WIGLE_AWARDED_FILE, path, xpAwardedWigle, xpWigleLoaded, xpWigleCacheComplete)) continue;
             if (!wigleLooksValid(path)) continue;
             awardXpEntry("WIGLE", XP_WIGLE_PER, XP_WIGLE_AWARDED_FILE, xpAwardedWigle, path);
@@ -4753,4 +4760,3 @@ void FileServer::handleNotFound() {
 const char* FileServer::getHTML() {
     return HTML_TEMPLATE;
 }
-

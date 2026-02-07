@@ -307,13 +307,20 @@ void AchievementsMenu::updateBottomOverlay() {
     bool hasIt = (unlocked & ACHIEVEMENTS[selectedIndex].flag) != 0;
     
     if (hasIt) {
-        String text = ACHIEVEMENTS[selectedIndex].howTo;
-        text.toUpperCase();  // PIG SCREAMS
-        // Truncate to fit 240px bottom bar (~36 chars)
-        if (text.length() > 36) {
-            text = text.substring(0, 33) + "...";
+        // PIG SCREAMS — uppercase copy, truncated to fit 240px bottom bar (~36 chars)
+        char buf[40];
+        const char* src = ACHIEVEMENTS[selectedIndex].howTo;
+        size_t i = 0;
+        while (src[i] && i < 36) {
+            buf[i] = (char)toupper((unsigned char)src[i]);
+            i++;
         }
-        Display::setBottomOverlay(text);
+        if (src[i]) {  // Was truncated
+            if (i >= 3) i = 33;
+            buf[i++] = '.'; buf[i++] = '.'; buf[i++] = '.';
+        }
+        buf[i] = '\0';
+        Display::setBottomOverlay(buf);
     } else {
         Display::setBottomOverlay("UNKNOWN");
     }

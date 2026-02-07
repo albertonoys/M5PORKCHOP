@@ -36,7 +36,8 @@ private:
     static bool keyWasPressed;
     static bool exitRequested;
     static bool textEditing;
-    static String textBuffer;
+    static char textBuffer[33];
+    static uint8_t textLen;
     
     static const uint8_t VISIBLE_ITEMS = 5;
 };

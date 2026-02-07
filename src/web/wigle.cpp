@@ -267,12 +267,15 @@ bool WiGLE::uploadSingleFile(const char* csvPath) {
         return false;
     }
     
-    // Extract filename from path
-    String filename = getFilenameFromPath(csvPath);
-    
-    // Build Basic Auth header
-    String credentials = String(Config::wifi().wigleApiName) + ":" + String(Config::wifi().wigleApiToken);
-    String authHeader = "Basic " + base64::encode(credentials);
+    // Extract filename from path (use strrchr instead of String)
+    const char* filename = strrchr(csvPath, '/');
+    filename = filename ? filename + 1 : csvPath;
+
+    // Build Basic Auth header — minimize String lifetime
+    char credBuf[132];  // wigleApiName(64) + ":" + wigleApiToken(64) + NUL
+    snprintf(credBuf, sizeof(credBuf), "%s:%s",
+             Config::wifi().wigleApiName, Config::wifi().wigleApiToken);
+    String authHeader = "Basic " + base64::encode(credBuf);
     
     // Create WiFiClientSecure with minimal buffers
     WiFiClientSecure client;
@@ -307,7 +310,7 @@ bool WiGLE::uploadSingleFile(const char* csvPath) {
         "--%s\r\n"
         "Content-Disposition: form-data; name=\"file\"; filename=\"%s\"\r\n"
         "Content-Type: text/csv\r\n\r\n",
-        boundary, filename.c_str());
+        boundary, filename);
     
     // bodyEnd: "\r\n--boundary--\r\n" (~60 bytes max)
     char bodyEnd[64];
@@ -394,18 +397,22 @@ bool WiGLE::uploadSingleFile(const char* csvPath) {
     // Parse HTTP status code
     int statusCode = 0;
     if (client.available()) {
-        String statusLine = client.readStringUntil('\n');
+        char statusLine[64];
+        size_t sLen = client.readBytesUntil('\n', statusLine, sizeof(statusLine) - 1);
+        statusLine[sLen] = '\0';
         // Parse "HTTP/1.1 200 OK"
-        int space1 = statusLine.indexOf(' ');
-        if (space1 > 0) {
-            statusCode = statusLine.substring(space1 + 1).toInt();
-        }
+        const char* sp = strchr(statusLine, ' ');
+        if (sp) statusCode = atoi(sp + 1);
     }
-    
+
     // Skip headers
-    while (client.connected()) {
-        String h = client.readStringUntil('\n');
-        if (h == "\r" || h.length() == 0) break;
+    {
+        char hBuf[128];
+        while (client.connected()) {
+            size_t hLen = client.readBytesUntil('\n', hBuf, sizeof(hBuf) - 1);
+            hBuf[hLen] = '\0';
+            if (hLen <= 1) break;  // Empty line or just \r
+        }
     }
     
     // Read response body (for error context)
@@ -443,7 +450,7 @@ bool WiGLE::uploadSingleFile(const char* csvPath) {
         // NOTE: Don't mark uploaded here - caller handles marking after all TLS operations
         // This avoids reloading list during TLS when heap is tight
         Serial.printf("[WIGLE] Upload success: %s\n", csvPath);
-        SDLog::log("WIGLE", "Upload OK: %s", filename.c_str());
+        SDLog::log("WIGLE", "Upload OK: %s", filename);
         return true;
     }
     
@@ -455,16 +462,18 @@ bool WiGLE::uploadSingleFile(const char* csvPath) {
     }
     
     Serial.printf("[WIGLE] Upload failed: %s - %s\n", csvPath, lastError);
-    SDLog::log("WIGLE", "Upload failed: %s", filename.c_str());
+    SDLog::log("WIGLE", "Upload failed: %s", filename);
     return false;
 }
 
 bool WiGLE::fetchStats() {
     Serial.println("[WIGLE] Fetching user stats...");
     
-    // Build Basic Auth header
-    String credentials = String(Config::wifi().wigleApiName) + ":" + String(Config::wifi().wigleApiToken);
-    String authHeader = "Basic " + base64::encode(credentials);
+    // Build Basic Auth header — minimize String lifetime
+    char credBuf[132];
+    snprintf(credBuf, sizeof(credBuf), "%s:%s",
+             Config::wifi().wigleApiName, Config::wifi().wigleApiToken);
+    String authHeader = "Basic " + base64::encode(credBuf);
     
     // Create WiFiClientSecure
     WiFiClientSecure client;
@@ -495,13 +504,13 @@ bool WiGLE::fetchStats() {
     // Read status code
     int statusCode = 0;
     if (client.available()) {
-        String statusLine = client.readStringUntil('\n');
-        int space1 = statusLine.indexOf(' ');
-        if (space1 > 0) {
-            statusCode = statusLine.substring(space1 + 1).toInt();
-        }
+        char statusLine[64];
+        size_t sLen = client.readBytesUntil('\n', statusLine, sizeof(statusLine) - 1);
+        statusLine[sLen] = '\0';
+        const char* sp = strchr(statusLine, ' ');
+        if (sp) statusCode = atoi(sp + 1);
     }
-    
+
     if (statusCode != 200) {
         client.stop();
         snprintf(lastError, sizeof(lastError), "STATS HTTP %d", statusCode);
@@ -509,9 +518,13 @@ bool WiGLE::fetchStats() {
     }
     
     // Skip headers
-    while (client.connected()) {
-        String h = client.readStringUntil('\n');
-        if (h == "\r" || h.length() == 0) break;
+    {
+        char hBuf[128];
+        while (client.connected()) {
+            size_t hLen = client.readBytesUntil('\n', hBuf, sizeof(hBuf) - 1);
+            hBuf[hLen] = '\0';
+            if (hLen <= 1) break;
+        }
     }
     
     // Read JSON body
@@ -683,8 +696,9 @@ WigleSyncResult WiGLE::syncFiles(WigleProgressCallback cb) {
             
             if (isWigleCSV) {
                 // Check if already uploaded
-                String fullPath = String(wardrivingDir) + "/" + fname;
-                if (!isUploaded(fullPath.c_str())) {
+                char fullPath[80];
+                snprintf(fullPath, sizeof(fullPath), "%s/%s", wardrivingDir, fname);
+                if (!isUploaded(fullPath)) {
                     snprintf(pendingUploads[pendingCount].path, 
                             sizeof(pendingUploads[pendingCount].path),
                             "%s/%s", wardrivingDir, fname);

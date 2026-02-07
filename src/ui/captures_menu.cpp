@@ -286,11 +286,8 @@ void CapturesMenu::updateWPASecStatus() {
         
         if (WPASec::isCracked(normalized)) {
             cap.status = CaptureStatus::CRACKED;
-            {
-                String pw = WPASec::getPassword(normalized);
-                strncpy(cap.password, pw.c_str(), sizeof(cap.password) - 1);
-                cap.password[sizeof(cap.password) - 1] = '\0';
-            }
+            strncpy(cap.password, WPASec::getPassword(normalized), sizeof(cap.password) - 1);
+            cap.password[sizeof(cap.password) - 1] = '\0';
         } else if (WPASec::isUploaded(normalized)) {
             cap.status = CaptureStatus::UPLOADED;
         } else {
@@ -324,11 +321,8 @@ void CapturesMenu::processAsyncWPASecUpdate() {
         if (normalized[0] != '\0') {
             if (WPASec::isCracked(normalized)) {
                 cap.status = CaptureStatus::CRACKED;
-                {
-                    String pw = WPASec::getPassword(normalized);
-                    strncpy(cap.password, pw.c_str(), sizeof(cap.password) - 1);
-                    cap.password[sizeof(cap.password) - 1] = '\0';
-                }
+                strncpy(cap.password, WPASec::getPassword(normalized), sizeof(cap.password) - 1);
+                cap.password[sizeof(cap.password) - 1] = '\0';
             } else if (WPASec::isUploaded(normalized)) {
                 cap.status = CaptureStatus::UPLOADED;
             } else {
@@ -685,33 +679,37 @@ void CapturesMenu::nukeLoot() {
         return;
     }
     
-    // Collect filenames first (can't delete while iterating)
-    std::vector<String> files;
-    File file = dir.openNextFile();
-    uint8_t yieldCounter = 0;
-    while (file) {
-        const char* base = file.name();
-        int slash = String(base).lastIndexOf('/');
-        String name = (slash >= 0) ? String(base).substring(slash + 1) : String(base);
-        files.push_back(String(handshakesDir) + "/" + name);
-        // Always close file handle to avoid exhausting SD file descriptors
-        file.close();
-        file = dir.openNextFile();
-        
-        // Yield every 10 files to prevent WDT timeout
-        if (++yieldCounter >= 10) {
-            yieldCounter = 0;
-            yield();
-        }
-    }
-    dir.close();
-    
-    // Delete all files
+    // Batch collect + delete to avoid vector<String> fragmentation
+    // Can't delete while iterating SD, so collect batches of 20
     int deleted = 0;
-    for (const auto& path : files) {
-        if (SD.remove(path)) {
-            deleted++;
+    bool moreFiles = true;
+    while (moreFiles) {
+        char paths[20][80];
+        uint8_t batchCount = 0;
+
+        dir = SD.open(handshakesDir);
+        if (!dir) break;
+
+        File file = dir.openNextFile();
+        while (file && batchCount < 20) {
+            const char* base = file.name();
+            const char* slash = strrchr(base, '/');
+            const char* name = slash ? slash + 1 : base;
+            snprintf(paths[batchCount], sizeof(paths[0]), "%s/%s", handshakesDir, name);
+            batchCount++;
+            file.close();
+            file = dir.openNextFile();
         }
+        if (file) file.close();
+        dir.close();
+
+        if (batchCount == 0) break;
+        moreFiles = (batchCount == 20);  // Might have more
+
+        for (uint8_t i = 0; i < batchCount; i++) {
+            if (SD.remove(paths[i])) deleted++;
+        }
+        yield();
     }
     
     Serial.printf("[CAPTURES] Nuked %d files\n", deleted);

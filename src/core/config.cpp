@@ -823,25 +823,28 @@ bool Config::loadWpaSecKeyFromFile() {
         return false;
     }
 
-    String key = f.readStringUntil('\n');
-    key.trim();
+    char key[64];
+    size_t keyLen = f.readBytesUntil('\n', key, sizeof(key) - 1);
+    key[keyLen] = '\0';
     f.close();
+    // Trim trailing whitespace
+    while (keyLen > 0 && (key[keyLen - 1] == '\r' || key[keyLen - 1] == ' ')) {
+        key[--keyLen] = '\0';
+    }
 
-    if (key.length() != 32) {
-        Serial.printf("[CONFIG] Invalid WPA-SEC key length: %d (expected 32)\n", key.length());
+    if (keyLen != 32) {
+        Serial.printf("[CONFIG] Invalid WPA-SEC key length: %d (expected 32)\n", (int)keyLen);
         return false;
     }
 
     for (int i = 0; i < 32; i++) {
-        char c = key.charAt(i);
-        if (!isxdigit(c)) {
+        if (!isxdigit(key[i])) {
             Serial.printf("[CONFIG] Invalid hex char in WPA-SEC key at position %d\n", i);
             return false;
         }
     }
 
-    // Use strncpy to safely copy the key to the char array
-    strncpy(wifiConfig.wpaSecKey, key.c_str(), sizeof(wifiConfig.wpaSecKey) - 1);
+    strncpy(wifiConfig.wpaSecKey, key, sizeof(wifiConfig.wpaSecKey) - 1);
     wifiConfig.wpaSecKey[sizeof(wifiConfig.wpaSecKey) - 1] = '\0';
     save();
 
@@ -875,32 +878,37 @@ bool Config::loadWigleKeyFromFile() {
         return false;
     }
 
-    String content = f.readStringUntil('\n');
-    content.trim();
+    char content[160];
+    size_t cLen = f.readBytesUntil('\n', content, sizeof(content) - 1);
+    content[cLen] = '\0';
     f.close();
+    // Trim trailing whitespace
+    while (cLen > 0 && (content[cLen - 1] == '\r' || content[cLen - 1] == ' ')) {
+        content[--cLen] = '\0';
+    }
 
-    int colonPos = content.indexOf(':');
-    if (colonPos < 1) {
+    char* colonPos = strchr(content, ':');
+    if (!colonPos || colonPos == content) {
         Serial.println("[CONFIG] Invalid WiGLE key format (expected name:token)");
         return false;
     }
 
-    String apiName = content.substring(0, colonPos);
-    String apiToken = content.substring(colonPos + 1);
+    *colonPos = '\0';  // Split into two strings
+    const char* apiName = content;
+    const char* apiToken = colonPos + 1;
+    // Trim leading spaces from token
+    while (*apiToken == ' ') apiToken++;
 
-    apiName.trim();
-    apiToken.trim();
-
-    if (apiName.isEmpty() || apiToken.isEmpty()) {
+    if (apiName[0] == '\0' || apiToken[0] == '\0') {
         Serial.println("[CONFIG] WiGLE API name or token is empty");
         return false;
     }
 
     // Use strncpy to safely copy strings to char arrays
-    strncpy(wifiConfig.wigleApiName, apiName.c_str(), sizeof(wifiConfig.wigleApiName) - 1);
+    strncpy(wifiConfig.wigleApiName, apiName, sizeof(wifiConfig.wigleApiName) - 1);
     wifiConfig.wigleApiName[sizeof(wifiConfig.wigleApiName) - 1] = '\0';
-    
-    strncpy(wifiConfig.wigleApiToken, apiToken.c_str(), sizeof(wifiConfig.wigleApiToken) - 1);
+
+    strncpy(wifiConfig.wigleApiToken, apiToken, sizeof(wifiConfig.wigleApiToken) - 1);
     wifiConfig.wigleApiToken[sizeof(wifiConfig.wigleApiToken) - 1] = '\0';
     save();
 
