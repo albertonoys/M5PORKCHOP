@@ -698,10 +698,10 @@ static void cleanupStaleNetworks() {
     taskENTER_CRITICAL(&vectorMux);
     
     // Collect stale indices (static to avoid stack/heap allocation)
-    static size_t staleIndices[20];
+    static size_t staleIndices[50];
     size_t staleCount = 0;
-    
-    for (size_t i = 0; i < networks.size() && staleCount < 20; i++) {
+
+    for (size_t i = 0; i < networks.size() && staleCount < 50; i++) {
         if (networks[i].lastDataSeen > 0 &&
             now - networks[i].lastDataSeen > CLIENT_BITMAP_RESET_MS) {
             networks[i].clientBitset = 0;

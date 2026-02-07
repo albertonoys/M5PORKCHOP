@@ -2083,6 +2083,10 @@ int OinkMode::findOrCreateHandshakeSafe(const uint8_t* bssid, const uint8_t* sta
     try {
         handshakes.push_back(hs);
     } catch (const std::bad_alloc&) {
+        if (hs.beaconData) {
+            free(hs.beaconData);
+            hs.beaconData = nullptr;
+        }
         NetworkRecon::exitCritical();
         SDLog::log("OINK", "Failed to create handshake: out of memory");
         return -1;

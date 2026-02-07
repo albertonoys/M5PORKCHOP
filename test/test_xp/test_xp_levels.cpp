@@ -61,8 +61,12 @@ void test_calculateLevel_at_600000_xp_is_level_40(void) {
     TEST_ASSERT_EQUAL_UINT8(40, calculateLevel(600000));
 }
 
-void test_calculateLevel_at_max_uint32_is_level_40(void) {
-    TEST_ASSERT_EQUAL_UINT8(40, calculateLevel(UINT32_MAX));
+void test_calculateLevel_at_1850000_xp_is_level_50(void) {
+    TEST_ASSERT_EQUAL_UINT8(50, calculateLevel(1850000));
+}
+
+void test_calculateLevel_at_max_uint32_is_level_50(void) {
+    TEST_ASSERT_EQUAL_UINT8(50, calculateLevel(UINT32_MAX));
 }
 
 void test_calculateLevel_all_boundaries(void) {
@@ -89,16 +93,22 @@ void test_getXPForLevel_level_40_is_600000(void) {
     TEST_ASSERT_EQUAL_UINT32(600000, getXPForLevel(40));
 }
 
+void test_getXPForLevel_level_50_is_1850000(void) {
+    TEST_ASSERT_EQUAL_UINT32(1850000, getXPForLevel(50));
+}
+
 void test_getXPForLevel_level_0_returns_0(void) {
     TEST_ASSERT_EQUAL_UINT32(0, getXPForLevel(0));
 }
 
-void test_getXPForLevel_level_41_returns_0(void) {
-    TEST_ASSERT_EQUAL_UINT32(0, getXPForLevel(41));
+void test_getXPForLevel_level_51_returns_0(void) {
+    // Level 51 is beyond MAX_LEVEL, should clamp to MAX_LEVEL (1850000)
+    TEST_ASSERT_EQUAL_UINT32(1850000, getXPForLevel(51));
 }
 
 void test_getXPForLevel_level_255_returns_0(void) {
-    TEST_ASSERT_EQUAL_UINT32(0, getXPForLevel(255));
+    // Level 255 is beyond MAX_LEVEL, should clamp to MAX_LEVEL (1850000)
+    TEST_ASSERT_EQUAL_UINT32(1850000, getXPForLevel(255));
 }
 
 // ============================================================================
@@ -121,13 +131,13 @@ void test_getXPToNextLevel_at_100_xp(void) {
 }
 
 void test_getXPToNextLevel_at_max_level(void) {
-    // At max level, returns 0 (no next level)
-    TEST_ASSERT_EQUAL_UINT32(0, getXPToNextLevel(600000));
+    // At max level (50), returns 0 (no next level)
+    TEST_ASSERT_EQUAL_UINT32(0, getXPToNextLevel(1850000));
 }
 
 void test_getXPToNextLevel_beyond_max_level(void) {
     // Beyond max level XP, still returns 0
-    TEST_ASSERT_EQUAL_UINT32(0, getXPToNextLevel(1000000));
+    TEST_ASSERT_EQUAL_UINT32(0, getXPToNextLevel(2000000));
 }
 
 // ============================================================================
@@ -156,8 +166,8 @@ void test_getLevelProgress_at_99_percent(void) {
 }
 
 void test_getLevelProgress_at_max_level_is_100(void) {
-    TEST_ASSERT_EQUAL_UINT8(100, getLevelProgress(600000));
-    TEST_ASSERT_EQUAL_UINT8(100, getLevelProgress(999999));
+    TEST_ASSERT_EQUAL_UINT8(100, getLevelProgress(1850000));
+    TEST_ASSERT_EQUAL_UINT8(100, getLevelProgress(2000000));
 }
 
 // ============================================================================
@@ -240,15 +250,17 @@ int main(int argc, char **argv) {
     RUN_TEST(test_calculateLevel_at_midgame_50000_xp);
     RUN_TEST(test_calculateLevel_at_599999_xp_is_level_39);
     RUN_TEST(test_calculateLevel_at_600000_xp_is_level_40);
-    RUN_TEST(test_calculateLevel_at_max_uint32_is_level_40);
+    RUN_TEST(test_calculateLevel_at_1850000_xp_is_level_50);
+    RUN_TEST(test_calculateLevel_at_max_uint32_is_level_50);
     RUN_TEST(test_calculateLevel_all_boundaries);
     
     // getXPForLevel tests
     RUN_TEST(test_getXPForLevel_level_1_is_0);
     RUN_TEST(test_getXPForLevel_level_2_is_100);
     RUN_TEST(test_getXPForLevel_level_40_is_600000);
+    RUN_TEST(test_getXPForLevel_level_50_is_1850000);
     RUN_TEST(test_getXPForLevel_level_0_returns_0);
-    RUN_TEST(test_getXPForLevel_level_41_returns_0);
+    RUN_TEST(test_getXPForLevel_level_51_returns_0);
     RUN_TEST(test_getXPForLevel_level_255_returns_0);
     
     // getXPToNextLevel tests

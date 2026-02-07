@@ -10,9 +10,9 @@
 // From: src/core/xp.cpp
 // ============================================================================
 
-// XP thresholds for each level (1-40)
+// XP thresholds for each level (1-50)
 // Level N requires XP_THRESHOLDS[N-1] total XP
-static const uint32_t XP_THRESHOLDS[40] = {
+static const uint32_t XP_THRESHOLDS[50] = {
     0,       // Level 1: 0 XP
     100,     // Level 2: 100 XP
     300,     // Level 3: 300 XP
@@ -52,13 +52,23 @@ static const uint32_t XP_THRESHOLDS[40] = {
     404000,  // Level 37
     454000,  // Level 38
     514000,  // Level 39
-    600000   // Level 40: 600,000 XP
+    600000,  // Level 40
+    680000,  // Level 41
+    770000,  // Level 42
+    870000,  // Level 43
+    980000,  // Level 44
+    1100000, // Level 45
+    1230000, // Level 46
+    1370000, // Level 47
+    1520000, // Level 48
+    1680000, // Level 49
+    1850000  // Level 50: 1,850,000 XP
 };
 
-static const uint8_t MAX_LEVEL = 40;
+static const uint8_t MAX_LEVEL = 50;
 
 // Calculate level from total XP
-// Returns level 1-40
+// Returns level 1-50
 inline uint8_t calculateLevel(uint32_t xp) {
     for (uint8_t i = MAX_LEVEL - 1; i > 0; i--) {
         if (xp >= XP_THRESHOLDS[i]) return i + 1;
@@ -67,9 +77,10 @@ inline uint8_t calculateLevel(uint32_t xp) {
 }
 
 // Get XP required for a specific level
-// Returns 0 for invalid levels
+// Clamps to MAX_LEVEL for out-of-range levels, returns 0 for level 0
 inline uint32_t getXPForLevel(uint8_t level) {
-    if (level < 1 || level > MAX_LEVEL) return 0;
+    if (level <= 1) return 0;
+    if (level > MAX_LEVEL) level = MAX_LEVEL;
     return XP_THRESHOLDS[level - 1];
 }
 
