@@ -297,7 +297,7 @@ static bool backupLegacy(const char* backupRoot) {
         kLegacyScreenshots
     };
     const int numDirs = sizeof(legacyDirs) / sizeof(legacyDirs[0]);
-    
+
     const char* legacyFiles[] = {
         kLegacyConfig,
         kLegacyPersonality,
@@ -317,15 +317,17 @@ static bool backupLegacy(const char* backupRoot) {
     };
     const int numFiles = sizeof(legacyFiles) / sizeof(legacyFiles[0]);
 
+    int failures = 0;
+
     for (int i = 0; i < numDirs; i++) {
         const char* dir = legacyDirs[i];
         if (!SD.exists(dir)) continue;
         String dst = String(backupRoot) + String(dir);
         if (!copyPathRecursive(dir, dst.c_str())) {
-            Serial.printf("[MIGRATE] Backup failed for dir: %s\n", dir);
-            return false;
+            Serial.printf("[MIGRATE] Backup failed for dir: %s (continuing)\n", dir);
+            failures++;
         }
-        yield(); // Yield between operations
+        yield();
     }
 
     for (int i = 0; i < numFiles; i++) {
@@ -333,10 +335,10 @@ static bool backupLegacy(const char* backupRoot) {
         if (!SD.exists(file)) continue;
         String dst = String(backupRoot) + String(file);
         if (!copyFile(file, dst.c_str())) {
-            Serial.printf("[MIGRATE] Backup failed for file: %s\n", file);
-            return false;
+            Serial.printf("[MIGRATE] Backup failed for file: %s (continuing)\n", file);
+            failures++;
         }
-        yield(); // Yield between operations
+        yield();
     }
 
     std::vector<String> diag;
@@ -345,26 +347,57 @@ static bool backupLegacy(const char* backupRoot) {
     for (const String& path : diag) {
         String dst = String(backupRoot) + path;
         if (!copyFile(path.c_str(), dst.c_str())) {
-            Serial.printf("[MIGRATE] Backup failed for diag: %s\n", path.c_str());
-            return false;
+            Serial.printf("[MIGRATE] Backup failed for diag: %s (continuing)\n", path.c_str());
+            failures++;
         }
-        yield(); // Yield between operations
+        yield();
     }
 
-    return true;
+    if (failures > 0) {
+        Serial.printf("[MIGRATE] Backup completed with %d failures (non-fatal)\n", failures);
+    }
+    return true;  // Best-effort backup — don't block migration over copy failures
 }
 
 static bool movePath(const char* src, const char* dst, std::vector<MoveOp>& moved) {
-    if (!SD.exists(src)) return true;
+    if (!SD.exists(src)) return true;  // Source gone = already moved or never existed
+
     if (SD.exists(dst)) {
-        Serial.printf("[MIGRATE] Destination exists: %s\n", dst);
+        // Destination already exists — prior partial migration likely moved it.
+        // Backup was already created, safe to skip this move.
+        Serial.printf("[MIGRATE] Dest exists, skipping: %s (src still at %s)\n", dst, src);
+        return true;
+    }
+
+    if (SD.rename(src, dst)) {
+        if (moved.size() < 100) {
+            moved.push_back({String(src), String(dst)});
+        }
+        return true;
+    }
+
+    // Rename failed — FatFs cross-directory rename can be flaky.
+    // Fallback: copy + delete for files. Directories use copyPathRecursive.
+    Serial.printf("[MIGRATE] Rename failed, trying copy fallback: %s -> %s\n", src, dst);
+
+    File probe = SD.open(src);
+    if (!probe) return false;
+    bool isDir = probe.isDirectory();
+    probe.close();
+
+    bool ok = isDir ? copyPathRecursive(src, dst) : copyFile(src, dst);
+    if (!ok) {
+        Serial.printf("[MIGRATE] Copy fallback also failed: %s -> %s\n", src, dst);
         return false;
     }
-    if (!SD.rename(src, dst)) {
-        Serial.printf("[MIGRATE] Rename failed: %s -> %s\n", src, dst);
-        return false;
+
+    // Copy succeeded — remove source
+    if (!isDir) {
+        SD.remove(src);
     }
-    // Limit vector growth to prevent memory exhaustion
+    // For directories, leave source in place (recursive delete is expensive
+    // and risky mid-migration). The backup already preserves the data.
+
     if (moved.size() < 100) {
         moved.push_back({String(src), String(dst)});
     }
@@ -432,6 +465,49 @@ const char* legacyConfigPath() { return kLegacyConfig; }
 const char* legacyPersonalityPath() { return kLegacyPersonality; }
 const char* legacyWpasecKeyPath() { return kLegacyWpasecKey; }
 const char* legacyWigleKeyPath() { return kLegacyWigleKey; }
+
+void sanitizeSsid(const char* ssid, char* out, size_t outLen) {
+    if (!out || outLen == 0) return;
+    out[0] = '\0';
+    if (!ssid || ssid[0] == '\0') {
+        strncpy(out, "HIDDEN", outLen - 1);
+        out[outLen - 1] = '\0';
+        return;
+    }
+    size_t j = 0;
+    const size_t maxChars = (outLen - 1 < 20) ? outLen - 1 : 20;
+    for (size_t i = 0; ssid[i] && j < maxChars; i++) {
+        char c = ssid[i];
+        if ((unsigned char)c < 0x20) continue;  // skip control chars
+        if (c == '/' || c == '\\' || c == ':' || c == '*' ||
+            c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
+            c = '_';
+        }
+        if (c >= 'a' && c <= 'z') c -= 32;  // uppercase
+        out[j++] = c;
+    }
+    // trim trailing spaces and underscores
+    while (j > 0 && (out[j - 1] == ' ' || out[j - 1] == '_')) j--;
+    if (j == 0) {
+        strncpy(out, "HIDDEN", outLen - 1);
+        out[outLen - 1] = '\0';
+        return;
+    }
+    out[j] = '\0';
+}
+
+void buildCaptureFilename(char* out, size_t outLen, const char* dir,
+                          const char* ssid, const uint8_t bssid[6],
+                          const char* suffix) {
+    if (!out || outLen == 0) return;
+    char sanitized[21];
+    sanitizeSsid(ssid, sanitized, sizeof(sanitized));
+    snprintf(out, outLen, "%s/%s_%02X%02X%02X%02X%02X%02X%s",
+             dir, sanitized,
+             bssid[0], bssid[1], bssid[2],
+             bssid[3], bssid[4], bssid[5],
+             suffix);
+}
 
 void ensureDirs() {
     bool useNew = usingNewLayout();
@@ -600,11 +676,7 @@ bool migrateIfNeeded() {
     }
 
     Serial.printf("[MIGRATE] Backup to %s (size %llu)\n", backupDir.c_str(), (unsigned long long)totalSize);
-    if (!backupLegacy(backupDir.c_str())) {
-        Serial.println("[MIGRATE] Backup failed, aborting migration");
-        setUseNewLayout(false);
-        return false;
-    }
+    backupLegacy(backupDir.c_str());
 
     ensureDir(kNewRoot);
     ensureDir(kNewConfig);

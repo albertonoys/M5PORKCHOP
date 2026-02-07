@@ -68,7 +68,7 @@ private:
     static void nukeLoot();
     static void updateWPASecStatus();
     static void formatTime(char* out, size_t len, time_t t);
-    static const size_t MAX_CAPTURES = 200;
+    static const size_t MAX_CAPTURES = 100;
     
     // Async scan state
     static bool scanInProgress;
@@ -115,4 +115,9 @@ private:
     
     // Sync progress callback (static for C-style callback)
     static void onSyncProgress(const char* status, uint8_t progress, uint8_t total);
+
+    // Hint rotation
+    static uint8_t hintIndex;
+    static const char* const HINTS[];
+    static const uint8_t HINT_COUNT = 5;
 };

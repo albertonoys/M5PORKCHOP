@@ -13,7 +13,6 @@ namespace HeapPolicy {
     static constexpr size_t kMinHeapForOinkNetworkAdd = 30000;
     static constexpr size_t kMinHeapForHandshakeAdd = 60000;
     static constexpr size_t kMinHeapForReconGrowth = 20000;
-    static constexpr size_t kMinHeapForDnhGrowth = 40000;
     static constexpr size_t kMinHeapForSpectrumGrowth = 20000;
 
     // Heap stabilization / recovery thresholds
@@ -21,6 +20,9 @@ namespace HeapPolicy {
     static constexpr size_t kFileServerRecoveryThreshold = 50000;
     static constexpr size_t kFileServerMinHeap = 40000;
     static constexpr size_t kFileServerMinLargest = 30000;
+    static constexpr size_t kFileServerLogThreshold = 60000;
+    static constexpr size_t kFileServerUiMinFree = 12000;
+    static constexpr size_t kFileServerUiMinLargest = 8000;
 
     // Allocation slack (allocator overhead / fragmentation cushion)
     static constexpr size_t kReserveSlackSmall = 256;
@@ -29,8 +31,6 @@ namespace HeapPolicy {
     static constexpr size_t kHandshakeAllocSlack = 1024;
 
     // Mode-specific thresholds
-    static constexpr size_t kWarhogHeapWarning = 40000;
-    static constexpr size_t kWarhogHeapCritical = 25000;
     static constexpr size_t kDnhInjectMinHeap = 80000;
     static constexpr size_t kPigSyncMinContig = 26000;
 
@@ -45,7 +45,7 @@ namespace HeapPolicy {
 
     // Adaptive conditioning cooldown (replaces fixed 30s)
     // Formula: cooldown = clamp(min, max, base * (largestBlock / kMinContigForTls))
-    // When heap is critically low (largestBlock << kMinContigForTls), cooldown is short (5s)
+    // When heap is stressed (largestBlock << kMinContigForTls), cooldown hits 15s floor
     // When heap is healthy (largestBlock > kMinContigForTls), cooldown is long (60s)
     static constexpr uint32_t kConditionCooldownMinMs = 15000;
     static constexpr uint32_t kConditionCooldownMaxMs = 60000;

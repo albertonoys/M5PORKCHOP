@@ -93,23 +93,8 @@
 
     THE PIG IN THE FLESH:
 
-    ![PORKCHOP on Cardputer ADV - IDLE screen](docs/images/porkchop_idle.jpg)
-    *the pig. awake. judging. 240x135 pixels of unsolicited opinions.*
-
-    ![OINK MODE - handshake capture in progress](docs/images/porkchop_oink.jpg)
-    *oink mode. the pig is working. you should be concerned.*
-
-    ![SPECTRUM - 2.4GHz visualization with client monitor](docs/images/porkchop_spectrum.jpg)
-    *spectrum analysis. gaussian lobes. the pig does math now.*
-
-    ![SGT WARHOG - GPS wardriving session](docs/images/porkchop_warhog.jpg)
-    *sgt warhog reporting for duty. GPS locked. networks catalogued.*
-
-    ![PIGGY BLUES - BLE chaos selection](docs/images/porkchop_piggyblues.jpg)
-    *piggy blues. the screen before regret. the calm before the storm.*
-
-    ![PORKCHOP COMMANDER - web file manager](docs/images/porkchop_commander.jpg)
-    *porkchop commander. the pig serves HTTP. we've come so far.*
+    ![PIG PEN](docs/images/porkchop.jpg)
+    *the pigs. awake. judging. 240x135 pixels of unsolicited opinions.*
 
     THE HARDWARE NAKED:
 

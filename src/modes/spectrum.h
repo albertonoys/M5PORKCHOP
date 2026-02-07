@@ -211,6 +211,7 @@ private:
     static bool isVulnerable(wifi_auth_mode_t mode);
     static const char* authModeToShortString(wifi_auth_mode_t mode);
     static bool detectPMF(const uint8_t* payload, uint16_t len);
+    static void detectPMFBits(const uint8_t* payload, uint16_t len, bool& mfpc, bool& mfpr);
     static bool matchesFilter(const SpectrumNetwork& net);  // Check if network passes filter
     static bool matchesFilterRender(const SpectrumRenderNet& net);
     static void updateRenderSnapshot();

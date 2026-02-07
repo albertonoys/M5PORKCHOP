@@ -50,6 +50,12 @@ namespace SDLayout {
     const char* legacyWpasecKeyPath();
     const char* legacyWigleKeyPath();
 
+    // Filename helpers
+    void sanitizeSsid(const char* ssid, char* out, size_t outLen);
+    void buildCaptureFilename(char* out, size_t outLen, const char* dir,
+                              const char* ssid, const uint8_t bssid[6],
+                              const char* suffix);
+
     // Layout helpers
     bool migrateIfNeeded();     // create backup + move legacy content
     void ensureDirs();          // ensure directories for active layout exist

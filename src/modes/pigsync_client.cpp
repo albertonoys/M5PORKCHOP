@@ -2208,29 +2208,11 @@ bool PigSyncMode::savePMKID(const uint8_t* data, uint16_t len) {
     }
 
     char filename[64];
-    snprintf(filename, sizeof(filename), "%s/%02X%02X%02X%02X%02X%02X.22000",
-             handshakesDir,
-             pmkid.bssid[0], pmkid.bssid[1], pmkid.bssid[2],
-             pmkid.bssid[3], pmkid.bssid[4], pmkid.bssid[5]);
+    SDLayout::buildCaptureFilename(filename, sizeof(filename),
+                                   handshakesDir, pmkid.ssid, pmkid.bssid, ".22000");
     removeIfExists(filename);
 
     bool ok = OinkMode::savePMKID22000(pmkid, filename);
-
-    if (ok) {
-        char txtFilename[64];
-        snprintf(txtFilename, sizeof(txtFilename), "%s/%02X%02X%02X%02X%02X%02X_pmkid.txt",
-                 handshakesDir,
-                 pmkid.bssid[0], pmkid.bssid[1], pmkid.bssid[2],
-                 pmkid.bssid[3], pmkid.bssid[4], pmkid.bssid[5]);
-        removeIfExists(txtFilename);
-
-        File txtFile = SD.open(txtFilename, FILE_WRITE);
-        if (txtFile) {
-            txtFile.println(pmkid.ssid);
-            txtFile.close();
-        }
-    }
-
     return ok;
 }
 
@@ -2254,36 +2236,17 @@ bool PigSyncMode::saveHandshake(const uint8_t* data, uint16_t len) {
     }
 
     char filenamePcap[64];
-    snprintf(filenamePcap, sizeof(filenamePcap), "%s/%02X%02X%02X%02X%02X%02X.pcap",
-             handshakesDir,
-             hs.bssid[0], hs.bssid[1], hs.bssid[2],
-             hs.bssid[3], hs.bssid[4], hs.bssid[5]);
+    SDLayout::buildCaptureFilename(filenamePcap, sizeof(filenamePcap),
+                                   handshakesDir, hs.ssid, hs.bssid, ".pcap");
     removeIfExists(filenamePcap);
 
     char filename22000[64];
-    snprintf(filename22000, sizeof(filename22000), "%s/%02X%02X%02X%02X%02X%02X_hs.22000",
-             handshakesDir,
-             hs.bssid[0], hs.bssid[1], hs.bssid[2],
-             hs.bssid[3], hs.bssid[4], hs.bssid[5]);
+    SDLayout::buildCaptureFilename(filename22000, sizeof(filename22000),
+                                   handshakesDir, hs.ssid, hs.bssid, "_hs.22000");
     removeIfExists(filename22000);
 
     bool pcapOk = OinkMode::saveHandshakePCAP(hs, filenamePcap);
     bool hs22kOk = OinkMode::saveHandshake22000(hs, filename22000);
-
-    if (pcapOk || hs22kOk) {
-        char txtFilename[64];
-        snprintf(txtFilename, sizeof(txtFilename), "%s/%02X%02X%02X%02X%02X%02X.txt",
-                 handshakesDir,
-                 hs.bssid[0], hs.bssid[1], hs.bssid[2],
-                 hs.bssid[3], hs.bssid[4], hs.bssid[5]);
-        removeIfExists(txtFilename);
-
-        File txtFile = SD.open(txtFilename, FILE_WRITE);
-        if (txtFile) {
-            txtFile.println(hs.ssid);
-            txtFile.close();
-        }
-    }
 
     if (hs.beaconData) {
         free(hs.beaconData);

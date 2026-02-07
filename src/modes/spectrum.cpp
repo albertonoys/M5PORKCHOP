@@ -2122,12 +2122,16 @@ void SpectrumMode::promiscuousCallback(const wifi_promiscuous_pkt_t* pkt, wifi_p
         offset += 2 + tagLen;
     }
     
-    // Detect PMF (Protected Management Frames)
-    bool hasPMF = detectPMF(payload, len);
-    
-    // If PMF is required and we have RSN, it's WPA3 (or WPA2/3 transitional)
-    if (hasPMF && authmode == WIFI_AUTH_WPA2_PSK) {
-        authmode = WIFI_AUTH_WPA3_PSK;
+    // Detect PMF - need both MFPC and MFPR to distinguish WPA3 from WPA2/WPA3 mixed
+    bool hasPMF = false;
+    bool pmfCapable = false;
+    if (hasRSN && authmode == WIFI_AUTH_WPA2_PSK) {
+        detectPMFBits(payload, len, pmfCapable, hasPMF);
+        if (hasPMF) {
+            authmode = WIFI_AUTH_WPA3_PSK;         // MFPR=1: pure WPA3-SAE
+        } else if (pmfCapable) {
+            authmode = WIFI_AUTH_WPA2_WPA3_PSK;    // MFPC=1 only: transitional
+        }
     }
     
     // Update spectrum data
@@ -2190,51 +2194,50 @@ const char* SpectrumMode::authModeToShortString(wifi_auth_mode_t mode) {
     }
 }
 
-// Detect PMF (Protected Management Frames) from RSN IE
-// Networks with PMF required (MFPR=1) are immune to deauth attacks
-bool SpectrumMode::detectPMF(const uint8_t* payload, uint16_t len) {
-    uint16_t offset = 36;  // After fixed beacon fields
-    
+// Extract both PMF bits from RSN IE - MFPC (capable) and MFPR (required)
+// MFPC=1,MFPR=0 = WPA2/WPA3 transitional. MFPR=1 = pure WPA3, deauth immune.
+void SpectrumMode::detectPMFBits(const uint8_t* payload, uint16_t len, bool& mfpc, bool& mfpr) {
+    mfpc = false;
+    mfpr = false;
+    uint16_t offset = 36;
+
     while (offset + 2 < len) {
         uint8_t tag = payload[offset];
         uint8_t tagLen = payload[offset + 1];
-        
+
         if (offset + 2 + tagLen > len) break;
-        
+
         if (tag == 0x30 && tagLen >= 8) {  // RSN IE
-            // RSN IE structure: version(2) + group cipher(4) + pairwise count(2) + ...
             uint16_t rsnOffset = offset + 2;
             uint16_t rsnEnd = rsnOffset + tagLen;
-            
-            // Skip version (2), group cipher (4)
-            rsnOffset += 6;
+
+            rsnOffset += 6;  // Skip version(2) + group cipher(4)
             if (rsnOffset + 2 > rsnEnd) break;
-            
-            // Pairwise cipher count and suites
+
             uint16_t pairwiseCount = payload[rsnOffset] | (payload[rsnOffset + 1] << 8);
             rsnOffset += 2 + (pairwiseCount * 4);
             if (rsnOffset + 2 > rsnEnd) break;
-            
-            // AKM count and suites
+
             uint16_t akmCount = payload[rsnOffset] | (payload[rsnOffset + 1] << 8);
             rsnOffset += 2 + (akmCount * 4);
             if (rsnOffset + 2 > rsnEnd) break;
-            
-            // RSN Capabilities (2 bytes)
+
+            // RSN Capabilities - IEEE 802.11-2016 Table 9-133
             uint16_t rsnCaps = payload[rsnOffset] | (payload[rsnOffset + 1] << 8);
-            
-            // Bit 7: MFPR (Management Frame Protection Required)
-            bool mfpr = (rsnCaps >> 7) & 0x01;
-            
-            if (mfpr) {
-                return true;  // PMF required - deauth won't work
-            }
+            mfpc = (rsnCaps >> 6) & 0x01;  // Bit 6: MFPC
+            mfpr = (rsnCaps >> 7) & 0x01;  // Bit 7: MFPR
+            return;
         }
-        
+
         offset += 2 + tagLen;
     }
-    
-    return false;
+}
+
+// Detect if PMF is required (MFPR=1) - deauth won't work against these
+bool SpectrumMode::detectPMF(const uint8_t* payload, uint16_t len) {
+    bool mfpc, mfpr;
+    detectPMFBits(payload, len, mfpc, mfpr);
+    return mfpr;
 }
 
 // Process data frame to extract client MAC

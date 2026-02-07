@@ -10,6 +10,7 @@
 #include "../core/config.h"
 #include "../core/sd_layout.h"
 #include "../core/wifi_utils.h"
+#include "../core/heap_health.h"
 
 // Static member initialization
 std::vector<WigleFileInfo> WigleMenu::files;
@@ -116,6 +117,14 @@ void WigleMenu::scanFiles() {
     
     if (!Config::isSDAvailable()) {
         Serial.println("[WIGLE_MENU] SD card not available");
+        scanComplete = true;
+        scanInProgress = false;
+        return;
+    }
+
+    // Guard: Skip SD scan at Warning+ pressure — file ops allocate FAT buffers
+    if (HeapHealth::getPressureLevel() >= HeapPressureLevel::Warning) {
+        Serial.println("[WIGLE_MENU] Scan deferred: heap pressure");
         scanComplete = true;
         scanInProgress = false;
         return;

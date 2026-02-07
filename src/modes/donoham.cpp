@@ -15,6 +15,7 @@
 #include "../core/wifi_utils.h"
 #include "../core/heap_gates.h"
 #include "../core/heap_policy.h"
+#include "../core/heap_health.h"
 #include "../ui/display.h"
 #include "../piglet/mood.h"
 #include "../piglet/avatar.h"
@@ -952,20 +953,23 @@ void DoNoHamMode::saveAllPMKIDs() {
             if (SD.exists(txtPath)) {
                 File txtFile = SD.open(txtPath, FILE_READ);
                 if (txtFile) {
-                    String ssid = txtFile.readStringUntil('\n');
-                    ssid.trim();
-                    if (ssid.length() > 0) {
-                        strncpy(p.ssid, ssid.c_str(), 32);
+                    char buf[34];
+                    int n = txtFile.readBytesUntil('\n', buf, sizeof(buf) - 1);
+                    buf[n] = '\0';
+                    // trim trailing whitespace
+                    while (n > 0 && (buf[n-1] == ' ' || buf[n-1] == '\r' || buf[n-1] == '\t')) buf[--n] = '\0';
+                    if (n > 0) {
+                        strncpy(p.ssid, buf, 32);
                         p.ssid[32] = 0;
                     }
                     txtFile.close();
                 }
             }
         }
-        
+
         // Can only save if we have SSID (don't count as attempt - will retry when SSID arrives)
         if (p.ssid[0] == 0) continue;
-        
+
         // Check for all-zero PMKID (invalid - don't count as attempt)
         bool allZeros = true;
         for (int i = 0; i < 16; i++) {
@@ -979,11 +983,10 @@ void DoNoHamMode::saveAllPMKIDs() {
         // Now we actually attempt to save - increment counter
         p.saveAttempts++;
         
-        // Build filename: /handshakes/BSSID.22000
+        // Build filename: /handshakes/SSID_BSSID.22000
         char filename[64];
-        snprintf(filename, sizeof(filename), "%s/%02X%02X%02X%02X%02X%02X.22000",
-            handshakesDir,
-            p.bssid[0], p.bssid[1], p.bssid[2], p.bssid[3], p.bssid[4], p.bssid[5]);
+        SDLayout::buildCaptureFilename(filename, sizeof(filename),
+                                       handshakesDir, p.ssid, p.bssid, ".22000");
         
         // Ensure directory exists
         if (!SD.exists(handshakesDir)) {
@@ -1025,22 +1028,7 @@ void DoNoHamMode::saveAllPMKIDs() {
         // WPA*01*PMKID*MAC_AP*MAC_CLIENT*ESSID***01
         f.printf("WPA*01*%s*%s*%s*%s***01\n", pmkidHex, macAP, macClient, essidHex);
         f.close();
-        
-        // Save SSID to companion txt file (matches OINK pattern)
-        char txtFilename[64];
-        snprintf(txtFilename, sizeof(txtFilename), "%s/%02X%02X%02X%02X%02X%02X_pmkid.txt",
-                 handshakesDir,
-                 p.bssid[0], p.bssid[1], p.bssid[2], p.bssid[3], p.bssid[4], p.bssid[5]);
-        // Delete existing file first to ensure clean overwrite (FILE_WRITE appends on ESP32)
-        if (SD.exists(txtFilename)) {
-            SD.remove(txtFilename);
-        }
-        File txtFile = SD.open(txtFilename, FILE_WRITE);
-        if (txtFile) {
-            txtFile.println(p.ssid);
-            txtFile.close();
-        }
-        
+
         p.saved = true;
         SDLog::log("DNH", "PMKID saved: %s (%s)", p.ssid, filename);
     }
@@ -1083,17 +1071,19 @@ void DoNoHamMode::saveAllHandshakes() {
             if (SD.exists(txtPath)) {
                 File txtFile = SD.open(txtPath, FILE_READ);
                 if (txtFile) {
-                    String ssid = txtFile.readStringUntil('\n');
-                    ssid.trim();
-                    if (ssid.length() > 0) {
-                        strncpy(hs.ssid, ssid.c_str(), 32);
+                    char buf[34];
+                    int n = txtFile.readBytesUntil('\n', buf, sizeof(buf) - 1);
+                    buf[n] = '\0';
+                    while (n > 0 && (buf[n-1] == ' ' || buf[n-1] == '\r' || buf[n-1] == '\t')) buf[--n] = '\0';
+                    if (n > 0) {
+                        strncpy(hs.ssid, buf, 32);
                         hs.ssid[32] = 0;
                     }
                     txtFile.close();
                 }
             }
         }
-        
+
         // Can only save if we have SSID (don't count as attempt - will retry when SSID arrives)
         if (hs.ssid[0] == 0) continue;
         
@@ -1119,11 +1109,10 @@ void DoNoHamMode::saveAllHandshakes() {
         // Now we actually attempt to save - increment counter
         hs.saveAttempts++;
         
-        // Build filename: /handshakes/BSSID_hs.22000
+        // Build filename: /handshakes/SSID_BSSID_hs.22000
         char filename[64];
-        snprintf(filename, sizeof(filename), "%s/%02X%02X%02X%02X%02X%02X_hs.22000",
-            handshakesDir,
-            hs.bssid[0], hs.bssid[1], hs.bssid[2], hs.bssid[3], hs.bssid[4], hs.bssid[5]);
+        SDLayout::buildCaptureFilename(filename, sizeof(filename),
+                                       handshakesDir, hs.ssid, hs.bssid, "_hs.22000");
         
         // Ensure directory exists
         if (!SD.exists(handshakesDir)) {
@@ -1193,26 +1182,11 @@ void DoNoHamMode::saveAllHandshakes() {
         f.printf("WPA*02*%s*%s*%s*%s*%s*%s*%02x\n",
             micHex, macAP, macClient, essidHex, nonceHex, eapolHex, msgPair);
         f.close();
-        
-        // Save SSID to companion txt file (matches OINK pattern)
-        char txtFilename[64];
-        snprintf(txtFilename, sizeof(txtFilename), "%s/%02X%02X%02X%02X%02X%02X.txt",
-                 handshakesDir,
-                 hs.bssid[0], hs.bssid[1], hs.bssid[2], hs.bssid[3], hs.bssid[4], hs.bssid[5]);
-        if (SD.exists(txtFilename)) {
-            SD.remove(txtFilename);
-        }
-        File txtFile = SD.open(txtFilename, FILE_WRITE);
-        if (txtFile) {
-            txtFile.println(hs.ssid);
-            txtFile.close();
-        }
-        
+
         // Also save PCAP (for WPA-SEC upload and wireshark analysis)
         char pcapFilename[64];
-        snprintf(pcapFilename, sizeof(pcapFilename), "%s/%02X%02X%02X%02X%02X%02X.pcap",
-            handshakesDir,
-            hs.bssid[0], hs.bssid[1], hs.bssid[2], hs.bssid[3], hs.bssid[4], hs.bssid[5]);
+        SDLayout::buildCaptureFilename(pcapFilename, sizeof(pcapFilename),
+                                       handshakesDir, hs.ssid, hs.bssid, ".pcap");
         
         File pcapFile = SD.open(pcapFilename, FILE_WRITE);
         if (pcapFile) {
@@ -1332,6 +1306,10 @@ int DoNoHamMode::findOrCreateHandshake(const uint8_t* bssid, const uint8_t* stat
     }
     // Create new
     if (handshakes.size() < DNH_MAX_HANDSHAKES) {
+        // Pressure gate: block new handshakes at Warning+ (aggressive shedding)
+        if (HeapHealth::getPressureLevel() >= HeapPressureLevel::Warning) {
+            return -1;
+        }
         // Check free heap before attempting allocation
         size_t freeHeap = ESP.getFreeHeap();
         if (freeHeap < HeapPolicy::kMinHeapForHandshakeAdd) {

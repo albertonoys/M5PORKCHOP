@@ -665,20 +665,43 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
             bool is22000 = (fnameLen > 6 && strcmp(fname + fnameLen - 6, ".22000") == 0);
             
             if (isPCAP || is22000) {
-                // Extract BSSID from filename (first 12 chars before extension)
-                // Find the dot position
+                // Extract BSSID from filename — supports both formats:
+                // Legacy: BSSID12HEX.ext (first 12 chars)
+                // New:    SSID_BSSID12HEX.ext (last 12 chars of base)
                 const char* dot = strrchr(fname, '.');
                 size_t baseLen = dot ? (size_t)(dot - fname) : fnameLen;
-                
-                // Check for _hs suffix
+
+                // Strip _hs suffix
                 if (baseLen > 3 && strncmp(fname + baseLen - 3, "_hs", 3) == 0) {
                     baseLen -= 3;
                 }
-                
+
                 if (baseLen >= 12) {
                     char bssid[13];
-                    memcpy(bssid, fname, 12);
+
+                    // Check if last 12 chars are hex and preceded by '_' (new format)
+                    bool isNewFmt = false;
+                    if (baseLen > 13 && fname[baseLen - 13] == '_') {
+                        isNewFmt = true;
+                        for (size_t i = baseLen - 12; i < baseLen; i++) {
+                            char c = fname[i];
+                            if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'))) {
+                                isNewFmt = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isNewFmt) {
+                        memcpy(bssid, fname + baseLen - 12, 12);
+                    } else {
+                        memcpy(bssid, fname, 12);
+                    }
                     bssid[12] = '\0';
+                    // Uppercase for consistency
+                    for (int i = 0; i < 12; i++) {
+                        if (bssid[i] >= 'a' && bssid[i] <= 'f') bssid[i] -= 32;
+                    }
                     
                     // Check if already uploaded or cracked
                     if (!isUploaded(bssid)) {

@@ -119,23 +119,19 @@ static void logHeapStatus(const char* label) {
 }
 
 static void logHeapStatusIfLow(const char* label) {
-    // If free heap drops below 60k, log details to help trace memory issues
     size_t freeHeap = ESP.getFreeHeap();
-    if (freeHeap < 60000) {
+    if (freeHeap < HeapPolicy::kFileServerLogThreshold) {
         size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
         FS_LOGF("[FILESERVER] %s low heap free=%u largest=%u\n", label ? label : "low heap", (unsigned int)freeHeap, (unsigned int)largest);
     }
 }
-
-static const size_t UI_MIN_FREE = 12000;
-static const size_t UI_MIN_LARGEST = 8000;
 
 static bool isUiHeapLow(size_t* outFree, size_t* outLargest) {
     size_t freeHeap = ESP.getFreeHeap();
     size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
     if (outFree) *outFree = freeHeap;
     if (outLargest) *outLargest = largest;
-    return (freeHeap < UI_MIN_FREE) || (largest < UI_MIN_LARGEST);
+    return (freeHeap < HeapPolicy::kFileServerUiMinFree) || (largest < HeapPolicy::kFileServerUiMinLargest);
 }
 
 static size_t sendProgmemResponse(WebServer* srv, int status, const char* contentType, const char* data) {

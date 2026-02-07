@@ -239,47 +239,62 @@ static int computeRetentionScore(const DetectedNetwork& net, uint32_t now) {
     return score;
 }
 
-static bool detectPMF(const uint8_t* payload, uint16_t len) {
-    // Look for RSN IE (0x30) and check RSN Capabilities for MFPC/MFPR bits
+// PMF detection result - we need both bits to distinguish WPA3 from WPA2/WPA3 mixed
+// jader242 i know you reading dis. pig knows.
+struct PmfResult {
+    bool capable;   // MFPC (bit 6) - PMF capable (WPA2/WPA3 transitional sets this)
+    bool required;  // MFPR (bit 7) - PMF required (pure WPA3 sets both)
+};
+
+static PmfResult detectPMF(const uint8_t* payload, uint16_t len) {
+    PmfResult result = {false, false};
     uint16_t offset = 36;
     while (offset + 2 < len) {
         uint8_t id = payload[offset];
         uint8_t ieLen = payload[offset + 1];
-        
+
         if (offset + 2 + ieLen > len) break;
-        
+
         if (id == 0x30 && ieLen >= 8) {  // RSN IE
-            // RSN capabilities are at fixed offset from RSN IE start
-            // Version (2) + Group Cipher Suite (4) + Pairwise Count (2) + Pairwise Suites (n*4)
-            // + AKM Count (2) + AKM Suites (m*4) + RSN Capabilities (2)
-            // For simplicity, scan for capabilities at expected position
             uint16_t rsnOffset = offset + 2;
+            uint16_t rsnEnd = rsnOffset + ieLen;
             uint16_t version = payload[rsnOffset] | (payload[rsnOffset + 1] << 8);
             if (version != 1) {
                 offset += 2 + ieLen;
                 continue;
             }
-            
-            // Skip to RSN capabilities (simplified - assumes minimal suites)
-            // In practice, need to parse suite counts
-            uint16_t capOffset = rsnOffset + 8;  // Minimum offset
-            if (capOffset + 2 <= offset + 2 + ieLen) {
-                uint16_t caps = payload[capOffset] | (payload[capOffset + 1] << 8);
-                // MFPC = bit 7, MFPR = bit 6
-                if (caps & 0x0080) return true;  // MFPC set
-            }
+
+            // Walk the RSN IE properly - no shortcuts, no assumptions
+            rsnOffset += 6;  // Skip version(2) + group cipher(4)
+            if (rsnOffset + 2 > rsnEnd) break;
+
+            uint16_t pairwiseCount = payload[rsnOffset] | (payload[rsnOffset + 1] << 8);
+            rsnOffset += 2 + (pairwiseCount * 4);
+            if (rsnOffset + 2 > rsnEnd) break;
+
+            uint16_t akmCount = payload[rsnOffset] | (payload[rsnOffset + 1] << 8);
+            rsnOffset += 2 + (akmCount * 4);
+            if (rsnOffset + 2 > rsnEnd) break;
+
+            // RSN Capabilities - IEEE 802.11-2016 Table 9-133
+            // Bit 6: MFPC (Management Frame Protection Capable)
+            // Bit 7: MFPR (Management Frame Protection Required)
+            uint16_t caps = payload[rsnOffset] | (payload[rsnOffset + 1] << 8);
+            result.capable  = (caps >> 6) & 0x01;  // MFPC
+            result.required = (caps >> 7) & 0x01;  // MFPR
+            break;
         }
-        
+
         offset += 2 + ieLen;
     }
-    return false;
+    return result;
 }
 
 static void processBeacon(const uint8_t* payload, uint16_t len, int8_t rssi) {
     if (len < 36) return;
     
     const uint8_t* bssid = payload + 16;
-    bool hasPMF = detectPMF(payload, len);
+    PmfResult pmf = detectPMF(payload, len);
     uint32_t now = millis();
     
     // [BUG1 FIX] Lookup under spinlock - vector can be modified by cleanupStaleNetworks()
@@ -301,7 +316,7 @@ static void processBeacon(const uint8_t* payload, uint16_t len, int8_t rssi) {
         net.beaconCount = 1;
         net.beaconIntervalEmaMs = 0;
         net.isTarget = false;
-        net.hasPMF = hasPMF;
+        net.hasPMF = pmf.required;
         net.hasHandshake = false;
         net.attackAttempts = 0;
         net.isHidden = false;
@@ -353,32 +368,44 @@ static void processBeacon(const uint8_t* payload, uint16_t len, int8_t rssi) {
             offset += 2 + ieLen;
         }
         
-        // Parse auth mode
+        // Parse auth mode from RSN (0x30) and WPA vendor (0xDD) IEs
+        // RSN + MFPR        = pure WPA3 (PMF required, no fallback)
+        // RSN + MFPC only   = WPA2/WPA3 transitional (PMF capable, clients choose)
+        // RSN alone          = WPA2
+        // WPA vendor alone   = WPA1
+        // RSN + WPA vendor   = WPA1/WPA2 mixed
+        bool hasRSN = false;
         offset = 36;
         while (offset + 2 < len) {
             uint8_t id = payload[offset];
             uint8_t ieLen = payload[offset + 1];
-            
+
             if (offset + 2 + ieLen > len) break;
-            
-            if (id == 0x30 && ieLen >= 2) {  // RSN IE = WPA2/WPA3
-                if (net.hasPMF) {
-                    net.authmode = WIFI_AUTH_WPA3_PSK;
-                } else {
-                    net.authmode = WIFI_AUTH_WPA2_PSK;
-                }
+
+            if (id == 0x30 && ieLen >= 2) {  // RSN IE
+                hasRSN = true;
+                net.authmode = WIFI_AUTH_WPA2_PSK;
             } else if (id == 0xDD && ieLen >= 8) {  // Vendor specific
                 if (payload[offset + 2] == 0x00 && payload[offset + 3] == 0x50 &&
                     payload[offset + 4] == 0xF2 && payload[offset + 5] == 0x01) {
-                    if (net.authmode == WIFI_AUTH_OPEN) {
+                    if (!hasRSN) {
                         net.authmode = WIFI_AUTH_WPA_PSK;
-                    } else if (net.authmode == WIFI_AUTH_WPA2_PSK) {
+                    } else {
                         net.authmode = WIFI_AUTH_WPA_WPA2_PSK;
                     }
                 }
             }
-            
+
             offset += 2 + ieLen;
+        }
+
+        // Apply PMF classification on top of RSN detection
+        if (hasRSN && net.authmode == WIFI_AUTH_WPA2_PSK) {
+            if (pmf.required) {
+                net.authmode = WIFI_AUTH_WPA3_PSK;         // MFPR=1: pure WPA3-SAE
+            } else if (pmf.capable) {
+                net.authmode = WIFI_AUTH_WPA2_WPA3_PSK;    // MFPC=1 only: transitional
+            }
         }
         
         if (net.channel == 0) {
@@ -408,7 +435,7 @@ static void processBeacon(const uint8_t* payload, uint16_t len, int8_t rssi) {
                 }
             }
             net.lastBeaconSeen = now;
-            net.hasPMF |= hasPMF;
+            net.hasPMF |= pmf.required;
         }
         taskEXIT_CRITICAL(&vectorMux);
     }

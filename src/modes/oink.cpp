@@ -12,6 +12,7 @@
 #include "../core/sd_layout.h"
 #include "../core/xp.h"
 #include "../core/heap_policy.h"
+#include "../core/heap_health.h"
 #include "../ui/display.h"
 #include "../piglet/mood.h"
 #include "../piglet/avatar.h"
@@ -2043,6 +2044,11 @@ int OinkMode::findOrCreateHandshakeSafe(const uint8_t* bssid, const uint8_t* sta
         NetworkRecon::exitCritical();
         return -1;
     }
+    // Pressure gate: block new handshakes at Warning+ (aggressive shedding)
+    if (HeapHealth::getPressureLevel() >= HeapPressureLevel::Warning) {
+        NetworkRecon::exitCritical();
+        return -1;
+    }
     if (ESP.getFreeHeap() < HeapPolicy::kMinHeapForHandshakeAdd) {
         NetworkRecon::exitCritical();
         return -1;
@@ -2115,6 +2121,11 @@ int OinkMode::findOrCreatePMKIDSafe(const uint8_t* bssid, const uint8_t* station
     
     // Limit check
     if (pmkids.size() >= MAX_PMKIDS) {
+        NetworkRecon::exitCritical();
+        return -1;
+    }
+    // Pressure gate: block new PMKIDs at Warning+ (aggressive shedding)
+    if (HeapHealth::getPressureLevel() >= HeapPressureLevel::Warning) {
         NetworkRecon::exitCritical();
         return -1;
     }
@@ -2223,12 +2234,10 @@ void OinkMode::autoSaveCheck() {
             
             const char* handshakesDir = SDLayout::handshakesDir();
 
-            // Generate filename
+            // Generate filename: SSID_BSSID.pcap
             char filename[64];
-            snprintf(filename, sizeof(filename), "%s/%02X%02X%02X%02X%02X%02X.pcap",
-                    handshakesDir,
-                    hs.bssid[0], hs.bssid[1], hs.bssid[2],
-                    hs.bssid[3], hs.bssid[4], hs.bssid[5]);
+            SDLayout::buildCaptureFilename(filename, sizeof(filename),
+                                           handshakesDir, hs.ssid, hs.bssid, ".pcap");
             
             // Ensure directory exists
             if (!SD.exists(handshakesDir)) {
@@ -2243,35 +2252,14 @@ void OinkMode::autoSaveCheck() {
             
             // Save 22000 format (hashcat-ready, no conversion needed)
             char filename22000[64];
-            snprintf(filename22000, sizeof(filename22000), "%s/%02X%02X%02X%02X%02X%02X_hs.22000",
-                    handshakesDir,
-                    hs.bssid[0], hs.bssid[1], hs.bssid[2],
-                    hs.bssid[3], hs.bssid[4], hs.bssid[5]);
+            SDLayout::buildCaptureFilename(filename22000, sizeof(filename22000),
+                                           handshakesDir, hs.ssid, hs.bssid, "_hs.22000");
             bool hs22kOk = saveHandshake22000(hs, filename22000);
             
             if (pcapOk || hs22kOk) {
                 hs.saved = true;
-                SDLog::log("OINK", "Handshake saved: %s (pcap:%s 22000:%s)", 
+                SDLog::log("OINK", "Handshake saved: %s (pcap:%s 22000:%s)",
                            hs.ssid, pcapOk ? "OK" : "FAIL", hs22kOk ? "OK" : "FAIL");
-                
-                // Save SSID to companion .txt file for later reference
-                char txtFilename[64];
-                snprintf(txtFilename, sizeof(txtFilename), "%s/%02X%02X%02X%02X%02X%02X.txt",
-                        handshakesDir,
-                        hs.bssid[0], hs.bssid[1], hs.bssid[2],
-                        hs.bssid[3], hs.bssid[4], hs.bssid[5]);
-                if (SD.exists(txtFilename)) {
-                    if (!SD.remove(txtFilename)) {
-                        SDLog::log("OINK", "Failed to remove old txt file: %s", txtFilename);
-                    }
-                }
-                File txtFile = SD.open(txtFilename, FILE_WRITE);
-                if (txtFile) {
-                    if (txtFile.println(hs.ssid) == 0) {
-                        SDLog::log("OINK", "Failed to write to txt file: %s", txtFilename);
-                    }
-                    txtFile.close();
-                }
             } else {
                 // Failed - increment attempt counter
                 hs.saveAttempts++;
@@ -2651,36 +2639,14 @@ bool OinkMode::saveAllPMKIDs() {
                 continue;  // Wait for backoff period
             }
             
-            // Use BSSID-based filename in /handshakes/ (same as handshakes, but .22000 extension)
+            // Use SSID_BSSID filename in /handshakes/
             char filename[64];
-            snprintf(filename, sizeof(filename), "%s/%02X%02X%02X%02X%02X%02X.22000",
-                     handshakesDir,
-                     p.bssid[0], p.bssid[1], p.bssid[2],
-                     p.bssid[3], p.bssid[4], p.bssid[5]);
+            SDLayout::buildCaptureFilename(filename, sizeof(filename),
+                                           handshakesDir, p.ssid, p.bssid, ".22000");
             
             if (savePMKID22000(p, filename)) {
                 p.saved = true;
                 SDLog::log("OINK", "PMKID saved: %s", p.ssid);
-                
-                // Save SSID to companion .txt file (same pattern as handshakes)
-                char txtFilename[64];
-                snprintf(txtFilename, sizeof(txtFilename), "%s/%02X%02X%02X%02X%02X%02X_pmkid.txt",
-                         handshakesDir,
-                         p.bssid[0], p.bssid[1], p.bssid[2],
-                         p.bssid[3], p.bssid[4], p.bssid[5]);
-                // Delete existing file first to ensure clean overwrite (FILE_WRITE appends on ESP32)
-                if (SD.exists(txtFilename)) {
-                    if (!SD.remove(txtFilename)) {
-                        SDLog::log("OINK", "Failed to remove old PMKID txt file: %s", txtFilename);
-                    }
-                }
-                File txtFile = SD.open(txtFilename, FILE_WRITE);
-                if (txtFile) {
-                    if (txtFile.println(p.ssid) == 0) {
-                        SDLog::log("OINK", "Failed to write to PMKID txt file: %s", txtFilename);
-                    }
-                    txtFile.close();
-                }
             } else {
                 // Failed - increment attempt counter
                 p.saveAttempts++;
@@ -3125,6 +3091,7 @@ static int computeTargetScore(const DetectedNetwork& net, uint32_t now) {
         case WIFI_AUTH_WPA_PSK: score += 10; break;
         case WIFI_AUTH_WPA_WPA2_PSK: score += 5; break;
         case WIFI_AUTH_WPA2_PSK: score += 0; break;
+        case WIFI_AUTH_WPA2_WPA3_PSK: score -= 5; break;
         case WIFI_AUTH_WPA3_PSK: score -= 10; break;
         default: break;
     }
