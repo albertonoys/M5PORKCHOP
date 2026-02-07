@@ -109,16 +109,6 @@ static void hopChannel() {
     
     currentChannelIndex = (currentChannelIndex + 1) % RECON_CHANNEL_COUNT;
     currentChannel = CHANNEL_HOP_ORDER[currentChannelIndex];
-    // #region agent log - H1 channel hop
-    {
-        static uint32_t lastHopLog = 0;
-        uint32_t now = millis();
-        if (now - lastHopLog > 1000) {
-            lastHopLog = now;
-            Serial.printf("[DBG-H1] RECON hop ch=%d locked=%d\n", currentChannel, channelLocked.load() ? 1 : 0);
-        }
-    }
-    // #endregion
     esp_wifi_set_channel(currentChannel, WIFI_SECOND_CHAN_NONE);
 }
 
@@ -842,6 +832,14 @@ void stop() {
     // Don't clear networks - they persist for mode reuse
     
     Serial.printf("[RECON] Stopped. Networks cached: %d\n", networks.size());
+}
+
+void freeNetworks() {
+    taskENTER_CRITICAL(&vectorMux);
+    networks.clear();
+    networks.shrink_to_fit();
+    taskEXIT_CRITICAL(&vectorMux);
+    Serial.println("[RECON] Networks vector freed");
 }
 
 void pause() {

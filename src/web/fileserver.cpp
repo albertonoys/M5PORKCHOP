@@ -77,7 +77,7 @@ static bool xpWpaLoaded = false;
 static bool xpWigleLoaded = false;
 static bool xpWpaCacheComplete = false;
 static bool xpWigleCacheComplete = false;
-struct XpAwardEntry { char key[80]; };
+struct XpAwardEntry { char key[40]; };  // 12-char BSSID or WiGLE filename (was 80)
 static std::vector<XpAwardEntry> xpAwardedWpa;
 static std::vector<XpAwardEntry> xpAwardedWigle;
 
@@ -301,7 +301,7 @@ static void loadAwardedList(const char* path, std::vector<XpAwardEntry>& out, bo
     complete = true;
     File f = SD.open(path, FILE_READ);
     if (f) {
-        char lineBuf[80];
+        char lineBuf[128];
         while (f.available()) {
             yield();
             size_t len = f.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
@@ -311,8 +311,12 @@ static void loadAwardedList(const char* path, std::vector<XpAwardEntry>& out, bo
             }
             if (len > 0) {
                 if (out.size() < XP_AWARD_CACHE_MAX) {
+                    // For WiGLE entries (full paths), store only the filename
+                    const char* stored = lineBuf;
+                    const char* slash = strrchr(lineBuf, '/');
+                    if (slash && *(slash + 1)) stored = slash + 1;
                     XpAwardEntry entry;
-                    strncpy(entry.key, lineBuf, sizeof(entry.key) - 1);
+                    strncpy(entry.key, stored, sizeof(entry.key) - 1);
                     entry.key[sizeof(entry.key) - 1] = '\0';
                     out.push_back(entry);
                 } else {
@@ -345,7 +349,7 @@ static bool fileHasLine(const char* path, const char* value) {
     if (!path || !path[0]) return false;
     File f = SD.open(path, FILE_READ);
     if (!f) return false;
-    char lineBuf[80];
+    char lineBuf[128];
     while (f.available()) {
         yield();
         size_t len = f.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
@@ -354,7 +358,13 @@ static bool fileHasLine(const char* path, const char* value) {
             lineBuf[--len] = '\0';
         }
         if (len == 0) continue;
+        // Compare directly, and also compare basename for backward compat with old full-path entries
         if (strcmp(lineBuf, value) == 0) {
+            f.close();
+            return true;
+        }
+        const char* slash = strrchr(lineBuf, '/');
+        if (slash && *(slash + 1) && strcmp(slash + 1, value) == 0) {
             f.close();
             return true;
         }
@@ -422,7 +432,23 @@ static bool pcapLooksValid(const String& path) {
     return pcapLooksValid(path.c_str());
 }
 
-// FIX: Accept const char* directly to avoid implicit String construction from char[]
+// Case-insensitive substring search in a char buffer
+static bool containsCaseInsensitive(const char* haystack, size_t haystackLen, const char* needle) {
+    size_t needleLen = strlen(needle);
+    if (needleLen > haystackLen) return false;
+    for (size_t i = 0; i <= haystackLen - needleLen; i++) {
+        bool match = true;
+        for (size_t j = 0; j < needleLen; j++) {
+            if (tolower((unsigned char)haystack[i + j]) != tolower((unsigned char)needle[j])) {
+                match = false;
+                break;
+            }
+        }
+        if (match) return true;
+    }
+    return false;
+}
+
 static bool wigleLooksValid(const char* path) {
     File f = SD.open(path, FILE_READ);
     if (!f) return false;
@@ -433,29 +459,33 @@ static bool wigleLooksValid(const char* path) {
     }
     const int maxLines = 5;
     bool valid = false;
-    String line;
-    line.reserve(256);  // Pre-allocate for header lines which can be long
+    char lineBuf[256];
     for (int i = 0; i < maxLines && f.available(); i++) {
-        line = f.readStringUntil('\n');  // Reuses existing capacity
-        line.trim();
-        if (!line.length()) continue;
-        if (line.startsWith("\xEF\xBB\xBF")) {
-            line = line.substring(3);
-            line.trim();
+        size_t len = f.readBytesUntil('\n', lineBuf, sizeof(lineBuf) - 1);
+        lineBuf[len] = '\0';
+        // Trim trailing whitespace/CR
+        while (len > 0 && (lineBuf[len - 1] == '\r' || lineBuf[len - 1] == ' ')) {
+            lineBuf[--len] = '\0';
         }
-        line.toLowerCase();  // FIX: In-place, no copy needed
-        if (line.indexOf("wigle") >= 0) { valid = true; break; }
-        if (line.startsWith("mac,") || line.startsWith("bssid,")) { valid = true; break; }
+        if (len == 0) continue;
+        // Skip BOM
+        const char* p = lineBuf;
+        size_t pLen = len;
+        if (pLen >= 3 && (uint8_t)p[0] == 0xEF && (uint8_t)p[1] == 0xBB && (uint8_t)p[2] == 0xBF) {
+            p += 3;
+            pLen -= 3;
+        }
+        // Skip leading whitespace
+        while (pLen > 0 && *p == ' ') { p++; pLen--; }
+        if (pLen == 0) continue;
+        if (containsCaseInsensitive(p, pLen, "wigle")) { valid = true; break; }
+        if (containsCaseInsensitive(p, pLen, "mac,")) { valid = true; break; }
+        if (containsCaseInsensitive(p, pLen, "bssid,")) { valid = true; break; }
     }
     f.close();
     if (valid) return true;
     if (size >= (MIN_WIGLE_BYTES * 4)) return true;
     return false;
-}
-
-// Overload for String& - delegates to const char* version
-static bool wigleLooksValid(const String& path) {
-    return wigleLooksValid(path.c_str());
 }
 
 static bool awardXpEntry(const char* src, uint16_t per, const char* awardFile, std::vector<XpAwardEntry>& awardList, const char* key) {
@@ -544,9 +574,11 @@ static void scanXpAwards() {
             if (pathLen < 10) continue;
             if (strcasecmp(path + pathLen - 10, ".wigle.csv") != 0) continue;
 
-            if (isAwarded(XP_WIGLE_AWARDED_FILE, path, xpAwardedWigle, xpWigleLoaded, xpWigleCacheComplete)) continue;
+            // Use filename-only as key (fits in 18-byte XpAwardEntry)
+            const char* fname = basenameFromPath(path);
+            if (isAwarded(XP_WIGLE_AWARDED_FILE, fname, xpAwardedWigle, xpWigleLoaded, xpWigleCacheComplete)) continue;
             if (!wigleLooksValid(path)) continue;
-            awardXpEntry("WIGLE", XP_WIGLE_PER, XP_WIGLE_AWARDED_FILE, xpAwardedWigle, path);
+            awardXpEntry("WIGLE", XP_WIGLE_PER, XP_WIGLE_AWARDED_FILE, xpAwardedWigle, fname);
         }
         wigleFile.close();
     }
@@ -3391,36 +3423,13 @@ bool FileServer::start(const char* ssid, const char* password) {
 }
 
 void FileServer::startServer() {
-    // #region agent log
-    FS_LOGLN("[DBG-H1] startServer() ENTRY");
-    // #endregion
-    
     snprintf(statusMessage, sizeof(statusMessage), "%s", WiFi.localIP().toString().c_str());
     logWiFiStatus("startServer");
-    
-    // #region agent log
-    FS_LOGF("[DBG-H1] IP stored: %s\n", statusMessage);
-    // #endregion
-    
-    // Start mDNS
-    // #region agent log
-    FS_LOGF("[DBG-H1] WiFi connected=%d, localIP=%s\n", 
-                  WiFi.isConnected(), WiFi.localIP().toString().c_str());
-    FS_LOGLN("[DBG-H1] About to call MDNS.begin()");
-    // #endregion
-    
-    bool mdnsOk = MDNS.begin("porkchop");
-    
-    // #region agent log
-    FS_LOGF("[DBG-H1] MDNS.begin() returned %d\n", mdnsOk);
-    // #endregion
 
-    
-    // #region agent log
-    FS_LOGLN("[DBG-H2] MDNS.begin() completed, creating WebServer");
-    // #endregion
-    
-    // FIX: Heap guard before WebServer allocation - prevent OOM on ADV/tight heap
+    bool mdnsOk = MDNS.begin("porkchop");
+    FS_LOGF("[FILESERVER] mDNS %s\n", mdnsOk ? "ok" : "fail");
+
+    // Heap guard before WebServer allocation - prevent OOM on ADV/tight heap
     {
         HeapGates::GateStatus gate = HeapGates::checkGate(
             HeapPolicy::kFileServerMinHeap,
@@ -3429,36 +3438,23 @@ void FileServer::startServer() {
             FS_LOGF("[FILESERVER] Low heap for WebServer: free=%u largest=%u\n",
                           (unsigned)gate.freeHeap, (unsigned)gate.largestBlock);
             strcpy(statusMessage, "Low heap");
-            MDNS.end();  // Clean up mDNS we just started
+            MDNS.end();
             WiFiUtils::shutdown();
             state = FileServerState::IDLE;
             return;
         }
     }
-    
-    // Create and configure web server
-    server = new WebServer(80);
-    
-    // #region agent log
-    FS_LOGF("[DBG-H2] WebServer created, ptr=%p\n", (void*)server);
-    // #endregion
 
-    
+    server = new WebServer(80);
     if (!server) {
-        // #region agent log
-        FS_LOGLN("[DBG-H2] ERROR: WebServer allocation failed!");
-        // #endregion
+        FS_LOGLN("[FILESERVER] WebServer allocation failed");
         strcpy(statusMessage, "Server alloc fail");
         MDNS.end();
         WiFiUtils::shutdown();
         state = FileServerState::IDLE;
         return;
     }
-    
-    // #region agent log
-    FS_LOGLN("[DBG-H3] Registering handlers...");
-    // #endregion
-    
+
     server->on("/", HTTP_GET, handleRoot);
     server->on("/ui.css", HTTP_GET, handleStyle);
     server->on("/ui.js", HTTP_GET, handleScript);
@@ -3472,21 +3468,12 @@ void FileServer::startServer() {
     server->on("/download", HTTP_GET, handleDownload);
     server->on("/upload", HTTP_POST, handleUpload, handleUploadProcess);
     server->on("/delete", HTTP_GET, handleDelete);
-    server->on("/rmdir", HTTP_GET, handleDelete);  // Same handler, will detect folder
+    server->on("/rmdir", HTTP_GET, handleDelete);
     server->on("/mkdir", HTTP_GET, handleMkdir);
     server->onNotFound(handleNotFound);
-    
-    // #region agent log
-    FS_LOGLN("[DBG-H3] Handlers registered, calling server->begin()");
-    // #endregion
-    
-    server->begin();
-    
-    // #region agent log
-    FS_LOGLN("[DBG-H4] server->begin() completed");
-    // #endregion
 
-    
+    server->begin();
+
     state = FileServerState::RUNNING;
     lastReconnectCheck = millis();
 
@@ -3495,7 +3482,9 @@ void FileServer::startServer() {
     xpSessionAwarded = 0;
     xpScanPending = true;
     xpAwardedWpa.clear();
+    xpAwardedWpa.shrink_to_fit();
     xpAwardedWigle.clear();
+    xpAwardedWigle.shrink_to_fit();
     xpWpaLoaded = false;
     xpWigleLoaded = false;
     xpWpaCacheComplete = false;

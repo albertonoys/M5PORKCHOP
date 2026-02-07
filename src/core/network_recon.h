@@ -47,6 +47,13 @@ void start();
 void stop();
 
 /**
+ * @brief Release the networks vector memory entirely
+ * Call after stop() when entering modes that don't use recon data (FILE_TRANSFER).
+ * start() will re-reserve and rescan on mode exit.
+ */
+void freeNetworks();
+
+/**
  * @brief Pause promiscuous mode but keep WiFi STA active
  * Used when entering ESP-NOW modes (PIGSYNC) that conflict with promiscuous
  */

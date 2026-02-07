@@ -476,9 +476,9 @@ void Porkchop::setMode(PorkchopMode mode) {
             AchievementsMenu::show();
             break;
         case PorkchopMode::FILE_TRANSFER:
-            // Stop NetworkRecon to prevent heap fragmentation during FILE_TRANSFER
-            // (promiscuous callbacks interleaved with WebServer allocs cause fragmentation)
+            // Stop NetworkRecon and free its ~19KB network vector — FILE_TRANSFER doesn't use it
             NetworkRecon::stop();
+            NetworkRecon::freeNetworks();
             Avatar::setState(AvatarState::HAPPY);
             FileServer::start(Config::wifi().otaSSID, Config::wifi().otaPassword);
             break;
