@@ -22,6 +22,7 @@ static size_t minLargest = 0;
 static bool conditionPending = false;
 static uint32_t lastConditionMs = 0;
 static uint8_t stableHealthPct = 100;
+static float displayPctF = 100.0f;  // EMA-smoothed value for UI (float for precision)
 static bool pendingToast = false;
 static uint32_t pendingToastMs = 0;
 
@@ -110,6 +111,12 @@ void update() {
     uint8_t newPct = computePercent(freeHeap, largestBlock, true);
     heapHealthPct = newPct;
 
+    // Asymmetric EMA for display: slow to drop (absorbs transient dips), moderate recovery
+    float alpha = (newPct < displayPctF)
+        ? HeapPolicy::kDisplayEmaAlphaDown
+        : HeapPolicy::kDisplayEmaAlphaUp;
+    displayPctF += alpha * ((float)newPct - displayPctF);
+
     float fragRatio = freeHeap > 0 ? (float)largestBlock / (float)freeHeap : 0.0f;
 
     // --- Knuth's Rule metric (Fifty Percent Rule) ---
@@ -155,8 +162,10 @@ void update() {
         }
     }
 
-    // Debounced toast: compare against stable baseline, not previous sample
-    int netDelta = (int)heapHealthPct - (int)stableHealthPct;
+    // Debounced toast: use smoothed display value so transient spikes
+    // that the EMA absorbs don't trigger user-visible notifications
+    uint8_t smoothedPct = (uint8_t)(displayPctF + 0.5f);
+    int netDelta = (int)smoothedPct - (int)stableHealthPct;
     uint8_t netDeltaAbs = (netDelta < 0) ? (uint8_t)(-netDelta) : (uint8_t)netDelta;
 
     if (netDeltaAbs >= HeapPolicy::kHealthToastMinDelta) {
@@ -171,17 +180,24 @@ void update() {
             toastActive = true;
             toastStartMs = now;
             lastToastMs = now;
-            stableHealthPct = heapHealthPct;
+            stableHealthPct = smoothedPct;
             pendingToast = false;
         }
     } else {
         pendingToast = false;
-        stableHealthPct = heapHealthPct;
+        stableHealthPct = smoothedPct;
     }
 }
 
 uint8_t getPercent() {
     return heapHealthPct;
+}
+
+uint8_t getDisplayPercent() {
+    int pct = (int)(displayPctF + 0.5f);
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+    return (uint8_t)pct;
 }
 
 HeapPressureLevel getPressureLevel() {
@@ -203,6 +219,7 @@ void resetPeaks(bool suppressToast) {
     lastConditionMs = millis();
 
     stableHealthPct = heapHealthPct;
+    displayPctF = (float)heapHealthPct;
     pendingToast = false;
 
     if (suppressToast) {

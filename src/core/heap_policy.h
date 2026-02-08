@@ -43,6 +43,10 @@ namespace HeapPolicy {
     static constexpr uint8_t kHealthConditionClearPct = 75;
     static constexpr float kHealthFragPenaltyScale = 0.60f;
 
+    // Display EMA smoothing (asymmetric to absorb transient spikes)
+    static constexpr float kDisplayEmaAlphaDown = 0.10f;  // Slow to drop (absorb transients)
+    static constexpr float kDisplayEmaAlphaUp   = 0.20f;  // Moderate recovery
+
     // Adaptive conditioning cooldown (replaces fixed 30s)
     // Formula: cooldown = clamp(min, max, base * (largestBlock / kMinContigForTls))
     // When heap is stressed (largestBlock << kMinContigForTls), cooldown hits 15s floor

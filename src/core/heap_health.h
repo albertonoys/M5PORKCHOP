@@ -16,8 +16,11 @@ namespace HeapHealth {
     // Update heap health state (rate-limited).
     void update();
 
-    // Current heap health percent (0-100).
+    // Current heap health percent (0-100), raw instantaneous.
     uint8_t getPercent();
+
+    // EMA-smoothed percent for UI display (absorbs transient spikes).
+    uint8_t getDisplayPercent();
 
     // Current memory pressure level (graduated degradation).
     HeapPressureLevel getPressureLevel();

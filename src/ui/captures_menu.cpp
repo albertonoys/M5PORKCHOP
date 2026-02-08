@@ -550,6 +550,17 @@ void CapturesMenu::formatTime(char* out, size_t len, time_t t) {
     strftime(out, len, "%b %d %H:%M", timeinfo);
 }
 
+static void formatSize(char* out, size_t len, uint32_t bytes) {
+    if (!out || len == 0) return;
+    if (bytes < 1024) {
+        snprintf(out, len, "%uB", (unsigned)bytes);
+    } else if (bytes < 1024 * 1024) {
+        snprintf(out, len, "%uKB", (unsigned)(bytes / 1024));
+    } else {
+        snprintf(out, len, "%uMB", (unsigned)(bytes / (1024 * 1024)));
+    }
+}
+
 void CapturesMenu::draw(M5Canvas& canvas) {
     if (!active) return;
 
@@ -582,18 +593,32 @@ void CapturesMenu::draw(M5Canvas& canvas) {
         return;
     }
 
-    // Title
-    canvas.setTextSize(2);
-    canvas.setTextDatum(top_center);
-    canvas.drawString("TH3 T4K3", canvas.width() / 2, 0);
-    canvas.setTextSize(1);
-    canvas.setTextDatum(top_left);
+    // Summary stats line
+    uint16_t total = captures.size();
+    uint16_t cracked = 0, uploaded = 0, local = 0;
+    for (const auto& cap : captures) {
+        if (cap.status == CaptureStatus::CRACKED) cracked++;
+        else if (cap.status == CaptureStatus::UPLOADED) uploaded++;
+        else local++;
+    }
+    char summary[64];
+    snprintf(summary, sizeof(summary), "LOOT %u OK %u UP %u LOC %u",
+             (unsigned)total, (unsigned)cracked, (unsigned)uploaded, (unsigned)local);
+    canvas.setCursor(4, 2);
+    canvas.print(summary);
 
-    // Accent line below title
-    canvas.drawFastHLine(4, 17, canvas.width() - 8, COLOR_FG);
+    // Column headers
+    canvas.setCursor(4, 12);
+    canvas.print("SSID");
+    canvas.setCursor(120, 12);
+    canvas.print("ST");
+    canvas.setCursor(150, 12);
+    canvas.print("TYPE");
+    canvas.setCursor(190, 12);
+    canvas.print("SIZE");
 
-    // Draw captures list — compact sirloin-style
-    int y = 21;
+    // Capture list
+    int y = 22;
     int lineHeight = 16;
 
     for (uint8_t i = scrollOffset; i < captures.size() && i < scrollOffset + VISIBLE_ITEMS; i++) {
@@ -607,30 +632,26 @@ void CapturesMenu::draw(M5Canvas& canvas) {
             canvas.setTextColor(COLOR_FG);
         }
 
-        // Build line: [P] SSID  [OK]/[..]/[--]
+        // SSID column — uppercase, max 17 chars, truncate with ..
         canvas.setCursor(4, y);
-        char lineBuf[36];
+        char ssidBuf[20];
         size_t pos = 0;
-        if (cap.isPMKID) {
-            lineBuf[pos++] = '[';
-            lineBuf[pos++] = 'P';
-            lineBuf[pos++] = ']';
-        }
         const char* ssidSrc = cap.ssid;
-        while (*ssidSrc && pos + 1 < 24) {
-            lineBuf[pos++] = (char)toupper((unsigned char)*ssidSrc++);
+        while (*ssidSrc && pos < 17) {
+            ssidBuf[pos++] = (char)toupper((unsigned char)*ssidSrc++);
         }
-        lineBuf[pos] = '\0';
-        // Truncate long SSIDs
-        if (pos > 20) {
-            lineBuf[18] = '.';
-            lineBuf[19] = '.';
-            lineBuf[20] = '\0';
+        ssidBuf[pos] = '\0';
+        if (*ssidSrc) {
+            // Truncated — add ..
+            if (pos >= 2) {
+                ssidBuf[pos - 2] = '.';
+                ssidBuf[pos - 1] = '.';
+            }
         }
-        canvas.print(lineBuf);
+        canvas.print(ssidBuf);
 
-        // Status at right side
-        canvas.setCursor(200, y);
+        // Status column
+        canvas.setCursor(120, y);
         if (cap.status == CaptureStatus::CRACKED) {
             canvas.print("[OK]");
         } else if (cap.status == CaptureStatus::UPLOADED) {
@@ -639,17 +660,27 @@ void CapturesMenu::draw(M5Canvas& canvas) {
             canvas.print("[--]");
         }
 
+        // Type column
+        canvas.setCursor(150, y);
+        canvas.print(cap.isPMKID ? "PM" : "HS");
+
+        // Size column
+        canvas.setCursor(190, y);
+        char sizeBuf[12];
+        formatSize(sizeBuf, sizeof(sizeBuf), cap.fileSize);
+        canvas.print(sizeBuf);
+
         y += lineHeight;
     }
 
-    // Scroll indicators at x=230
+    // Scroll indicators
     canvas.setTextColor(COLOR_FG);
     if (scrollOffset > 0) {
-        canvas.setCursor(230, 21);
+        canvas.setCursor(canvas.width() - 10, 22);
         canvas.print("^");
     }
     if (scrollOffset + VISIBLE_ITEMS < captures.size()) {
-        canvas.setCursor(230, 21 + (VISIBLE_ITEMS - 1) * lineHeight);
+        canvas.setCursor(canvas.width() - 10, 22 + (VISIBLE_ITEMS - 1) * lineHeight);
         canvas.print("v");
     }
 

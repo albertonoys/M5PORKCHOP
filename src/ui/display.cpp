@@ -954,7 +954,7 @@ void Display::drawBottomBar() {
 
     // Center: Heap health bar (XP-style, inverted)
     if (showHealthBar) {
-        int pct = HeapHealth::getPercent();
+        int pct = HeapHealth::getDisplayPercent();
 
         const int barW = 80;
         const int barH = 6;
