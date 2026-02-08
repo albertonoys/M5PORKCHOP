@@ -348,6 +348,12 @@ bool Config::init() {
         Serial.println("[CONFIG] WiGLE API keys loaded from file");
     }
 
+    // Merge creds from JSON porkchop.conf if present (handles the case where
+    // binary config already exists but user dropped a new .conf with creds)
+    if (importCredsFromJsonConf()) {
+        Serial.println("[CONFIG] Credentials imported from porkchop.conf");
+    }
+
     initialized = true;
     return true;
 }
@@ -920,4 +926,78 @@ bool Config::loadWigleKeyFromFile() {
     }
 
     return true;
+}
+
+bool Config::importCredsFromJsonConf() {
+    if (!sdAvailable) return false;
+
+    // Check both new and legacy JSON config paths
+    const char* confPath = SDLayout::configPathSD();
+    if (!SD.exists(confPath)) {
+        if (SDLayout::usingNewLayout()) {
+            confPath = SDLayout::legacyConfigPath();
+            if (!SD.exists(confPath)) return false;
+        } else {
+            return false;
+        }
+    }
+
+    File file = SD.open(confPath, FILE_READ);
+    if (!file) return false;
+
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, file);
+    file.close();
+
+    if (err) {
+        Serial.printf("[CONFIG] importCreds: JSON parse error: %s ('%s')\n", err.c_str(), confPath);
+        return false;
+    }
+
+    if (!doc["wifi"].is<JsonObject>()) {
+        Serial.printf("[CONFIG] importCreds: no 'wifi' object in '%s'\n", confPath);
+        SD.remove(confPath);
+        return false;
+    }
+
+    bool merged = false;
+
+    // Import WPA-SEC key
+    const char* key = doc["wifi"]["wpaSecKey"] | "";
+    if (key[0] != '\0') {
+        strncpy(wifiConfig.wpaSecKey, key, sizeof(wifiConfig.wpaSecKey) - 1);
+        wifiConfig.wpaSecKey[sizeof(wifiConfig.wpaSecKey) - 1] = '\0';
+        Serial.println("[CONFIG] importCreds: WPA-SEC key merged from porkchop.conf");
+        merged = true;
+    }
+
+    // Import WiGLE API name
+    const char* apiName = doc["wifi"]["wigleApiName"] | "";
+    if (apiName[0] != '\0') {
+        strncpy(wifiConfig.wigleApiName, apiName, sizeof(wifiConfig.wigleApiName) - 1);
+        wifiConfig.wigleApiName[sizeof(wifiConfig.wigleApiName) - 1] = '\0';
+        Serial.println("[CONFIG] importCreds: WiGLE API name merged from porkchop.conf");
+        merged = true;
+    }
+
+    // Import WiGLE API token
+    const char* apiToken = doc["wifi"]["wigleApiToken"] | "";
+    if (apiToken[0] != '\0') {
+        strncpy(wifiConfig.wigleApiToken, apiToken, sizeof(wifiConfig.wigleApiToken) - 1);
+        wifiConfig.wigleApiToken[sizeof(wifiConfig.wigleApiToken) - 1] = '\0';
+        Serial.println("[CONFIG] importCreds: WiGLE API token merged from porkchop.conf");
+        merged = true;
+    }
+
+    if (merged) {
+        save();
+        SDLog::log("CFG", "Credentials imported from porkchop.conf");
+    }
+
+    // Delete the JSON conf after import (same pattern as key files)
+    if (SD.remove(confPath)) {
+        Serial.printf("[CONFIG] importCreds: deleted '%s' after import\n", confPath);
+    }
+
+    return merged;
 }

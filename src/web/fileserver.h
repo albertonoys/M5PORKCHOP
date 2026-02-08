@@ -69,6 +69,8 @@ private:
     static void handleCopy();
     static void handleMove();
     static void handleNotFound();
+    static void handleCreds();
+    static void handleCredsSave();
     
     // File operation helpers
     static bool copyFileChunked(const String& srcPath, const String& dstPath);

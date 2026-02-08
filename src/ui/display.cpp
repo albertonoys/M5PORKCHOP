@@ -2920,7 +2920,7 @@ bool Display::takeScreenshot() {
     
     // Check SD availability
     if (!Config::isSDAvailable()) {
-        showToast("NO SD CARD");
+        requestTopBarMessage("NO SD CARD", 2000);
         return false;
     }
     
@@ -2949,7 +2949,7 @@ bool Display::takeScreenshot() {
     
     if (!file) {
         Serial.println("[DISPLAY] Failed to open screenshot file");
-        showToast("SD WRITE FAILED");
+        requestTopBarMessage("SD WRITE FAILED", 2500);
         snapping = false;
         return false;
     }
@@ -3017,10 +3017,10 @@ bool Display::takeScreenshot() {
     
     Serial.printf("[DISPLAY] Screenshot saved: %s (%lu bytes)\n", path, filesize);
     
-    // Show success toast
+    // Show success in top bar (not centered toast — that ruins the screenshot)
     char msg[32];
     snprintf(msg, sizeof(msg), "SNAP! #%d", num);
-    showToast(msg);
+    requestTopBarMessage(msg, 2000);
 
     snapping = false;
     return true;

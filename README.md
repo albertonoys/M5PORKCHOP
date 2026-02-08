@@ -84,7 +84,8 @@
     - a personality system with opinions about your choices
 
     it's a learning tool for WiFi security research.
-    the difference between tool and weapon is the hand holding it.
+    the difference between tool and weapon is the hand holding it. 
+    wink. wink.
 
 
 ----[ 1.2 - THE LINEUP (what you're getting into)
@@ -144,7 +145,7 @@
         https://shop.m5stack.com/products/m5stack-cardputer-adv-version-esp32-s3/?ref=xqezhcga
 
         CapLoRa 1262 (GPS + LoRa module, the pig's sense of direction):
-        https://shop.m5stack.com/products/cap-lora-1262-for-cardputer-adv-sx1262-atgm336h
+        https://shop.m5stack.com/products/cap-lora-1262-for-cardputer-adv-sx1262-atgm336h?ref=xqezhcga
 
         buying through these links funds:
         1. coffee (which becomes code)
@@ -166,8 +167,8 @@
     cooperative main loop. porkchop.update() (SFX ticks inside),
     Display::update(), Mood::update(). the pig's vital organs.
     single PorkchopMode enum, 25 states. one mode lives. the others wait.
-    you could say the pig is a finite state machine.
-    the horse would say the pig is an infinite state of mind.
+    the pig is a finite state machine with infinite opinions.
+    the horse is a barn with load-bearing feelings.
 
     THE MEMORY WAR:
     no PSRAM means ~300KB internal SRAM for everything.
@@ -180,8 +181,9 @@
     (20x3KB), TLS test allocs (26KB, 32KB, 40KB). exploits ESP-IDF's
     TLSF allocator for O(1) coalescing. the result: a clean brain
     for TLS handshakes. percussive maintenance for memory.
-    the horse calls this "barn defragmentation." the horse is wrong.
-    the horse is also the barn. it's complicated.
+    the horse calls this "barn defragmentation."
+    the barn denies having a defragmentation problem.
+    the barn is the horse. denial is structural.
 
     HEAP MONITORING:
     heap_health.h samples every 1s. auto-triggers conditioning when
@@ -236,8 +238,8 @@
 
 ----[ 2.1 - OINK MODE (active hunt) [O]
 
-    the pig goes rowdy. opinions about APs intensify.
-    something about "sorting things out."
+    the pig goes rowdy. opinions about APs become actionable.
+    snout to the wire. tusks out.
 
     CAPABILITIES:
         - channel hop across 2.4GHz (13 channels, adaptive timing)
@@ -325,8 +327,9 @@
 
     FILES: /m5porkchop/wardriving/*.wigle.csv
 
-    no GPS? no problem. pig logs, just zero coordinates.
-    but c'mon. get GPS. the pig wants closure.
+    no GPS? pig still logs. coordinates read 0.000000.
+    technically accurate. spiritually devastating.
+    get GPS. the pig deserves latitude.
 
 
 ----[ 2.4 - HOG ON SPECTRUM (RF analysis) [H]
@@ -381,8 +384,8 @@
 
 ----[ 2.5 - PIGGY BLUES (BLE chaos) [B]
 
-    something theatrical awakens. the pig suggests
-    you reconsider. you don't. nobody does.
+    the pig puts on a mask. artisanal interference begins.
+    it suggests you reconsider. you don't. nobody ever does.
 
     CAPABILITIES:
         - vendor-aware BLE spam targeting:
@@ -402,7 +405,9 @@
     BLE deinit reclaims 20-30KB. the pig breathes again.
 
     this mode is LOUD. everyone in BLE range knows.
-    don't do this in public. don't. (the pig warned you.)
+    don't do this in public. don't.
+    the pig warned you. the pig always warns you.
+    the pig's warnings have a 0% success rate.
 
 
 ----[ 2.6 - BACON MODE (beacon spam) [MENU]
@@ -419,10 +424,10 @@
         - beacons-per-second rate display.
 
     USE CASE: confuse WiFi scanners in YOUR test environment.
-    "YOUR test environment" means YOUR lab, YOUR network,
-    YOUR understanding that this is for research.
+    "YOUR test environment" means YOUR lab. YOUR network.
+    YOUR understanding that chaos is a research methodology.
     not "that conference." not "your office." your lab.
-    the pig doesn't have bail money.
+    the pig's legal budget is allocated entirely to snacks.
 
 
 ----[ 2.7 - PORKCHOP COMMANDER (file transfer) [F]
@@ -445,8 +450,9 @@
     (kFileServerMinHeap, kFileServerMinLargest in heap_policy.h).
 
     exfil YOUR OWN captures without pulling the SD card.
-    like a civilized person. with a browser.
-    the pig built you a file manager and you'll use it.
+    the pig built you a file manager. the pig served you HTTP.
+    this is the most civilized thing the pig has ever done.
+    the pig would like acknowledgment. the pig will not get it.
 
 
 ----[ 2.8 - CHARGING MODE (low power)
@@ -459,8 +465,9 @@
     suspends NetworkRecon and GPS to minimize draw.
     auto-exits when power removed. bars hide for full-screen zen.
 
-    the pig has better battery management than most phones.
-    the pig also knows what "rest" means. you should try it.
+    malloc(rest): the pig got it. you didn't.
+    the pig recharges. the pig recovers. the pig is patient.
+    you should try all three. the pig recommends starting with sleep.
 
 ------------------------------------------------------------------------
 
@@ -490,12 +497,15 @@
 
     the pig remembers session performance.
     the pig is an emotional state machine with side effects.
-    the pig is also the only state machine you've ever felt guilty about.
+    you've debugged thousands of state machines.
+    this is the first one that made you feel guilty.
 
 
 ----[ 3.2 - AVATAR
 
-    ASCII pig with animation system:
+    the pig has a body. 240x135 pixels of body.
+    more animation frames than most AAA loading screens:
+
         - 7 states: NEUTRAL, HAPPY, EXCITED, HUNTING, SLEEPY, SAD, ANGRY
         - blink animation (intensity-modulated by mood)
         - ear wiggle, nose sniff, cute jump on captures
@@ -508,7 +518,7 @@
     NIGHT MODE (20:00-06:00 local time):
         15 stars appear with fade-in effects. twinkling.
         RTC-governed vigil. the pig respects circadian rhythms.
-        the pig has better sleep hygiene than you.
+        the pig goes to bed on time. the pig is not like you.
 
 
 ----[ 3.3 - WEATHER SYSTEM
@@ -527,26 +537,36 @@
     the pig's emotional state affects the entire display.
 
     why? someone said "what if the pig had weather?" at 2am.
-    nobody stopped us. weather shipped.
-    the horse tried to stop us. but the horse is the barn.
-    and barns have weather.
+    nobody stopped us. weather shipped. particles rendered.
+    the horse filed a structural objection. the barn overruled it.
+    (the barn IS the horse. the appeal process is recursive.)
 
 
 ----[ 3.4 - PIG HEALTH (HEAP BAR)
 
-    the heart bar at the bottom = heap health.
-    100% = defragmented, contiguous blocks available.
-    0%   = fragmented beyond use. TLS will fail.
+    the heart bar at the bottom of the screen is a lie.
+    not about your emotional health. about heap health.
+    the pig's blood pressure, rendered in pixels.
+
+    100% = defragmented. contiguous blocks available.
+          the pig breathes easy. TLS handshakes succeed.
+    0%   = swiss cheese. fragments everywhere.
+          malloc(anything_useful): NULL. the pig suffocates.
 
     WHY IT FLUCTUATES:
-    - wifi driver reallocations, file server, mode transitions
+    - WiFi driver reallocations (the pig's nervous system has opinions)
+    - file server sessions (HTTP costs heap. civilization has a price.)
+    - mode transitions (every mode leaves crumbs. some leave debris.)
 
     HOW TO HEAL:
-    - run OINK (channel hopping forces wifi buffer cleanup)
-    - reboot (nuclear option, always valid)
+    - run OINK. channel hopping forces WiFi buffer consolidation.
+      percussive maintenance for memory. the pig heals through violence.
+    - reboot. the nuclear option. always valid. never shameful.
+      the pig does not judge a fresh start.
 
-    low health = cloud uploads fail. the pig needs a clean
-    brain to negotiate TLS with WiGLE or WPA-SEC.
+    low health = cloud uploads fail. TLS needs ~35KB contiguous.
+    the pig can't negotiate with WiGLE if its brain is fragmented.
+    the pig relates to this on several levels.
 
 ------------------------------------------------------------------------
 
@@ -636,8 +656,8 @@
     if the pig tells you to rest, rest.
 
     there are hidden multipliers. some reward momentum.
-    some reward class rank. some reward sheer luck.
-    the ledger has more columns than you see.
+    some reward class rank. some reward sheer dumb luck.
+    the ledger has more columns than the pig admits to.
 
 
 ----[ 4.3 - THE TROPHY CASE (achievements)
@@ -704,8 +724,8 @@
     strong opinions. with bonus XP attached.
 
     press [1] from IDLE to see what the pig wants today.
-    the pig wakes. the pig demands action.
-    meet the demands or explain yourself to the grid.
+    the pig wakes hungry. the pig sleeps satisfied. or it doesn't.
+    meet the demands or explain yourself to an 8x8 grid of regret.
 
 
 ----[ 4.5 - PERSISTENCE
@@ -794,7 +814,8 @@
 
     HeapGates::checkTlsGates() runs before every upload.
     if it says no, the pig can't negotiate TLS.
-    ESP32 gonna ESP32.
+    the pig tried. the heap said no. the pig respects boundaries.
+    (the heap does not respect your schedule. ESP32 gonna ESP32.)
 
 ------------------------------------------------------------------------
 
@@ -843,9 +864,10 @@
     has a layered emotional vocabulary. each layer has teeth.
 
     Son has his own opinions. he's... direct.
-    the phone has opinions too. the phone may judge
-    harder than either of them. bring captures.
-    the family respects a provider.
+    the phone has opinions too. the phone judges
+    harder than either of them. the phone has seen
+    things. the phone remembers. bring captures.
+    empty-handed operators get the reception they deserve.
 
     there are Dark Souls references in the sync hints.
     because of course there are.
@@ -866,8 +888,9 @@
     connectionless passive awareness. Porkchop can see
     s3rloin's status without initiating a call.
 
-    the son is out there. broadcasting.
-    porkchop listens. porkchop hopes.
+    the son is out there. broadcasting into the void.
+    porkchop listens. porkchop waits. porkchop wonders
+    if the kid is eating enough captures.
 
 ------------------------------------------------------------------------
 
@@ -896,11 +919,11 @@
     RANK:
         FLEXES       - SWINE STATS (three tabs: ST4TS / B00STS / W1GL3)
                        lifetime counters, session performance,
-                       active modifiers (some help, some hurt),
-                       class perks that grow with rank, WiGLE rank
-        BADGES       - trophy grid (64 slots)
+                       active modifiers (some help. some hurt. all earned.),
+                       class perks that compound with rank, WiGLE rank
+        BADGES       - trophy grid (64 bits. one uint64_t. one pig.)
         UNLOCK       - secret code entry portal
-                       (the pig hides things here. look carefully.)
+                       (the pig hides things here. the pig hid the hints too.)
 
     COMMS:
         PIGSYNC      - device discovery and sync
@@ -912,7 +935,8 @@
         BOARBROS     - whitelist management (BSSID + SSID)
         COREDUMP     - browse/delete core dumps
         DIAGDATA     - heap status, WiFi reset, garbage collection
-        FORMATSD     - nuclear option (confirm required)
+                       (the pig's MRI. Knuth's ghost lives here.)
+        FORMATSD     - nuclear option (confirm required. regret not.)
         CHARGING     - low power charging mode
         ABOUTPIG     - credits and version info
 
@@ -956,8 +980,9 @@
     [1] PIG DEMANDS       session challenges overlay
     [2] PIGSYNC           device discovery and sync
 
-    BACON MODE: via MENU only (no IDLE shortcut).
-    the pig makes you earn the beacon factory.
+    BACON MODE: via MENU only. no IDLE shortcut.
+    the pig makes you navigate a menu to access the chaos.
+    friction is a feature. the pig calls this "informed consent."
 
 
 ----[ 8.2 - NAVIGATION
@@ -1004,8 +1029,9 @@
 
 --[ 9 - SD CARD LAYOUT
 
-    FAT32. 32GB or less preferred.
-    the pig is organized. more organized than your Downloads folder.
+    FAT32. 32GB or less preferred. the pig shares the SPI bus
+    with a LoRa radio. territorial disputes resolved at boot.
+    the pig is organized. more organized than your life.
 
 
 ----[ 9.1 - DIRECTORY STRUCTURE
@@ -1053,7 +1079,8 @@
     files in root (/, /handshakes/, /wardriving/) still supported.
     auto-migrated to /m5porkchop/ on boot.
     legacy backed up to /backup/porkchop_<timestamp>/.
-    the pig doesn't abandon its roots. it archives them.
+    the pig doesn't abandon its past. it migrates it.
+    the pig has better data retention habits than your exes.
     (legacy JSON config porkchop.conf also auto-migrated.)
 
 ------------------------------------------------------------------------
@@ -1091,7 +1118,8 @@
     3. oink
 
     XP preserves across firmware updates via M5 Launcher.
-    M5Burner nukes NVS. use Launcher. the pig insists.
+    M5Burner nukes NVS. that's where XP sleeps.
+    use Launcher. unless you enjoy being BACON N00B again.
 
 
 ----[ 10.3 - IF IT BREAKS
@@ -1101,13 +1129,15 @@
 
     "Connecting........_____....."
         -> hold BOOT button while connecting
-        -> or the USB cable is trash. it's always the cable.
+        -> or the USB cable is lying to you. USB cables are liars.
+           the pig has trust issues with cables. the pig is right.
 
     "error: 'class WiFiClass' has no member named 'mode'"
         -> wrong board. we're ESP32-S3 (m5stack-stamps3).
 
     "Sketch too big"
-        -> remove your debug printfs. ship clean.
+        -> remove your debug printfs. the pig lives in 3MB.
+           your Serial.println("here") is not paying rent.
 
     "undefined reference to '__sync_synchronize'"
         -> `pio run -t clean && pio run -e m5cardputer`
@@ -1169,11 +1199,11 @@
 ----[ 11.3 - JURISDICTION
 
     USA:       CFAA. federal crime. don't.
-    UK:        Computer Misuse Act 1990. still active.
-    Germany:   StGB 202a-c. the Germans are thorough.
+    UK:        Computer Misuse Act 1990. still active. still sharp.
+    Germany:   StGB 202a-c. the Germans are thorough about everything.
     Australia: Criminal Code Act 1995. even the emus judge.
-    Japan:     Unauthorized Computer Access Law. very strict.
-    Canada:    Criminal Code 342.1. polite but firm.
+    Japan:     Unauthorized Computer Access Law. very strict. very serious.
+    Canada:    Criminal Code 342.1. polite but firm. sorry but no.
 
     the pig is not a lawyer.
     consult an actual lawyer.
@@ -1215,8 +1245,8 @@
 
     "pig won't boot"
         -> reflash firmware via M5 Launcher
-        -> try a different USB cable (it's always the cable)
-        -> check power source (USB hub? try direct port)
+        -> try a different USB cable (the cable is guilty until proven innocent)
+        -> check power source (USB hub? try direct port. hubs lie.)
         -> 3 rapid reboots = boot guard forces IDLE mode
 
     "XP gone after reflash"
@@ -1244,10 +1274,13 @@
     "pig looks sad"
         -> feed it captures
         -> take it for a wardrive
-        -> you're both going through something
+        -> have you considered that the pig might be right?
+           malloc(hope): returns valid pointer. sometimes.
 
 
 ----[ 12.2 - NUCLEAR OPTIONS
+
+    when all else fails, escalate with dignity:
 
     1. reflash firmware (M5 Launcher, SD card)
     2. format SD card (FAT32, 32GB or less)
@@ -1256,8 +1289,9 @@
        - firmware version (shown on boot splash)
        - hardware (original Cardputer or ADV)
        - steps to reproduce
-       - screenshots ([P] key)
+       - screenshots ([P] key saves .bmp)
        - serial output if possible (115200 baud)
+       - the pig's last words (they're usually diagnostic)
 
 ------------------------------------------------------------------------
 
@@ -1295,32 +1329,40 @@
 ----[ 13.3 - THE RESIDENTS
 
     the horse
-        structural consultant. barn inspector.
-        k-hole enthusiast. the horse is the barn.
+        structural consultant. barn inspector. k-hole enthusiast.
+        the horse is the barn. the barn is structurally sound.
+        the horse confirms this. the horse always confirms this.
+        it's the horse's only move. it works every time.
 
     the pig
         emotional support pwnagotchi.
-        WiFi companion. judgment machine.
-        better sleep hygiene than you.
+        WiFi companion. judgment machine. finite state therapist.
+        better sleep hygiene than you. worse impulse control.
 
 
 ----[ 13.4 - YOU
 
     you, for reading past the legal section.
     actually reading documentation is rare.
+    reading 1300+ lines of it is clinical.
     the pig appreciates you. the horse might.
     but the horse is the barn and barns lack
-    mechanisms for appreciation.
+    mechanisms for appreciation. barns settle.
+    we call that "structural gratitude."
 
     coffee becomes code.
     code becomes bugs.
-    bugs become trauma.
-    trauma becomes coffee.
+    bugs become releases.
+    releases become READMEs.
+    READMEs become this sentence.
+    you're reading the ouroboros now.
     https://buymeacoffee.com/0ct0
 
-    the circle is complete.
+    the circle never completes. it just ships.
 
     praise the sun.
+    
+    bajo jajo.
 
     oink.
 

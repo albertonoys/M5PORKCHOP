@@ -16,6 +16,7 @@
 #include "../core/xp.h"
 #include "../ui/swine_stats.h"
 #include "../core/sd_layout.h"
+#include "../core/config.h"
 #include "wigle.h"
 
 #ifndef PORKCHOP_LOG_ENABLED
@@ -1156,6 +1157,8 @@ body.mc{
   text-overflow:ellipsis;
   color: var(--dim);
 }
+.ops-meta-link{ cursor:pointer; }
+.ops-meta-link:hover{ color: var(--dr-cyan); text-decoration: underline; }
 .ops-actions{
   display:flex;
   gap: 6px;
@@ -1563,14 +1566,12 @@ async function loadConfigFromDevice() {
     creds.wigleUser = '';
     creds.wigleToken = '';
     try {
-        const text = await fetchDeviceText('/m5porkchop/config/porkchop.conf');
-        if (text) {
-            const cfg = JSON.parse(text);
-            if (cfg && cfg.wifi) {
-                creds.wpaKey = (cfg.wifi.wpaSecKey || '').trim();
-                creds.wigleUser = (cfg.wifi.wigleApiName || '').trim();
-                creds.wigleToken = (cfg.wifi.wigleApiToken || '').trim();
-            }
+        const r = await queuedFetch('/api/creds');
+        if (r.ok) {
+            const cfg = await r.json();
+            creds.wpaKey = (cfg.wpaSecKey || '').trim();
+            creds.wigleUser = (cfg.wigleApiName || '').trim();
+            creds.wigleToken = (cfg.wigleApiToken || '').trim();
         }
     } catch(e) {
         // keep defaults
@@ -1947,7 +1948,7 @@ function closeWpaAuthModal(result) {
 
 function openWpaAuthTab() {
     if (!creds.wpaKey) {
-        addWpaLog('AUTH BLOCKED: KEY MISSING IN /PORKCHOP.CONF');
+        addWpaLog('AUTH BLOCKED: KEY MISSING - CLICK STATUS TO CONFIGURE');
         return;
     }
     const url = 'https://wpa-sec.stanev.org/?submit&key=' + encodeURIComponent(creds.wpaKey);
@@ -2460,8 +2461,57 @@ function hideModal() {
     document.getElementById('newFolderModal').style.display = 'none';
     document.getElementById('helpModal').style.display = 'none';
     document.getElementById('renameModal').style.display = 'none';
+    document.getElementById('credsModal').style.display = 'none';
     const logModal = document.getElementById('logModal');
     if (logModal) logModal.style.display = 'none';
+}
+
+function showCredsModal() {
+    document.getElementById('credWpaKey').value = creds.wpaKey || '';
+    document.getElementById('credWigleName').value = creds.wigleUser || '';
+    document.getElementById('credWigleToken').value = creds.wigleToken || '';
+    document.getElementById('credsModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('credWpaKey').focus(), 50);
+}
+
+function hideCredsModal() {
+    document.getElementById('credsModal').style.display = 'none';
+}
+
+async function saveCreds() {
+    const wpaKey = document.getElementById('credWpaKey').value.trim();
+    const wigleName = document.getElementById('credWigleName').value.trim();
+    const wigleToken = document.getElementById('credWigleToken').value.trim();
+    try {
+        const r = await queuedFetch('/api/creds', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                wpaSecKey: wpaKey,
+                wigleApiName: wigleName,
+                wigleApiToken: wigleToken
+            })
+        });
+        if (r.ok) {
+            creds.wpaKey = wpaKey;
+            creds.wigleUser = wigleName;
+            creds.wigleToken = wigleToken;
+            updateCredsStatus();
+            hideCredsModal();
+            addSysLog('CREDENTIALS SAVED');
+        } else {
+            addSysLog('CREDS SAVE FAILED: ' + r.status);
+        }
+    } catch(e) {
+        addSysLog('CREDS SAVE ERROR');
+    }
+}
+
+async function clearCreds() {
+    document.getElementById('credWpaKey').value = '';
+    document.getElementById('credWigleName').value = '';
+    document.getElementById('credWigleToken').value = '';
+    await saveCreds();
 }
 
 function getEditBytes(text) {
@@ -2923,7 +2973,7 @@ async function updateWigleUploadedList(fullPath) {
 async function wpaSync() {
     if (opsBusy) return;
     if (!creds.wpaKey) {
-        addWpaLog('KEY MISSING IN /PORKCHOP.CONF');
+        addWpaLog('KEY MISSING - CLICK STATUS TO CONFIGURE');
         return;
     }
     const pendingPre = wpaQueue.filter(item => item.status === 'LOCAL');
@@ -2964,7 +3014,7 @@ async function wpaSync() {
 
 function wpaOpenResults() {
     if (!creds.wpaKey) {
-        addWpaLog('KEY MISSING IN /PORKCHOP.CONF');
+        addWpaLog('KEY MISSING - CLICK STATUS TO CONFIGURE');
         return;
     }
     const url = 'https://wpa-sec.stanev.org/?api&dl=1&key=' + encodeURIComponent(creds.wpaKey);
@@ -3046,7 +3096,7 @@ async function wpaUploadItem(item) {
 async function wigleSync() {
     if (opsBusy) return;
     if (!creds.wigleUser || !creds.wigleToken) {
-        addWigleLog('CREDS MISSING IN /PORKCHOP.CONF');
+        addWigleLog('CREDS MISSING - CLICK STATUS TO CONFIGURE');
         return;
     }
     const pending = wigleQueue.filter(item => item.status === 'LOCAL');
@@ -3210,7 +3260,7 @@ static const char HTML_TEMPLATE[] PROGMEM = R"rawliteral(
                     <span class="ops-decor-left">────────────────────────────────────────────────────────────────────────────────┤</span>
                     <span class="ops-title-wrap">
                         <span class="ops-title">WPA-SEC QUEUE</span>
-                        <span class="ops-meta" id="wpaMeta">KEY: UNKNOWN</span>
+                        <span class="ops-meta ops-meta-link" id="wpaMeta" onclick="showCredsModal()">KEY: UNKNOWN</span>
                         <span class="ops-actions">
                             <button class="btn btn-outline" id="btnWpaOpen" onclick="wpaOpenResults()">POT FILE</button>
                         </span>
@@ -3230,7 +3280,7 @@ static const char HTML_TEMPLATE[] PROGMEM = R"rawliteral(
                     <span class="ops-decor-left">────────────────────────────────────────────────────────────────────────────────┤</span>
                     <span class="ops-title-wrap">
                         <span class="ops-title">WIGLE QUEUE</span>
-                        <span class="ops-meta" id="wigleMeta">CREDS: UNKNOWN</span>
+                        <span class="ops-meta ops-meta-link" id="wigleMeta" onclick="showCredsModal()">CREDS: UNKNOWN</span>
                         <span class="ops-actions">
                             <button class="btn" id="btnWigleSync" onclick="wigleSync()">SYNC</button>
                         </span>
@@ -3364,6 +3414,34 @@ BACKSPACE      PARENT FOLDER
         </div>
     </div>
 
+    <!-- Credentials Modal -->
+    <div class="modal" id="credsModal" onclick="if(event.target===this)hideCredsModal()">
+        <div class="modal-content">
+            <h3>API CREDENTIALS</h3>
+            <div style="margin-bottom:10px">
+                <div style="color:var(--dim);font-size:0.85em;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">WPA-SEC KEY (32 HEX CHARS)</div>
+                <input type="text" id="credWpaKey" placeholder="WPA-SEC API KEY" maxlength="32" spellcheck="false" autocomplete="off"
+                       onkeydown="if(event.key==='Escape')hideCredsModal()">
+            </div>
+            <div style="margin-bottom:10px">
+                <div style="color:var(--dim);font-size:0.85em;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">WIGLE API NAME</div>
+                <input type="text" id="credWigleName" placeholder="WIGLE API NAME" maxlength="64" spellcheck="false" autocomplete="off"
+                       onkeydown="if(event.key==='Escape')hideCredsModal()">
+            </div>
+            <div style="margin-bottom:10px">
+                <div style="color:var(--dim);font-size:0.85em;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.3px">WIGLE API TOKEN</div>
+                <input type="text" id="credWigleToken" placeholder="WIGLE API TOKEN" maxlength="64" spellcheck="false" autocomplete="off"
+                       onkeydown="if(event.key==='Escape')hideCredsModal()">
+            </div>
+            <div class="modal-tip">SAVED TO DEVICE CONFIG. PERSISTS ACROSS REBOOTS.</div>
+            <div class="modal-actions">
+                <button class="btn" onclick="saveCreds()">SAVE</button>
+                <button class="btn btn-outline" onclick="clearCreds()">CLEAR ALL</button>
+                <button class="btn btn-outline" onclick="hideCredsModal()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
 <script src="/ui.js"></script>
 </body>
 </html>
@@ -3473,6 +3551,8 @@ void FileServer::startServer() {
     server->on("/api/rename", HTTP_GET, handleRename);
     server->on("/api/copy", HTTP_POST, handleCopy);
     server->on("/api/move", HTTP_POST, handleMove);
+    server->on("/api/creds", HTTP_GET, handleCreds);
+    server->on("/api/creds", HTTP_POST, handleCredsSave);
     server->on("/download", HTTP_GET, handleDownload);
     server->on("/upload", HTTP_POST, handleUpload, handleUploadProcess);
     server->on("/delete", HTTP_GET, handleDelete);
@@ -3765,6 +3845,98 @@ void FileServer::handleSDInfo() {
     server->send(200, "application/json", json);
     sessionTxBytes += strlen(json);
     logHeapStatusIfLow("after /api/sdinfo");
+}
+
+void FileServer::handleCreds() {
+    logRequest(server, "REQ");
+    if (isTransferBusy()) {
+        sendBusyResponse(server);
+        return;
+    }
+    const WiFiConfig& w = Config::wifi();
+    char json[256];
+    snprintf(json, sizeof(json),
+             "{\"wpaSecKey\":\"%s\",\"wigleApiName\":\"%s\",\"wigleApiToken\":\"%s\"}",
+             w.wpaSecKey, w.wigleApiName, w.wigleApiToken);
+    server->sendHeader("Connection", "close");
+    server->sendHeader("Cache-Control", "no-store");
+    server->send(200, "application/json", json);
+    sessionTxBytes += strlen(json);
+}
+
+// Helper: extract a JSON string value by key from a flat JSON object.
+// Returns pointer to static buffer (max 128 chars). Returns "" if not found.
+static const char* jsonExtractStr(const char* body, const char* key) {
+    static char buf[128];
+    buf[0] = '\0';
+    // Build search pattern: "key":"
+    char pattern[48];
+    snprintf(pattern, sizeof(pattern), "\"%s\":\"", key);
+    const char* start = strstr(body, pattern);
+    if (!start) return buf;
+    start += strlen(pattern);
+    const char* end = strchr(start, '"');
+    if (!end) return buf;
+    size_t len = end - start;
+    if (len >= sizeof(buf)) len = sizeof(buf) - 1;
+    memcpy(buf, start, len);
+    buf[len] = '\0';
+    return buf;
+}
+
+void FileServer::handleCredsSave() {
+    logRequest(server, "REQ");
+    if (isTransferBusy()) {
+        sendBusyResponse(server);
+        return;
+    }
+    if (!server->hasArg("plain")) {
+        server->sendHeader("Connection", "close");
+        server->send(400, "application/json", "{\"error\":\"Missing body\"}");
+        return;
+    }
+
+    String body = server->arg("plain");
+    if (body.length() > 512) {
+        server->sendHeader("Connection", "close");
+        server->send(413, "application/json", "{\"error\":\"Body too large\"}");
+        return;
+    }
+
+    const char* raw = body.c_str();
+    const char* wpaKey = jsonExtractStr(raw, "wpaSecKey");
+    // Re-extract into local buffers since jsonExtractStr uses static buf
+    char wpaKeyBuf[64];
+    strncpy(wpaKeyBuf, wpaKey, sizeof(wpaKeyBuf) - 1);
+    wpaKeyBuf[sizeof(wpaKeyBuf) - 1] = '\0';
+
+    const char* apiName = jsonExtractStr(raw, "wigleApiName");
+    char apiNameBuf[65];
+    strncpy(apiNameBuf, apiName, sizeof(apiNameBuf) - 1);
+    apiNameBuf[sizeof(apiNameBuf) - 1] = '\0';
+
+    const char* apiToken = jsonExtractStr(raw, "wigleApiToken");
+    char apiTokenBuf[65];
+    strncpy(apiTokenBuf, apiToken, sizeof(apiTokenBuf) - 1);
+    apiTokenBuf[sizeof(apiTokenBuf) - 1] = '\0';
+
+    // Write to config
+    WiFiConfig cfg = Config::wifi();
+    strncpy(cfg.wpaSecKey, wpaKeyBuf, sizeof(cfg.wpaSecKey) - 1);
+    cfg.wpaSecKey[sizeof(cfg.wpaSecKey) - 1] = '\0';
+    strncpy(cfg.wigleApiName, apiNameBuf, sizeof(cfg.wigleApiName) - 1);
+    cfg.wigleApiName[sizeof(cfg.wigleApiName) - 1] = '\0';
+    strncpy(cfg.wigleApiToken, apiTokenBuf, sizeof(cfg.wigleApiToken) - 1);
+    cfg.wigleApiToken[sizeof(cfg.wigleApiToken) - 1] = '\0';
+    Config::setWiFi(cfg);
+
+    Serial.printf("[FILESERVER] Creds saved: wpa=%s wigle=%s/%s\n",
+                  wpaKeyBuf[0] ? "(SET)" : "(EMPTY)",
+                  apiNameBuf[0] ? "(SET)" : "(EMPTY)",
+                  apiTokenBuf[0] ? "(SET)" : "(EMPTY)");
+
+    server->sendHeader("Connection", "close");
+    server->send(200, "application/json", "{\"ok\":true}");
 }
 
 void FileServer::handleFileList() {
