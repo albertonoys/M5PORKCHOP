@@ -165,7 +165,7 @@
     THE CORE:
     cooperative main loop. porkchop.update() (SFX ticks inside),
     Display::update(), Mood::update(). the pig's vital organs.
-    single PorkchopMode enum, 24 states. one mode lives. the others wait.
+    single PorkchopMode enum, 25 states. one mode lives. the others wait.
     you could say the pig is a finite state machine.
     the horse would say the pig is an infinite state of mind.
 
@@ -184,8 +184,9 @@
     the horse is also the barn. it's complicated.
 
     HEAP MONITORING:
-    heap_health.h samples every 1s. auto-triggers conditioning at
-    65% fragmentation, clears at 75%. cooldown of 30s between rounds.
+    heap_health.h samples every 1s. auto-triggers conditioning when
+    health drops below 65%, clears when it recovers above 75%.
+    adaptive cooldown: 15-60s between rounds (scales with heap state).
     the heart bar at the bottom of the screen is heap health.
     100% = clean. 0% = swiss cheese. the pig's blood pressure, basically.
 
@@ -287,7 +288,7 @@
             IDLE_SWEEP = dead channels, fast sweep (120ms minimum)
         - channel stats track beacons/EAPOL per channel
           primary channels (1, 6, 11) get longer dwell times
-          dead channels (3 consecutive empty visits) get fast-swept
+          dead channels (zero beacons across full cycle) trigger IDLE_SWEEP
         - passive PMKID catches (APs volunteer PMKIDs in M1 frames.
           you just have to be patient enough to hear them confess.)
         - passive handshake capture from natural reconnects
@@ -816,7 +817,7 @@
 
     DATA TRANSFER: chunked, 238 bytes per fragment.
     sequence numbers, CRC32 verification, ACK per chunk.
-    5 retries per chunk. 60 second transfer timeout.
+    3 retries per chunk. 60 second transfer timeout.
 
     ENCRYPTION: ESP-NOW encrypted unicast.
     PMK and LMK are hardcoded in pigsync_protocol.h.
@@ -903,8 +904,7 @@
         G0 Button    - configurable action (screen toggle, mode entry)
 
     TOOLS:
-        DIAGNOSTICS  - heap status, WiFi reset, garbage collection,
-                       NTP sync status
+        DIAGNOSTICS  - heap status, WiFi reset, garbage collection
         SD FORMAT    - nuclear option (confirm required)
         CRASH VIEWER - browse/delete core dumps
         UNLOCKABLES  - secret code entry portal
