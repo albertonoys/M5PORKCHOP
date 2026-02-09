@@ -681,7 +681,11 @@ void PiggyBluesMode::stop() {
     Display::showToast("BLUES SLAYED.\nJUST ROULETTE.\n+15 XP");
     XP::addRouletteWin();
     XP::addXPSilent(NO_REBOOT_XP_BONUS);
-    
+
+    // Restore WiFi driver after BLE tore it down in start()
+    WiFi.mode(WIFI_STA);
+    delay(HeapPolicy::kWiFiModeDelayMs);
+
     // Restart background network reconnaissance (WiFi promiscuous mode)
     NetworkRecon::start();
 }
