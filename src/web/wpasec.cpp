@@ -348,8 +348,10 @@ bool WPASec::uploadSingleCapture(const char* filepath, const char* bssid) {
     Serial.printf("[WPASEC] Connecting to %s:%d\n", WPASEC_HOST, WPASEC_PORT);
     if (!client.connect(WPASEC_HOST, WPASEC_PORT, 10000)) {
         capFile.close();
-        strncpy(lastError, "TLS CONNECT FAILED", sizeof(lastError) - 1);
-        Serial.println("[WPASEC] TLS connection failed");
+        char tlsErr[64] = {0};
+        int errCode = client.lastError(tlsErr, sizeof(tlsErr) - 1);
+        snprintf(lastError, sizeof(lastError), "TLS CONNECT: %d", errCode);
+        Serial.printf("[WPASEC] TLS connect failed: err=%d (%s)\n", errCode, tlsErr);
         return false;
     }
     
@@ -452,8 +454,10 @@ bool WPASec::downloadPotfile(uint16_t& newCracks) {
     client.setInsecure();
     
     if (!client.connect(WPASEC_HOST, WPASEC_PORT, 10000)) {
-        strncpy(lastError, "POTFILE TLS FAILED", sizeof(lastError) - 1);
-        Serial.println("[WPASEC] Potfile TLS connection failed");
+        char tlsErr[64] = {0};
+        int errCode = client.lastError(tlsErr, sizeof(tlsErr) - 1);
+        snprintf(lastError, sizeof(lastError), "POTFILE TLS: %d", errCode);
+        Serial.printf("[WPASEC] Potfile TLS failed: err=%d (%s)\n", errCode, tlsErr);
         return false;
     }
     
@@ -637,8 +641,8 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
     }
     
     // First pass: count files and check which need upload
-    // We need to reload cache for this check
-    loadCache();
+    // Only load uploaded list (not cracked cache) to avoid 14KB allocation before TLS
+    loadUploadedList();
     
     // Collect pending uploads (store paths temporarily)
     struct PendingUpload {
@@ -705,8 +709,14 @@ WPASecSyncResult WPASec::syncCaptures(WPASecProgressCallback cb) {
                         if (bssid[i] >= 'a' && bssid[i] <= 'f') bssid[i] -= 32;
                     }
                     
-                    // Check if already uploaded or cracked
-                    if (!isUploaded(bssid)) {
+                    // Check uploaded list directly (avoids 14KB crackedCache load from isUploaded)
+                    char key[13];
+                    normalizeBSSID_Char(bssid, key, sizeof(key));
+                    bool alreadyUploaded = false;
+                    for (size_t j = 0; j < uploadedCache.size(); j++) {
+                        if (strcmp(uploadedCache[j].bssid, key) == 0) { alreadyUploaded = true; break; }
+                    }
+                    if (!alreadyUploaded) {
                         snprintf(pendingUploads[pendingCount].path, 
                                 sizeof(pendingUploads[pendingCount].path),
                                 "%s/%s", hsDir, fname);

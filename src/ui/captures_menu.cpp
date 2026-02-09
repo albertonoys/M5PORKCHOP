@@ -13,6 +13,7 @@
 #include "../core/sd_layout.h"
 #include "../core/wifi_utils.h"
 #include "../core/heap_health.h"
+#include <esp_heap_caps.h>
 
 // Static member initialization
 std::vector<CaptureInfo> CapturesMenu::captures;
@@ -1208,8 +1209,8 @@ void CapturesMenu::drawSyncModal(M5Canvas& canvas) {
         } else {
             // Heap display
             char heapText[32];
-            snprintf(heapText, sizeof(heapText), "HEAP: %uKB", 
-                     (unsigned)(ESP.getFreeHeap() / 1024));
+            snprintf(heapText, sizeof(heapText), "HEAP: %uKB",
+                     (unsigned)(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT) / 1024));
             canvas.drawString(heapText, centerX, boxY + 42);
         }
         

@@ -19,8 +19,9 @@ bool canTls(const TlsGateStatus& status, char* outError, size_t outErrorLen) {
         return false;
     }
     if (status.failure == TlsGateFailure::Fragmented) {
-        snprintf(outError, outErrorLen, "FRAGMENTED: %uKB",
-                 (unsigned int)(status.largestBlock / 1024));
+        snprintf(outError, outErrorLen, "FRAG: %uKB/%uKB",
+                 (unsigned int)(status.largestBlock / 1024),
+                 (unsigned int)(status.freeHeap / 1024));
     } else {
         snprintf(outError, outErrorLen, "LOW HEAP: %uKB",
                  (unsigned int)(status.freeHeap / 1024));
@@ -48,8 +49,9 @@ bool canMeet(const GateStatus& status, char* outError, size_t outErrorLen) {
         return false;
     }
     if (status.failure == TlsGateFailure::Fragmented) {
-        snprintf(outError, outErrorLen, "FRAGMENTED: %uKB",
-                 (unsigned int)(status.largestBlock / 1024));
+        snprintf(outError, outErrorLen, "FRAG: %uKB/%uKB",
+                 (unsigned int)(status.largestBlock / 1024),
+                 (unsigned int)(status.freeHeap / 1024));
     } else {
         snprintf(outError, outErrorLen, "LOW HEAP: %uKB",
                  (unsigned int)(status.freeHeap / 1024));
