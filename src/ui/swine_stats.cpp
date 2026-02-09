@@ -5,6 +5,7 @@
 #include "../core/xp.h"
 #include "../core/config.h"
 #include "../piglet/mood.h"
+#include "../piglet/weather.h"
 #include "../web/wigle.h"
 #include <M5Cardputer.h>
 
@@ -22,14 +23,16 @@ static const char* BUFF_NAMES[] = {
     "NE0N H1GH",    // happiness >80: faster sweep, faster decay
     "SNOUT$HARP",   // happiness >50: global XP boost
     "H0TSTR3AK",    // 2+ captures: capture XP boost
-    "C0LD F0CU5"    // happiness 60â€“75: balanced focus
+    "C0LD F0CU5",   // happiness 60-75: balanced focus
+    "CL34R$KY"      // clear weather: signal boost
 };
 
 static const char* BUFF_DESCS[] = {
     "Street Sweep -18%",               // NE0N H1GH: faster band sweep
     "Signal Drip +18%",                // SNOUT$HARP: global XP weight
     "Capture XP +6%",                  // H0TSTR3AK: capture streak bonus
-    "Glass Stare +10% / Street Sweep +5%"  // C0LD F0CU5: longer locks & slower sweep
+    "Glass Stare +10% / Street Sweep +5%",  // C0LD F0CU5: longer locks & slower sweep
+    "Signal Drip +5%"                  // CL34R$KY: weather XP boost
 };
 
 // Debuff names and descriptions (vNext Neon Operator)
@@ -37,14 +40,16 @@ static const char* DEBUFF_NAMES[] = {
     "SLOP$LUG",
     "F0GSNOUT",
     "TR0UGHDR41N",
-    "HAM$TR1NG"
+    "HAM$TR1NG",
+    "TH0ND3R$LAB"
 };
 
 static const char* DEBUFF_DESCS[] = {
     "Street Sweep +12%",   // SLOP$LUG: slower sweep
     "Signal Drip -10%",    // F0GSNOUT: global XP penalty
     "+1ms jitter",         // TR0UGHDR41N: extra jitter
-    "Street Sweep +35%"    // HAM$TR1NG: very slow sweep
+    "Street Sweep +35%",   // HAM$TR1NG: very slow sweep
+    "Street Sweep +8%"     // TH0ND3R$LAB: storm slowdown
 };
 
 // Class buff names and descriptions
@@ -239,7 +244,19 @@ BuffState SwineStats::calculateBuffs() {
     if (happiness < -70) {
         state.debuffs |= (uint8_t)PorkDebuff::HAM_STR1NG;
     }
-    
+
+    // === WEATHER ===
+
+    // CL34R$KY: clear weather = Signal Drip +5%
+    if (!Weather::isRaining()) {
+        state.buffs |= (uint8_t)PorkBuff::CL34R_SKY;
+    }
+
+    // TH0ND3R$LAB: storm = Street Sweep +8%
+    if (Weather::isThunderFlashing()) {
+        state.debuffs |= (uint8_t)PorkDebuff::TH0ND3R_SLAB;
+    }
+
     return state;
 }
 
@@ -346,7 +363,11 @@ uint16_t SwineStats::getChannelHopInterval() {
     if (buffs.hasDebuff(PorkDebuff::HAM_STR1NG)) {
         mod += 0.35f;
     }
-    
+    // Debuff: TH0ND3R$LAB -> +8% interval (storm interference)
+    if (buffs.hasDebuff(PorkDebuff::TH0ND3R_SLAB)) {
+        mod += 0.08f;
+    }
+
     // Compute final multiplier and clamp to [0.65, 1.45]
     float finalMult = 1.0f + mod;
     if (finalMult < 0.65f) finalMult = 0.65f;
@@ -373,7 +394,11 @@ float SwineStats::getXPMultiplier() {
     if (buffs.hasDebuff(PorkDebuff::F0GSNOUT)) {
         mod -= 0.10f;
     }
-    
+    // Weather buff: CL34R$KY -> +5% global XP
+    if (buffs.hasBuff(PorkBuff::CL34R_SKY)) {
+        mod += 0.05f;
+    }
+
     float finalMult = 1.0f + mod;
     // Clamp Signal Drip to [0.80, 1.60]
     if (finalMult < 0.80f) finalMult = 0.80f;
@@ -511,6 +536,7 @@ const char* SwineStats::getBuffName(PorkBuff b) {
         case PorkBuff::SNOUT_SHARP: return BUFF_NAMES[1];
         case PorkBuff::H0TSTR3AK: return BUFF_NAMES[2];
         case PorkBuff::C4FF31N4T3D: return BUFF_NAMES[3];
+        case PorkBuff::CL34R_SKY: return BUFF_NAMES[4];
         default: return "???";
     }
 }
@@ -521,6 +547,7 @@ const char* SwineStats::getDebuffName(PorkDebuff d) {
         case PorkDebuff::F0GSNOUT: return DEBUFF_NAMES[1];
         case PorkDebuff::TR0UGHDR41N: return DEBUFF_NAMES[2];
         case PorkDebuff::HAM_STR1NG: return DEBUFF_NAMES[3];
+        case PorkDebuff::TH0ND3R_SLAB: return DEBUFF_NAMES[4];
         default: return "???";
     }
 }
@@ -531,6 +558,7 @@ const char* SwineStats::getBuffDesc(PorkBuff b) {
         case PorkBuff::SNOUT_SHARP: return BUFF_DESCS[1];
         case PorkBuff::H0TSTR3AK: return BUFF_DESCS[2];
         case PorkBuff::C4FF31N4T3D: return BUFF_DESCS[3];
+        case PorkBuff::CL34R_SKY: return BUFF_DESCS[4];
         default: return "";
     }
 }
@@ -541,6 +569,7 @@ const char* SwineStats::getDebuffDesc(PorkDebuff d) {
         case PorkDebuff::F0GSNOUT: return DEBUFF_DESCS[1];
         case PorkDebuff::TR0UGHDR41N: return DEBUFF_DESCS[2];
         case PorkDebuff::HAM_STR1NG: return DEBUFF_DESCS[3];
+        case PorkDebuff::TH0ND3R_SLAB: return DEBUFF_DESCS[4];
         default: return "";
     }
 }
@@ -700,7 +729,7 @@ void SwineStats::drawBuffsTab(M5Canvas& canvas) {
     
     // Draw active mood buffs
     if (currentBuffs.buffs != 0) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             PorkBuff b = (PorkBuff)(1 << i);
             if (currentBuffs.hasBuff(b)) {
                 char buf[48];
@@ -715,7 +744,7 @@ void SwineStats::drawBuffsTab(M5Canvas& canvas) {
     
     // Draw active mood debuffs
     if (currentBuffs.debuffs != 0) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 5; i++) {
             PorkDebuff d = (PorkDebuff)(1 << i);
             if (currentBuffs.hasDebuff(d)) {
                 char buf[48];

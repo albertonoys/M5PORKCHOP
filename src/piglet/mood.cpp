@@ -273,6 +273,44 @@ static const char* const PHRASES_DEBUFF_GAINED[] = {
 };
 static const char* const PHRASES_BUFF_LOST = "modifier expired. pig baseline.";
 
+// Weather awareness phrases (Idea 10/11: weather-mood-gamification integration)
+static const char* const PHRASES_WEATHER_RAIN_OINK[] = {
+    "rain on the snout bruv",
+    "wet trotters innit"
+};
+static const char* const PHRASES_WEATHER_RAIN_CD[] = {
+    "rain wash di signal",
+    "wet vibes bredren"
+};
+static const char* const PHRASES_WEATHER_RAIN_WARHOG[] = {
+    "rain ops. maintain post.",
+    "wet sector. pushing on."
+};
+static const char* const PHRASES_WEATHER_STORM_OINK[] = {
+    "MENTAL WEATHER MATE",
+    "thunder proper shook bruv"
+};
+static const char* const PHRASES_WEATHER_STORM_CD[] = {
+    "jah send fi thunder",
+    "storm test di faith"
+};
+static const char* const PHRASES_WEATHER_STORM_WARHOG[] = {
+    "LIGHTNING. HOLD POSITION.",
+    "hostile weather sir"
+};
+static const char* const PHRASES_WEATHER_CLEAR_OINK[] = {
+    "proper sky tonight",
+    "clear air. snout keen."
+};
+static const char* const PHRASES_WEATHER_CLEAR_CD[] = {
+    "sky blessed bredren",
+    "clear night. jah provide."
+};
+static const char* const PHRASES_WEATHER_CLEAR_WARHOG[] = {
+    "clear skies. optimal ops.",
+    "visibility green sir"
+};
+
 // Idea 9: Charging state phrases
 static const char* const PHRASES_CHARGING_ON[] = {
     "plugged in. pig goes idle.",
@@ -813,7 +851,7 @@ enum class PhraseCategory : uint8_t {
     DEAUTH, DEAUTH_SUCCESS, PMKID, SNIFFING, PASSIVE_RECON, MENU_IDLE, RARE, RARE_LORE, DYNAMIC,
     BORED,
     // Situational awareness categories
-    SA_HEAP, SA_TIME, SA_DENSITY, SA_CHALLENGE, SA_GPS, SA_FATIGUE, SA_ENCRYPT, SA_BUFF, SA_CHARGING,
+    SA_HEAP, SA_TIME, SA_DENSITY, SA_CHALLENGE, SA_GPS, SA_FATIGUE, SA_ENCRYPT, SA_BUFF, SA_CHARGING, SA_WEATHER,
     COUNT  // Must be last
 };
 
@@ -1022,7 +1060,9 @@ const char* PHRASES_SAD_OINK[] = {
     "bloody depressing",
     "horse wandered off",
     "proper gutted",
-    "miserable piggy"
+    "miserable piggy",
+    "a capture would fix this",
+    "snout needs a handshake"
 };
 
 const char* PHRASES_SAD_CD[] = {
@@ -1035,7 +1075,9 @@ const char* PHRASES_SAD_CD[] = {
     "patience test hard",
     "horse need help",
     "struggle real",
-    "jah test mi"
+    "jah test mi",
+    "one capture lift di mood",
+    "handshake heal all ting"
 };
 
 const char* PHRASES_SAD_WARHOG[] = {
@@ -1048,7 +1090,9 @@ const char* PHRASES_SAD_WARHOG[] = {
     "battalion exhausted",
     "barn abandoned",
     "reinforcements needed",
-    "status dire"
+    "status dire",
+    "capture would boost morale",
+    "need handshake. for morale."
 };
 
 // BORED phrases - pig has nothing to hack
@@ -2163,6 +2207,47 @@ bool Mood::pickBuffPhraseIfDue(uint32_t now) {
     return triggered;
 }
 
+// Weather awareness (mood-weather-gamification integration)
+bool Mood::pickWeatherPhraseIfDue(uint32_t now) {
+    static uint32_t lastWeatherPhraseMs = 0;
+    if (now - lastWeatherPhraseMs < 45000) return false;  // 45s cooldown
+    lastWeatherPhraseMs = now;
+
+    // Only trigger on weather state changes or first observation
+    // Note: isThunderFlashing() is frame-transient (flash animation), so use
+    // happiness-based storm detection: storms come from very low mood
+    static int8_t lastWeatherState = -1;  // -1=uninit, 0=clear, 1=rain, 2=storm
+    int effHappy = Mood::getEffectiveHappiness();
+    int8_t weatherState = (Weather::isRaining() && effHappy < -50) ? 2 :
+                          Weather::isRaining() ? 1 : 0;
+    if (weatherState == lastWeatherState) return false;
+    lastWeatherState = weatherState;
+
+    PorkchopMode mode = porkchop.getMode();
+    bool isCD = (mode == PorkchopMode::DNH_MODE);
+    bool isWarhog = (mode == PorkchopMode::WARHOG_MODE);
+
+    const char* const* phrases;
+    if (weatherState == 2) {  // storm
+        phrases = isCD ? PHRASES_WEATHER_STORM_CD :
+                  isWarhog ? PHRASES_WEATHER_STORM_WARHOG :
+                  PHRASES_WEATHER_STORM_OINK;
+    } else if (weatherState == 1) {  // rain
+        phrases = isCD ? PHRASES_WEATHER_RAIN_CD :
+                  isWarhog ? PHRASES_WEATHER_RAIN_WARHOG :
+                  PHRASES_WEATHER_RAIN_OINK;
+    } else {  // clear
+        phrases = isCD ? PHRASES_WEATHER_CLEAR_CD :
+                  isWarhog ? PHRASES_WEATHER_CLEAR_WARHOG :
+                  PHRASES_WEATHER_CLEAR_OINK;
+    }
+
+    int idx = pickPhraseIdx(PhraseCategory::SA_WEATHER, 2);
+    SET_PHRASE(currentPhrase, phrases[idx]);
+    lastPhraseChange = now;
+    return true;
+}
+
 // Idea 9: Charging state reactions
 bool Mood::pickChargingPhraseIfDue(uint32_t now) {
     static uint32_t lastChargeCheckMs = 0;
@@ -2209,7 +2294,7 @@ bool Mood::pickChargingPhraseIfDue(uint32_t now) {
 
 // Master situational awareness update (called from Mood::update)
 void Mood::updateSituationalAwareness(uint32_t now) {
-    // Priority order: heap pressure > charging > fatigue > challenge > density > encryption > GPS > buff
+    // Priority order: heap > charging > fatigue > challenge > density > encryption > GPS > weather > buff
     // Only one SA phrase per update cycle to avoid spam
     if (pickHeapPhraseIfDue(now)) return;
     if (pickChargingPhraseIfDue(now)) return;
@@ -2218,6 +2303,7 @@ void Mood::updateSituationalAwareness(uint32_t now) {
     if (pickDensityPhraseIfDue(now)) return;
     if (pickEncryptionPhraseIfDue(now)) return;
     if (pickGPSPhraseIfDue(now)) return;
+    if (pickWeatherPhraseIfDue(now)) return;
     if (pickBuffPhraseIfDue(now)) return;
 }
 

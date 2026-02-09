@@ -5,6 +5,7 @@
 #include <esp_wifi.h>
 #include <vector>
 #include <set>
+#include <atomic>
 #include <FS.h>
 #include "../core/network_recon.h"
 
@@ -140,7 +141,7 @@ public:
     static void enableChannelHop(bool enable);
     
     // Statistics
-    static uint32_t getPacketCount() { return packetCount; }
+    static uint32_t getPacketCount() { return packetCount.load(std::memory_order_relaxed); }
     static uint32_t getDeauthCount() { return deauthCount; }
     static uint16_t getNetworkCount() { return NetworkRecon::getNetworkCount(); }
     static uint16_t getFilteredCount();
@@ -200,7 +201,7 @@ private:
     static DetectedClient targetClients[MAX_CLIENTS_PER_NETWORK];
     static uint8_t targetClientCount;
     static int selectionIndex;  // Cursor for network selection
-    static volatile uint32_t packetCount;
+    static std::atomic<uint32_t> packetCount;
     static uint32_t deauthCount;
     
     // Beacon frame storage (for PCAP)

@@ -67,7 +67,7 @@ public:
 private:
     static ActiveChallenge challenges[3];
     static uint8_t activeCount;
-    static bool sessionDeauthed;  // tracks if deauth ever sent (for conditional)
+    static uint8_t sessionDeauthCount;  // grace: allow 1 deauth, fail on 2nd
     
     static void updateProgress(ChallengeType type, uint16_t delta);
     static void failConditional(ChallengeType type);

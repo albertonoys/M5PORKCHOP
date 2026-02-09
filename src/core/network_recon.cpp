@@ -31,7 +31,7 @@ static uint8_t currentChannelIndex = 0;
 static uint32_t lastHopTime = 0;
 static uint32_t lastCleanupTime = 0;
 static uint32_t startTime = 0;
-static volatile uint32_t packetCount = 0;
+static std::atomic<uint32_t> packetCount{0};
 static std::atomic<bool> busy{false};  // [BUG3 FIX] Atomic for cross-core visibility
 static std::atomic<uint32_t> hopIntervalOverrideMs{0};
 static size_t heapLargestAtStart = 0;
@@ -596,7 +596,7 @@ static void promiscuousCallback(void* buf, wifi_promiscuous_pkt_type_t type) {
     if (len > 4) len -= 4;
     if (len < 24) return;
     
-    packetCount++;
+    packetCount.fetch_add(1, std::memory_order_relaxed);
     
     const uint8_t* payload = pkt->payload;
     uint8_t frameSubtype = (payload[0] >> 4) & 0x0F;
@@ -738,7 +738,7 @@ void init() {
     networks.clear();
     networks.reserve(MAX_RECON_NETWORKS);  // Full upfront reserve — eliminates growth reallocations
     
-    packetCount = 0;
+    packetCount.store(0, std::memory_order_relaxed);
     currentChannel = 1;
     currentChannelIndex = 0;
     lastHopTime = 0;
@@ -981,7 +981,7 @@ void clearHopIntervalOverride() {
 }
 
 uint32_t getPacketCount() {
-    return packetCount;
+    return packetCount.load(std::memory_order_relaxed);
 }
 
 uint8_t estimateClientCount(const DetectedNetwork& net) {

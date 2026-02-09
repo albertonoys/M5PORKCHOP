@@ -80,4 +80,5 @@ private:
     static bool pickEncryptionPhraseIfDue(uint32_t now);
     static bool pickBuffPhraseIfDue(uint32_t now);
     static bool pickChargingPhraseIfDue(uint32_t now);
+    static bool pickWeatherPhraseIfDue(uint32_t now);
 };

@@ -15,7 +15,7 @@ extern Porkchop porkchop;
 // static member initialization
 ActiveChallenge Challenges::challenges[3] = {};
 uint8_t Challenges::activeCount = 0;
-bool Challenges::sessionDeauthed = false;
+uint8_t Challenges::sessionDeauthCount = 0;
 
 static portMUX_TYPE challengesMux = portMUX_INITIALIZER_UNLOCKED;
 
@@ -211,7 +211,7 @@ void Challenges::generate() {
 
     portENTER_CRITICAL(&challengesMux);
     activeCount = 3;
-    sessionDeauthed = false;
+    sessionDeauthCount = 0;
     portEXIT_CRITICAL(&challengesMux);
     
     // pig's demands generated in silence
@@ -342,8 +342,8 @@ void Challenges::updateProgress(ChallengeType type, uint16_t delta) {
 
     // Check for full sweep bonus (all 3 completed)
     if (sweepNow) {
-        // TRIPLE THREAT BONUS - pig respects dedication
-        const uint16_t BONUS_XP = 100;
+        // TRIPLE THREAT BONUS - pig respects dedication (scales with mastery)
+        const uint16_t BONUS_XP = 50 + (XP::getLevel() * 3);
         XP::addXPSilent(BONUS_XP);  // Silent add - sweep fanfare is the celebration
 
         Display::showToast("WORTHY. 115200 REMEMBERS.");
@@ -351,7 +351,7 @@ void Challenges::updateProgress(ChallengeType type, uint16_t delta) {
         // Victory fanfare - non-blocking (priority sound, interrupts CHALLENGE_COMPLETE)
         SFX::play(SFX::CHALLENGE_SWEEP);
 
-        Serial.println("[CHALLENGES] *** FULL SWEEP! +100 BONUS XP ***");
+        Serial.printf("[CHALLENGES] *** FULL SWEEP! +%d BONUS XP ***\n", BONUS_XP);
     }
 }
 
@@ -388,11 +388,11 @@ void Challenges::onXPEvent(XPEvent event) {
     // pig sleeps? pig doesn't care about your progress
     if (!isPigAwake()) return;
 
-    bool deauthedSnapshot = false;
+    uint8_t deauthCountSnapshot = 0;
     uint8_t localActive = 0;
     portENTER_CRITICAL(&challengesMux);
     localActive = activeCount;
-    deauthedSnapshot = sessionDeauthed;
+    deauthCountSnapshot = sessionDeauthCount;
     portEXIT_CRITICAL(&challengesMux);
 
     // no challenges generated yet? nothing to track
@@ -403,7 +403,7 @@ void Challenges::onXPEvent(XPEvent event) {
         // network discovery events
         case XPEvent::NETWORK_FOUND:
             updateProgress(ChallengeType::NETWORKS_FOUND, 1);
-            if (!deauthedSnapshot) {
+            if (deauthCountSnapshot < 2) {
                 updateProgress(ChallengeType::NO_DEAUTH_STREAK, 1);
             }
             break;
@@ -411,7 +411,7 @@ void Challenges::onXPEvent(XPEvent event) {
         case XPEvent::NETWORK_HIDDEN:
             updateProgress(ChallengeType::NETWORKS_FOUND, 1);
             updateProgress(ChallengeType::HIDDEN_FOUND, 1);
-            if (!deauthedSnapshot) {
+            if (deauthCountSnapshot < 2) {
                 updateProgress(ChallengeType::NO_DEAUTH_STREAK, 1);
             }
             break;
@@ -419,7 +419,7 @@ void Challenges::onXPEvent(XPEvent event) {
         case XPEvent::NETWORK_WPA3:
             updateProgress(ChallengeType::NETWORKS_FOUND, 1);
             updateProgress(ChallengeType::WPA3_FOUND, 1);
-            if (!deauthedSnapshot) {
+            if (deauthCountSnapshot < 2) {
                 updateProgress(ChallengeType::NO_DEAUTH_STREAK, 1);
             }
             break;
@@ -427,14 +427,14 @@ void Challenges::onXPEvent(XPEvent event) {
         case XPEvent::NETWORK_OPEN:
             updateProgress(ChallengeType::NETWORKS_FOUND, 1);
             updateProgress(ChallengeType::OPEN_FOUND, 1);
-            if (!deauthedSnapshot) {
+            if (deauthCountSnapshot < 2) {
                 updateProgress(ChallengeType::NO_DEAUTH_STREAK, 1);
             }
             break;
             
         case XPEvent::NETWORK_WEP:
             updateProgress(ChallengeType::NETWORKS_FOUND, 1);
-            if (!deauthedSnapshot) {
+            if (deauthCountSnapshot < 2) {
                 updateProgress(ChallengeType::NO_DEAUTH_STREAK, 1);
             }
             break;
@@ -452,19 +452,19 @@ void Challenges::onXPEvent(XPEvent event) {
             updateProgress(ChallengeType::PMKIDS, 1);
             break;
             
-        // deauth events - the violence counter
+        // deauth events - the violence counter (grace: 1 free, fail on 2nd)
         case XPEvent::DEAUTH_SUCCESS:
             updateProgress(ChallengeType::DEAUTHS, 1);
-            if (!deauthedSnapshot) {
+            if (deauthCountSnapshot < 2) {
                 bool shouldFail = false;
                 portENTER_CRITICAL(&challengesMux);
-                if (!sessionDeauthed) {
-                    sessionDeauthed = true;
+                sessionDeauthCount++;
+                if (sessionDeauthCount >= 2) {
                     shouldFail = true;
                 }
                 portEXIT_CRITICAL(&challengesMux);
                 if (shouldFail) {
-                failConditional(ChallengeType::NO_DEAUTH_STREAK);
+                    failConditional(ChallengeType::NO_DEAUTH_STREAK);
                 }
             }
             break;
@@ -492,7 +492,7 @@ void Challenges::onXPEvent(XPEvent event) {
         case XPEvent::DNH_NETWORK_PASSIVE:
             updateProgress(ChallengeType::PASSIVE_NETWORKS, 1);
             updateProgress(ChallengeType::NETWORKS_FOUND, 1);
-            if (!deauthedSnapshot) {
+            if (deauthCountSnapshot < 2) {
                 updateProgress(ChallengeType::NO_DEAUTH_STREAK, 1);
             }
             break;
@@ -513,7 +513,7 @@ void Challenges::reset() {
         challenges[i] = {};
     }
     activeCount = 0;
-    sessionDeauthed = false;
+    sessionDeauthCount = 0;
     portEXIT_CRITICAL(&challengesMux);
 }
 

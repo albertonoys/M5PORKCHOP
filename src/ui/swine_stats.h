@@ -12,6 +12,7 @@ enum class PorkBuff : uint8_t {
     SNOUT_SHARP    = (1 << 1),  // SNOUT$HARP: +18% global XP gain
     H0TSTR3AK      = (1 << 2),  // H0TSTR3AK: +6% capture XP when on a streak
     C4FF31N4T3D    = (1 << 3),  // C0LD F0CU5: +10% Glass Stare, +5% Street Sweep
+    CL34R_SKY      = (1 << 4),  // CL34R$KY: +5% Signal Drip in clear weather
 };
 
 enum class PorkDebuff : uint8_t {
@@ -22,6 +23,7 @@ enum class PorkDebuff : uint8_t {
     F0GSNOUT       = (1 << 1),  // F0GSNOUT: -10% XP gain when a bit unhappy
     TR0UGHDR41N    = (1 << 2),  // TR0UGHDR41N: +1ms jitter after inactivity
     HAM_STR1NG     = (1 << 3),  // HAM$TR1NG: +35% Street Sweep when extremely unhappy
+    TH0ND3R_SLAB   = (1 << 4),  // TH0ND3R$LAB: +8% Street Sweep during storms
 };
 
 // Class buff flags (permanent, cumulative based on level)

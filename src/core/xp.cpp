@@ -777,7 +777,7 @@ void XP::addXP(XPEvent event) {
             // Anti-farm: cap WARHOG XP per session
             if (sessionWarhogXP >= WARHOG_XP_CAP) {
                 if (!warhogCapWarned) {
-                    Display::notify(NoticeKind::WARNING, "SNIFFED ENOUGH. REST.");
+                    Display::notify(NoticeKind::WARNING, "MAPS FULL. GO HUNT.");
                     warhogCapWarned = true;
                 }
                 amount = 0;  // Still track stats, no XP
@@ -791,7 +791,7 @@ void XP::addXP(XPEvent event) {
             // Anti-farm: cap BLE XP per session
             if (sessionBleXP >= BLE_XP_CAP) {
                 if (!bleCapWarned) {
-                    Display::notify(NoticeKind::WARNING, "SPAM TIRED. FIND PREY.");
+                    Display::notify(NoticeKind::WARNING, "BLE MAXED. TRY OINK.");
                     bleCapWarned = true;
                 }
                 amount = 0;

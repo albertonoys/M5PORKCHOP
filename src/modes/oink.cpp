@@ -188,7 +188,7 @@ bool OinkMode::targetCacheValid = false;
 DetectedClient OinkMode::targetClients[MAX_CLIENTS_PER_NETWORK] = {};
 uint8_t OinkMode::targetClientCount = 0;
 int OinkMode::selectionIndex = 0;
-volatile uint32_t OinkMode::packetCount = 0;
+std::atomic<uint32_t> OinkMode::packetCount{0};
 uint32_t OinkMode::deauthCount = 0;
 uint16_t OinkMode::filteredCount = 0;
 uint64_t OinkMode::filteredCache[64] = {0};
@@ -382,7 +382,7 @@ void OinkMode::init() {
     memset(targetBssid, 0, 6);
     clearTargetClients();
     selectionIndex = 0;
-    packetCount = 0;
+    packetCount.store(0, std::memory_order_relaxed);
     deauthCount = 0;
     currentHopIndex = 0;
     
@@ -530,7 +530,7 @@ void OinkMode::update() {
                           now - stateStartTime,
                           currentFree, currentLargest,
                           (int)currentLargest - (int)lastLargest,
-                          packetCount, networks().size());
+                          packetCount.load(), networks().size());
         }
         lastLargest = currentLargest;
         lastHeapLog = now;
@@ -1524,8 +1524,8 @@ void OinkMode::promiscuousCallback(const wifi_promiscuous_pkt_t* pkt, wifi_promi
     // ESP32 adds 4 ghost bytes to sig_len
     if (len > 4) len -= 4;
     if (len < 24) return;
-    
-    packetCount++;
+
+    packetCount.fetch_add(1, std::memory_order_relaxed);
     
     // #region agent log - H5 callback firing
     {
@@ -1571,7 +1571,9 @@ void OinkMode::processBeacon(const uint8_t* payload, uint16_t len, int8_t rssi) 
     const uint8_t* bssid = payload + 16;
     
     // Capture beacon for target AP only
-    if (targetIndex >= 0 && !beaconCaptured) {
+    // Use BSSID match instead of targetIndex for cross-core safety (callback runs on core 1,
+    // targetIndex is written on core 0 and can become stale after cleanupStaleNetworks)
+    if (!beaconCaptured && targetBssid[0] != 0) {
         if (memcmp(bssid, targetBssid, 6) == 0) {
             if (len > MAX_BEACON_SIZE) {
                 return;  // Drop oversized beacon
@@ -1762,17 +1764,16 @@ void OinkMode::processEAPOL(const uint8_t* payload, uint16_t len,
     
     // M1 = AP initiating handshake = client reconnected after deauth!
     // If we're deauthing this target, our deauth worked!
-    if (messageNum == 1 && deauthing && targetIndex >= 0) {
-        NetworkRecon::enterCritical();
-        if (targetIndex < (int)networks().size() &&
-            memcmp(bssid, networks()[targetIndex].bssid, 6) == 0) {
+    // Use BSSID match instead of targetIndex for cross-core safety (callback runs on core 1,
+    // targetIndex can become stale after cleanupStaleNetworks shifts indices on core 0)
+    if (messageNum == 1 && deauthing && targetBssid[0] != 0) {
+        if (memcmp(bssid, targetBssid, 6) == 0) {
             // DEFERRED: Queue deauth success for main thread
             if (!pendingDeauthSuccess) {
                 memcpy(pendingDeauthStation, station, 6);
                 pendingDeauthSuccess = true;
             }
         }
-        NetworkRecon::exitCritical();
     }
     
     // ========== PMKID EXTRACTION FROM M1 ==========
@@ -2841,7 +2842,8 @@ void OinkMode::clearTargetClients() {
 }
 
 void OinkMode::trackTargetClient(const uint8_t* bssid, const uint8_t* clientMac, int8_t rssi) {
-    if (targetIndex < 0) return;
+    // Use BSSID match instead of targetIndex for cross-core safety
+    if (targetBssid[0] == 0) return;
     if (memcmp(bssid, targetBssid, 6) != 0) return;
 
     uint32_t now = millis();
