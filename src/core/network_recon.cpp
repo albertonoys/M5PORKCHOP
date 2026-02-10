@@ -764,13 +764,19 @@ void init() {
 
 void start() {
     if (!initialized) init();
+
+    // Re-reserve if freeNetworks() dropped capacity to 0
+    if (networks.capacity() == 0) {
+        networks.reserve(MAX_RECON_NETWORKS);
+    }
+
     if (running) {
         if (paused) {
             resume();
         }
         return;
     }
-    
+
     Serial.printf("[RECON] Starting background scan... free=%u largest=%u\n",
                   ESP.getFreeHeap(), heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     
